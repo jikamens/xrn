@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: cursor.c,v 1.36 2006-10-17 02:23:12 jik Exp $";
+static char XRNrcsid[] = "$Id: cursor.c,v 1.19 1995-02-09 14:48:44 jik Exp $";
 #endif
 
 /*
@@ -53,7 +53,6 @@ static char XRNrcsid[] = "$Id: cursor.c,v 1.36 2006-10-17 02:23:12 jik Exp $";
 #include "mesg_strings.h"
 #include "Text.h"
 #include "buttons.h"
-#include "file_cache.h"
 
 /*
  * Move the cursor to the beginning of the current line.
@@ -227,74 +226,46 @@ int setCursorCurrent(tstring, point)
 }
 
 /*
- * Return the name of the group on the current line, or null if there
- * isn't one.  Reallocates groupName to contain the group name.
+ * Return the name of the group on the current line.
+ * Assume there is a group there and the cursor is at the beginning
+ * of the line.
  */
 void currentGroup(mode, tstring, groupName, point)
     int mode;			/* xrn Mode */
     char *tstring;			/* text string */
-    char **groupName;		/* string to return group name in */
+    char *groupName;		/* string to return group name in */
     long point;		/* cursor position */
 {
-    char *ptr1 = &tstring[point], *ptr2;
-    int i, len;
-
     if ((mode != ALL_MODE) && (mode != ADD_MODE)) {
-	for (i = 0; i < NEWS_GROUP_OFFSET; ptr1++, i++) {
-	    if (! *ptr1) {
-		if (! *groupName)
-		    *groupName = XtRealloc(*groupName, 1);
-		**groupName = '\0';
-		return;
-	    }
+	if (sscanf(&tstring[point], NEWS_GROUP_LINE, groupName) == 1) {
+	    return;
+	} else {
+	    *groupName = '\0';
+	    return;
 	}
+    } else {
+	(void) sscanf(&tstring[point], "%s", groupName);
     }
-    if (! (ptr2 = index(ptr1, ' ')))
-	ptr2 = index(ptr1, '\n');
-    assert(ptr2);
-    len = ptr2 - ptr1;
-    *groupName = XtRealloc(*groupName, len + 1);
-    (void) strncpy(*groupName, ptr1, len);
-    (*groupName)[len] = '\0';
     return;
 }
 
 /*
- * In "all" mode, return the group on the current line and whether it
- * should be subscribed or unsubscribed (e.g., if it is currently
- * subscribed, return SUBSCRIBE, and if it is currently
- * unsubscribed, return UNSUBSCRIBE).
- * 
- * The group name string passed in should be either null or allocated
- * memory.  It will be reallocated to hold the group name returned.
+ * Return the status of the group on the current line.
  */
 void currentMode(tstring, groupName, mode, point)
     char *tstring;
-    char **groupName;
+    char *groupName;
     int *mode;
     long point;
 {
-    char *ptr;
-    int len;
+    char status[100];
 
-    /* First, get the group. */
-
-    for (ptr = &tstring[point], len = 0; *ptr != ' '; ptr++, len++) /* empty */;
-    *groupName = XtRealloc(*groupName, len + 1);
-    (void) strncpy(*groupName, &tstring[point], len);
-    (*groupName)[len] = '\0';
-
-    /* Now, get its status. */
-
-    for (; *ptr == ' '; ptr++) /* empty */;
-
-    if (strncmp(ptr, UNSUBED_MSG, strlen(UNSUBED_MSG)) == 0)
+    (void) sscanf(&tstring[point], "%s %s", groupName, status);
+    if (strcmp(status, UNSUBED_MSG ) == 0) {
 	*mode = UNSUBSCRIBE;
-    else if (strncmp(ptr, IGNORED_MSG, strlen(IGNORED_MSG)) == 0)
-	*mode = IGNORE;
-    else
+    } else {
 	*mode = SUBSCRIBE;
-
+    }
     return;
 }
 
@@ -336,16 +307,10 @@ void markAllString(tstring, left, status)
  * Mark a group of articles between left and right as read or unread.
  * Marks the articles in the text string, and marks them internally.
  */
-void markArticles(
-		  _ANSIDECL(char *,	tstring),	/* text string */
-		  _ANSIDECL(long,	left),		/* boundaries of 	 */
-		  _ANSIDECL(long,	right),		/* articles to be marked */
-		  _ANSIDECL(char,	marker)
-		  )
-     _KNRDECL(char *,	tstring)
-     _KNRDECL(long,	left)
-     _KNRDECL(long,	right)
-     _KNRDECL(char,	marker)
+void markArticles(tstring, left, right, marker)
+    char *tstring;		      /* text string */
+    long left, right;      /* boundaries of articles to be marked */
+    char marker;
 {
     long artNum;		/* number of current article to be marked */
 
@@ -376,24 +341,54 @@ void buildString(newString, first, last, oldString)
     (*newString)[last - first] = '\0';
 }
 
-int moveToArticle(newsgroup, artNum, file, ques)
-    struct newsgroup *newsgroup;
-    long artNum;			/* number of new article */
-    file_cache_file **file;		/* cache file for new article */
-    char **ques;			/* status line for new article */
+/*
+ Move the cursor to the position of the article "num".  "position"
+ is an input/output variable; it should contain the position to start
+ searching at when it is called, and will contain the new position
+ when the function returns.
+ */
+void findArticle(tstring, num, position)
+    char *tstring;			/* text string */
+    art_num num;			/* article number to search for */
+    long *position;		/* cursor position */
 {
-    (void) fillUpArray(newsgroup, artNum, 0, True, False);
+    long artNum;		/* number of current article */
+    long pos = *position + 1;
 
-    if (abortP())
-      return ABORT;
+    /* move over S[aved] / P[rinted] marking */
+    if ((tstring[pos] == SAVED_MARKER) || (tstring[pos] == PRINTED_MARKER)) {
+	pos++;
+    }
+    artNum = atol(&tstring[pos]);
+    while (artNum != num) {
+	if (!moveCursor(FORWARD, tstring, position)) {
+	    ehErrorExitXRN( ERROR_FINDARTICLE_MSG );
+	}
+	pos = *position + 1;
+	/* move over S[aved] / P[rinted] marking */
+	if ((tstring[pos] == SAVED_MARKER) || (tstring[pos] == PRINTED_MARKER)) {
+	    pos++;
+	}
+	artNum = atol(&tstring[pos]);
+    }
+    return;
+}
 
-    if (checkArticle(artNum) != XRN_OKAY)
+
+int moveToArticle(artNum, file, ques)
+    long artNum;			/* number of new article */
+    char **file, **ques;		/* filename and status line for new article */
+{
+    fillUpArray(artNum);
+
+    if (checkArticle(artNum) != XRN_OKAY) {
 	return NOMATCH;
+    }
 
-    if (getArticle(newsgroup, artNum, file, ques) != XRN_OKAY)
+    gotoArticle(artNum);
+    if (getArticle(file, ques) != XRN_OKAY) {
 	return ERROR;
-
-    newsgroup->current = artNum;
+    }
 
     return MATCH;
 }
