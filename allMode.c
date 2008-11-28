@@ -260,8 +260,7 @@ static void doAll(status, first, last, group)
 			     ret, "enterNewsgroup", "doAll");
 		}
 		else if (status == SUBSCRIBE) {
-		  if (! subscribe())
-		    ret = BAD_GROUP;
+		    subscribe();
 		}
 		else {
 		    unsubscribe();
