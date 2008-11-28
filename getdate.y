@@ -13,47 +13,6 @@
 /* SUPPRESS 287 on yaccpar_sccsid *//* Unusd static variable */
 /* SUPPRESS 288 on yyerrlab *//* Label unused */
 
-     #define yymaxdepth getdate_maxdepth
-     #define yyparse getdate_parse
-     #define yylex   getdate_lex
-     #define yyerror getdate_error
-     #define yylval  getdate_lval
-     #define yychar  getdate_char
-     #define yydebug getdate_debug
-     #define yypact  getdate_pact
-     #define yyr1    getdate_r1
-     #define yyr2    getdate_r2
-     #define yydef   getdate_def
-     #define yychk   getdate_chk
-     #define yypgo   getdate_pgo
-     #define yyact   getdate_act
-     #define yyexca  getdate_exca
-     #define yyerrflag getdate_errflag
-     #define yynerrs getdate_nerrs
-     #define yyps    getdate_ps
-     #define yypv    getdate_pv
-     #define yys     getdate_s
-     #define yy_yys  getdate_yys
-     #define yystate getdate_state
-     #define yytmp   getdate_tmp
-     #define yyv     getdate_v
-     #define yy_yyv  getdate_yyv
-     #define yyval   getdate_val
-     #define yylloc  getdate_lloc
-     #define yyreds  getdate_reds
-     #define yytoks  getdate_toks
-     #define yylhs   getdate_yylhs
-     #define yylen   getdate_yylen
-     #define yydefred getdate_yydefred
-     #define yydgoto getdate_yydgoto
-     #define yysindex getdate_yysindex
-     #define yyrindex getdate_yyrindex
-     #define yygindex getdate_yygindex
-     #define yytable  getdate_yytable
-     #define yycheck  getdate_yycheck
-     #define yyname   getdate_yyname
-     #define yyrule   getdate_yyrule
-
 #include <sys/types.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -61,13 +20,14 @@
 
 #include "config.h"
 #include "utils.h"
+#include "getdate.h"
 
 static int yylex ();
 static int yyerror ();
 
 
 #define EPOCH		1970
-#define HOUR(x)		((time_t)((x) * 60))
+#define HOUR(x)		((time_t)(x) * 60)
 #define SECSPERDAY	(24L * 60L * 60L)
 
 
@@ -437,14 +397,6 @@ static TABLE CONST OtherTable[] = {
 /* The timezone table. */
 /* Some of these are commented out because a time_t can't store a float. */
 static TABLE CONST TimezoneTable[] = {
-#ifdef XRN
-  /* This is really gross.  There are some misconfigured News readers
-     which put "LOCAL" or "UNDEFINED" as the timezone in their Date:
-     fields.  Rather than displaying an error, I'm going to have XRN
-     just sort and display those articles in GMT. */
-    { "local",	tZONE,     HOUR( 0) },	/* Greenwich Mean */
-    { "undefined", tZONE,  HOUR( 0) },	/* Greenwich Mean */
-#endif /* XRN */
     { "gmt",	tZONE,     HOUR( 0) },	/* Greenwich Mean */
     { "ut",	tZONE,     HOUR( 0) },	/* Universal (Coordinated) */
     { "utc",	tZONE,     HOUR( 0) },
@@ -458,9 +410,11 @@ static TABLE CONST TimezoneTable[] = {
     { "bst",	tZONE,     HOUR( 3) },	/* Brazil Standard */
     { "gst",	tZONE,     HOUR( 3) },	/* Greenland Standard */
 #endif
+#if 0
     { "nft",	tZONE,     HOUR(3.5) },	/* Newfoundland */
     { "nst",	tZONE,     HOUR(3.5) },	/* Newfoundland Standard */
     { "ndt",	tDAYZONE,  HOUR(3.5) },	/* Newfoundland Daylight */
+#endif
     { "ast",	tZONE,     HOUR( 4) },	/* Atlantic Standard */
     { "adt",	tDAYZONE,  HOUR( 4) },	/* Atlantic Daylight */
     { "est",	tZONE,     HOUR( 5) },	/* Eastern Standard */
@@ -480,7 +434,6 @@ static TABLE CONST TimezoneTable[] = {
     { "nt",	tZONE,     HOUR(11) },	/* Nome */
     { "idlw",	tZONE,     HOUR(12) },	/* International Date Line West */
     { "cet",	tZONE,     -HOUR(1) },	/* Central European Standard */
-    { "mez",	tZONE,     -HOUR(1) },	/* deprecated version of cet */
     { "ced",	tDAYZONE,  -HOUR(1) },	/* Central European Daylight */
     { "met",	tZONE,     -HOUR(1) },	/* Middle European */
     { "mewt",	tZONE,     -HOUR(1) },	/* Middle European Winter */
@@ -491,10 +444,14 @@ static TABLE CONST TimezoneTable[] = {
     { "fst",	tDAYZONE,  -HOUR(1) },	/* French Summer */
     { "eet",	tZONE,     -HOUR(2) },	/* Eastern Europe, USSR Zone 1 */
     { "bt",	tZONE,     -HOUR(3) },	/* Baghdad, USSR Zone 2 */
+#if 0
     { "it",	tZONE,     -HOUR(3.5) },/* Iran */
+#endif
     { "zp4",	tZONE,     -HOUR(4) },	/* USSR Zone 3 */
     { "zp5",	tZONE,     -HOUR(5) },	/* USSR Zone 4 */
+#if 0
     { "ist",	tZONE,     -HOUR(5.5) },/* Indian Standard */
+#endif
     { "zp6",	tZONE,     -HOUR(6) },	/* USSR Zone 5 */
 #if	0
     /* For completeness.  NST is also Newfoundland Stanard, and SST is
@@ -504,13 +461,17 @@ static TABLE CONST TimezoneTable[] = {
 #endif	/* 0 */
     { "wast",	tZONE,     -HOUR(7) },	/* West Australian Standard */
     { "wadt",	tDAYZONE,  -HOUR(7) },	/* West Australian Daylight */
+#if 0
     { "jt",	tZONE,     -HOUR(7.5) },/* Java (3pm in Cronusland!) */
+#endif
     { "wst",	tZONE,     -HOUR(8) },	/* Australia Western timezone */
     { "cct",	tZONE,     -HOUR(8) },	/* China Coast, USSR Zone 7 */
     { "jst",	tZONE,     -HOUR(9) },	/* Japan Standard, USSR Zone 8 */
     { "kst",	tZONE,     -HOUR(9) },	/* Korean Standard */
+#if 0
     { "cast",	tZONE,     -HOUR(9.5) },/* Central Australian Standard */
     { "cadt",	tDAYZONE,  -HOUR(9.5) },/* Central Australian Daylight */
+#endif
     { "east",	tZONE,     -HOUR(10) },	/* Eastern Australian Standard */
     { "eadt",	tDAYZONE,  -HOUR(10) },	/* Eastern Australian Daylight */
     { "gst",	tZONE,     -HOUR(10) },	/* Guam Standard, USSR Zone 9 */
@@ -613,11 +574,11 @@ Convert(Month, Day, Year, Hours, Minutes, Seconds, Meridian, DSTmode)
 
     if (Year < 0)
 	Year = -Year;
-    if (Year < 1000)
+    if (Year < 100)
 	Year += 1900;
     DaysInMonth[1] = Year % 4 == 0 && (Year % 100 != 0 || Year % 400 == 0)
 		    ? 29 : 28;
-    if (Year < EPOCH || Year > 2999
+    if (Year < EPOCH || Year > 1999
      || Month < 1 || Month > 12
      /* Lint fluff:  "conversion from long may lose accuracy" */
      || Day < 1 || Day > DaysInMonth[(int)--Month])
@@ -704,7 +665,7 @@ LookupWord(buff)
 
     /* Make it lowercase. */
     for (p = buff; *p; p++)
-	if (isupper((unsigned char)*p))
+	if (isupper(*p))
 	    *p = tolower(*p);
 
     if (strcmp(buff, "am") == 0 || strcmp(buff, "a.m.") == 0) {
@@ -773,7 +734,7 @@ LookupWord(buff)
 	}
 
     /* Military timezones. */
-    if (buff[1] == '\0' && isalpha((unsigned char)*buff)) {
+    if (buff[1] == '\0' && isalpha(*buff)) {
 	for (tp = MilitaryTable; tp->name; tp++)
 	    if (strcmp(buff, tp->name) == 0) {
 		yylval.Number = tp->value;
@@ -809,13 +770,13 @@ yylex()
     int			sign;
 
     for ( ; ; ) {
-	while (isspace((unsigned char)*yyInput))
+	while (isspace(*yyInput))
 	    yyInput++;
 
 	if (isdigit(c = *yyInput) || c == '-' || c == '+') {
 	    if (c == '-' || c == '+') {
 		sign = c == '-' ? -1 : 1;
-		if (!isdigit((unsigned char)*++yyInput))
+		if (!isdigit(*++yyInput))
 		    /* skip the '-' sign */
 		    continue;
 	    }
