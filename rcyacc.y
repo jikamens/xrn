@@ -1,6 +1,6 @@
 %{
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: rcyacc.y,v 1.7 2005-12-01 08:51:06 jik Exp $";
+static char XRNrcsid[] = "$Id: rcyacc.y,v 1.3 1996-06-07 07:01:49 jik Exp $";
 #endif
 
 /*
@@ -37,7 +37,6 @@ static char XRNrcsid[] = "$Id: rcyacc.y,v 1.7 2005-12-01 08:51:06 jik Exp $";
 #include "utils.h"
 #include <X11/Xos.h>
 #include <X11/Intrinsic.h>
-#include <assert.h>
 #include "avl.h"
 #include "mesg.h"
 #include "news.h"
@@ -81,7 +80,7 @@ newsrc_line : NAME SEPARATOR artlist EOL
                 {
 		    struct newsgroup *newsgroup;
 
-		    if (! verifyGroup($1, &newsgroup, False)) {
+		    if (! verifyGroup($1, &newsgroup)) {
 		      struct list *current, *next;
 
 		      mesgPane(XRN_SERIOUS, newsrc_mesg_name,
@@ -98,10 +97,9 @@ newsrc_line : NAME SEPARATOR artlist EOL
 			    if ($2 == ':')
 				SET_SUB(newsgroup);
 			    newsgroup->nglist = $3;
-			    (void) updateArticleArray(newsgroup, False);
+			    (void) updateArticleArray(newsgroup);
 			    newsgroup->newsrc = MaxGroupNumber;
-			    Newsrc[MaxGroupNumber] = newsgroup;
-			    INC_MAXGROUPNUMBER();
+			    Newsrc[MaxGroupNumber++] = newsgroup;
 			} else {
 			    mesgPane(XRN_SERIOUS, newsrc_mesg_name,
 				     DUP_NEWSRC_ENTRY_MSG, $1);
@@ -113,7 +111,7 @@ newsrc_line : NAME SEPARATOR artlist EOL
                 {
 		    struct newsgroup *newsgroup;
 
-		    if (! verifyGroup($1, &newsgroup, False))
+		    if (! verifyGroup($1, &newsgroup))
 		      mesgPane(XRN_SERIOUS, newsrc_mesg_name,
 			       BOGUS_NG_REMOVING_MSG, $1);
 		    else {
@@ -123,10 +121,9 @@ newsrc_line : NAME SEPARATOR artlist EOL
 			    if ($2 == ':')
 				SET_SUB(newsgroup);
 			    newsgroup->nglist = NIL(struct list);
-			    (void) updateArticleArray(newsgroup, False);
+			    (void) updateArticleArray(newsgroup);
 			    newsgroup->newsrc = MaxGroupNumber;
-			    Newsrc[MaxGroupNumber] = newsgroup;
-			    INC_MAXGROUPNUMBER();
+			    Newsrc[MaxGroupNumber++] = newsgroup;
 			} else {
 			    mesgPane(XRN_SERIOUS, newsrc_mesg_name,
 				     DUP_NEWSRC_ENTRY_MSG, $1);
@@ -179,3 +176,5 @@ articles  : NUMBER
 
    
 %%
+#include "rclex.c"
+

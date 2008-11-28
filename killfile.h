@@ -19,8 +19,7 @@
 #define KILL_LOCAL	1
 
 #define KILL_ENTRY	(1<<0)
-#define KILL_INCLUDE	(1<<1)
-#define KILL_OTHER	(1<<2)
+#define KILL_OTHER	(1<<1)
 
 #define KILL_SUBJECT 	(1<<0)
 #define KILL_AUTHOR  	(1<<1)
@@ -28,16 +27,10 @@
 #define KILL_DATE	(1<<3)
 #define KILL_ID		(1<<4)
 #define KILL_REFERENCES	(1<<5)
-#define KILL_XREF	(1<<6)
-#define KILL_APPROVED	(1<<7)
 
-typedef unsigned int kill_check_flag_t;
-
-#define KILL_JUNK	(1<<0)
-#define KILL_MARK	(1<<1)
-#define KILL_SAVE	(1<<2)
-#define KILL_SUBTHREAD	(1<<3)
-#define KILL_THREAD	(1<<4)
+#define KILL_JUNK (1<<0)
+#define KILL_MARK (1<<1)
+#define KILL_SAVE (1<<2)
 
 typedef union _kill_entry  {
   char type;
@@ -54,7 +47,7 @@ typedef union _kill_entry  {
 #else
     char *reStruct;
 #endif /* POSIX_REGEX */
-    kill_check_flag_t check_flags;
+    char check_flags;
     char action_flags;
     int timeout;
     time_t last_used;
@@ -62,42 +55,28 @@ typedef union _kill_entry  {
   struct {
     char type;
     char *value;
-    char *operand;
-    char is_ngfile;
-    struct _kill_file *kf;
-  } include;
-  struct {
-    char type;
-    char *value;
   } other;
 } kill_entry;
 
 typedef struct _kill_file {
+#if 0 /* XXX not using this stuff yet; it will eventually be used to
+	 detect when a KILL file is modified while we've got it in
+	 memory. */
   time_t mod_time;
+  hash_table_object hash_table;
+#endif
   char *file_name;
   art_num thru;
   int count;
   kill_entry *entries;
-  struct _kill_file *cur_sub_kf;
-  int cur_entry;
-  char flags;
 } kill_file;
 
-typedef void *kill_file_iter_handle;
-
-#define KF_SEEN		(1<<0)
-#define KF_CHANGED	(1<<1)
-
-void read_global_kill_file _ARGUMENTS((struct newsgroup *));
-void read_local_kill_file _ARGUMENTS((struct newsgroup *));
+void read_kill_file _ARGUMENTS((struct newsgroup *, int mode));
 kill_entry *kill_file_iter _ARGUMENTS((struct newsgroup *, int mode,
-				       kill_file_iter_handle *handle));
-kill_entry *kill_file_iter_refresh _ARGUMENTS((struct newsgroup *, int mode,
-					       kill_file_iter_handle *handle));
+				       kill_entry *));
 void write_kill_file _ARGUMENTS((struct newsgroup *, int mode));
 Boolean has_kill_files _ARGUMENTS((struct newsgroup *));
 void add_kill_entry _ARGUMENTS((struct newsgroup *newsgroup, int mode,
 				char *field, char *regexp));
-void kill_update_last_used _ARGUMENTS((kill_file *, kill_entry *));
 
 #endif /* ! _KILLFILE_H */

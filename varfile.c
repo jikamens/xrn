@@ -11,7 +11,6 @@
 
 #ifdef TESTING
 #define utTempnam tempnam
-#define utTempnamFree free
 #define mesgPane(a,b,c,d,e) fprintf(stderr, c, d, e)
 #define mesgPane6(a,b,c,d,e,f) fprintf(stderr, c, d, e, f)
 #define XtMalloc malloc
