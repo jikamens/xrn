@@ -1,5 +1,6 @@
+
 #include "config.h"
-#include "utils.h"
+#include <stdio.h>
 
 #ifdef NEED_VPRINTF
 
@@ -46,15 +47,14 @@
  */
 
 /* 
- * XRN changes
+ * XRN changes (submitted by users) 2/1/91
  *
- *  - inclusion config.h, utils.h
+ *  - inclusion of config.h
  *  - addition of #ifdef NEED_VPRINTF / #endif (set by config.h)
  *  - changed #ifdef __STDC__ around varargs.h / stdargs.h to
- *     #ifdef XRN_USE_STDARG (defined in utils.h)
+ *     #if defined(__STDC__) && !defined(NOSTDHDRS)
  *  - addition stdargs / varargs
  *  - combined vprintf.c and vsprintf.c into 1 file
- *  - don't include stdio.h, since utils.h does
  */
 
 #ifdef OSK		/* os9/68k can take advantage of both */
@@ -107,7 +107,7 @@ typedef void *pointer;
 )
 #endif
 
-#ifdef XRN_USE_STDARG
+#if defined(__STDC__) && !defined(NOSTDHDRS)
 #include <stdarg.h>
 #else
 #include <varargs.h>

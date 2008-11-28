@@ -1,6 +1,6 @@
 
-#if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: dialogs.c,v 1.23 1998-07-05 14:39:13 jik Exp $";
+#if !defined(lint) &&!defined(SABER)
+static char XRNrcsid[] = "$Header: /d/src/cvsroot/xrn/dialogs.c,v 1.5 1994-10-10 18:46:30 jik Exp $";
 /* Modified 2/20/92 dbrooks@osf.org to clean up dialog layout */
 #endif
 
@@ -36,25 +36,49 @@ static char XRNrcsid[] = "$Id: dialogs.c,v 1.23 1998-07-05 14:39:13 jik Exp $";
 #include "copyright.h"
 #include "config.h"
 #include "utils.h"
-#include "mesg_strings.h"
 #include <X11/Xos.h>
 #include <X11/StringDefs.h>
 #include <X11/Intrinsic.h>
 #include <X11/Shell.h>
 
+#ifndef MOTIF
 #include <X11/Xaw/Command.h>
 #include <X11/Xaw/Dialog.h>
-#include <X11/Xaw/Text.h>
+#else
+#include <Xm/PushB.h>
+#include <Xm/RowColumn.h>
+#include <Xm/Form.h>
+#include <Xm/Label.h>
+#include <Xm/Text.h>
+#endif
 
 #include "xthelper.h"
 #include "xmisc.h"
 #include "xrn.h"
 #include "dialogs.h"
 
-#ifdef XRN_USE_STDARG
-#include <stdarg.h>
-#else
-#include <varargs.h>
+#ifdef VMS
+Widget MyNameToWidget();
+#define XtNameToWidget MyNameToWidget
+#endif /* VMS */
+
+
+#if defined(MOTIF)
+/**********************************************************************
+Called when return is pressed in the text field.  When this happens,
+simulate pressing of the default button.
+**********************************************************************/
+
+static void returnHandler _ARGUMENTS((Widget, Widget,
+				      XmPushButtonCallbackStruct));
+
+static void returnHandler(w, data, call_data)
+    Widget w;
+    Widget data;
+    XmPushButtonCallbackStruct *call_data;
+{
+  XtCallActionProc(data, "ArmAndActivate", call_data->event, 0, 0);
+}
 #endif
 
 /*
@@ -85,18 +109,22 @@ Widget CreateDialog(parent, title, textField, args, count)
     Arg dargs[4];
     int cnt = 0;
     int i;
-    Widget bb WALL(= 0);
+    Widget typein;
+    Widget bb;
+    Arg bbArgs[3];
     static Arg shellArgs[] = {
 	{XtNallowShellResize, (XtArgVal) True},
 	{XtNinput, (XtArgVal) True},
         {XtNtransientFor, (XtArgVal) NULL},
     };
-    Widget typein;
-    char *t = XtNewString(title), *p;
-
-    p = t;
-    while ((p = strchr(p, '\t')))
-      *p = ' ';
+#ifdef MOTIF
+    Widget form, textf, lastButton;
+    XmString xs;
+    int defaultThickness = 2;
+    WidgetList button_list = (WidgetList)XtMalloc(sizeof(Widget) * count);
+#else
+    Dimension border_width, highlight_thickness;
+#endif
 
     XtSetArg(shellArgs[2], XtNtransientFor, GetAncestorShell(parent));
     /* override does not get titlebar, transient does */
@@ -104,15 +132,38 @@ Widget CreateDialog(parent, title, textField, args, count)
 			       shellArgs, XtNumber(shellArgs));
     
     /* create the dialog box */
+#ifndef MOTIF
     XtSetArg(dargs[cnt], XtNvalue, textField); cnt++;
-    XtSetArg(dargs[cnt], XtNlabel, t); cnt++;
+    XtSetArg(dargs[cnt], XtNlabel, title); cnt++;
     XtSetArg(dargs[cnt], XtNinput, True); cnt++;
     dialog = XtCreateManagedWidget("dialog", dialogWidgetClass, popup, dargs, cnt);
+#else
+    xs = XmStringCreateLtoR(title, XmSTRING_DEFAULT_CHARSET);
+    dialog = XmCreateRowColumn(popup, "dialog", dargs, cnt);
+    
+    cnt = 0;
+    XtSetArg(dargs[cnt], XmNlabelString, xs); cnt++;
+    XtSetArg(dargs[cnt], XmNalignment, XmALIGNMENT_BEGINNING); cnt++;
+    XtManageChild(XmCreateLabel(dialog, "label", dargs, cnt));
+    XmStringFree(xs);
+    
+    if (textField != DIALOG_NOTEXT) {
+      cnt = 0;
+      XtSetArg(dargs[cnt], XmNvalue, textField); cnt++;
+      textf = XmCreateText(dialog, "textField", dargs, cnt);
+      XtManageChild(textf);
+    }
+
+    cnt = 0;
+    form = XmCreateForm(dialog, "buttons", dargs, cnt);
+#endif
 
     /* add the buttons */
-    XtFree(t);
     for (i = 0; i < count; i++) {
 	Arg bargs[2];
+#ifdef MOTIF
+	Widget button;
+#endif
 	static XtCallbackRec callbacks[] = {
 	    {CBbusyCursor, NULL},
 	    {NULL, NULL},
@@ -123,6 +174,7 @@ Widget CreateDialog(parent, title, textField, args, count)
 	callbacks[1].callback = args[i].handler;
 	callbacks[1].closure = args[i].data;
 
+#ifndef MOTIF
 	XtSetArg(bargs[0], XtNlabel, args[i].buttonName);
 	XtSetArg(bargs[1], XtNcallback, callbacks);
 	if (i == count - 1) {
@@ -132,28 +184,117 @@ Widget CreateDialog(parent, title, textField, args, count)
 	     XtCreateManagedWidget("command", commandWidgetClass,
 				   dialog, bargs, XtNumber(bargs));
 	}
+#else
+	{
+	    static XtCallbackRec callback1[] = {
+	       {NULL, NULL},
+	       {NULL, NULL},
+	    };
+	    static XtCallbackRec callback2[] = {
+	       {NULL, NULL},
+	       {NULL, NULL},
+	    };
+	    static XtCallbackRec callback3[] = {
+	       {NULL, NULL},
+	       {NULL, NULL},
+	    };
+	    Arg margs[10];
+	    int ct = 0;
+
+	    xs = XmStringCreate(args[i].buttonName, XmSTRING_DEFAULT_CHARSET);
+	    XtSetArg(margs[ct], XmNlabelString, xs);  ct++;
+	    callback1[0] = callbacks[0];
+	    XtSetArg(margs[ct], XmNarmCallback, callback1);  ct++;
+	    callback2[0] = callbacks[1];
+	    XtSetArg(margs[ct], XmNactivateCallback, callback2); ct++;
+	    callback3[0] = callbacks[2];
+	    XtSetArg(margs[ct], XmNdisarmCallback, callback3);  ct++;
+	    callback3[0] = callbacks[2];
+	    XtSetArg(margs[ct], XmNdisarmCallback, callback3);  ct++;
+	    XtSetArg(margs[ct], XmNtopAttachment, XmATTACH_FORM);  ct++;
+	    if (!i) {
+	        XtSetArg(margs[ct], XmNleftAttachment, XmATTACH_FORM);  ct++;
+	    } else {
+	        XtSetArg(margs[ct], XmNleftAttachment, XmATTACH_WIDGET);  ct++;
+	        XtSetArg(margs[ct], XmNleftWidget, lastButton);  ct++;
+	    }
+
+	    if (i == count - 1) {
+/* Setting this at init time, rather than with SetValues, avoids a messy
+ * computation to get the alignment right later. */
+		XtSetArg(margs[ct], XmNshowAsDefault, defaultThickness); ct++;
+		XtSetArg(margs[ct], XmNtopOffset, 0); ct++;
+	        bb = button = XmCreatePushButton(form, "default", margs, ct);
+	    } else {
+	        button = XmCreatePushButton(form, "command", margs, ct);
+	    }
+
+	    lastButton = button_list[i] = button;
+	    XmStringFree(xs);
+	}
+#endif
     }
 
+#ifndef MOTIF
     if ((typein = XtNameToWidget(dialog, "value")) != 0) {
 	XtSetKeyboardFocus(dialog, typein);
-	XtSetKeyboardFocus(TopLevel, typein);
+	/* XtSetKeyboardFocus(TopLevel, typein); XXX causes occasional core dumps */
     }
-	
-    makeDefaultButton(bb);
 
+    XtSetArg(bbArgs[0], XtNborderWidth, (XtPointer) &border_width);
+    XtSetArg(bbArgs[1], XtNhighlightThickness,
+	     (XtPointer) &highlight_thickness);
+    XtGetValues(bb, bbArgs, 2);
+
+    XtSetArg(bbArgs[0], XtNborderWidth, border_width + 1);
+    XtSetArg(bbArgs[1], XtNhighlightThickness, highlight_thickness + 1);
+    XtSetValues(bb, bbArgs, 2);
+#else
+/* Assume all the buttons have the same shadows, etc. */
+    {
+      Dimension actual_shadow;
+      XtVaGetValues(bb, XmNshadowThickness, &actual_shadow, (String)0);
+/* The "+ 2" below should be Xm3D_ENHANCE_PIXEL, but the macro is Xm-private */
+      XtSetArg(bbArgs[0],
+	       XmNtopOffset, 2 * defaultThickness + actual_shadow + 2);
+      for (i = 0; i < count-1; i++)
+	XtSetValues(button_list[i], bbArgs, 1);
+    }
+    XtManageChildren(button_list, count);
+    XtFree((char *)button_list);
+    XtManageChild(form);
+    XtManageChild(dialog);
+#endif
+	
     XtRealizeWidget(popup);
 
 #ifndef ACCELERATORBUG
     XtInstallAccelerators(dialog, bb);
     XtInstallAccelerators(popup, bb);
 #endif
+#ifndef MOTIF
     if (typein != 0) {
 	XtInstallAccelerators(typein, bb);
 	if (textField) {
+	    XEvent ev;
 	    /* force the text field to be 'big enough' */
-	    XtCallActionProc(typein, "beginning-of-line", 0, 0, 0);
+	    XtCallActionProc(typein, "beginning-of-line", &ev, 0, 0);
 	}
     }
+#else
+    if (textField != DIALOG_NOTEXT) {
+      XtAddCallback(textf, XmNactivateCallback, (XtCallbackProc) returnHandler, (XtPointer) bb);
+#if XmVersion >= 1001
+      XmProcessTraversal(textf, XmTRAVERSE_CURRENT);
+    } else {
+      XmProcessTraversal(bb, XmTRAVERSE_CURRENT);
+#else
+      XtSetKeyboardFocus(dialog, textf);
+    } else {
+      XmProcessTraversal(dialog, bb);
+#endif
+    }
+#endif
     return(popup);
 }
 
@@ -200,7 +341,19 @@ char * GetDialogValue(popup)
     Widget popup;
 {
   
+#ifndef MOTIF
     return XawDialogGetValueString(XtNameToWidget(popup, "dialog"));
+#else
+    char *result;
+
+    result = XmTextGetString(XtNameToWidget(XtNameToWidget(popup, "dialog"),
+					    "textField"));
+    if (result) {
+      return result;
+    } else {
+      return "";
+    }
+#endif
 }
 
 /*
@@ -226,141 +379,34 @@ static void cbHandler(widget, client_data, call_data)
  * 'XRN_CB_CONTINUE'.  Either or both of the button1 and button2
  * arguments can be null; they default to "no" and "yes".  The second
  * button is the default.
- *
- * Always returns XRN_CB_ABORT if X isn't up (according to the
- * XRN_X_UP bit in the XRNState variable).
  */
-int ConfirmationBox(
-		    _ANSIDECL(Widget,	parent),
-		    _ANSIDECL(char *,	message),
-		    _ANSIDECL(char *,	button1),
-		    _ANSIDECL(char *,	button2),
-		    _ANSIDECL(Boolean,	continue_first)
-		    )
-     _KNRDECL(Widget,	parent)
-     _KNRDECL(char *,	message)
-     _KNRDECL(char *,	button1)
-     _KNRDECL(char *,	button2)
-     _KNRDECL(Boolean,	continue_first)
+int ConfirmationBox(parent, message, button1, button2)
+    Widget parent;
+    char *message, *button1, *button2;
 {
-  int retval;
-
-  if (! (XRNState & XRN_X_UP))
-    return XRN_CB_ABORT;
-
-  retval = ChoiceBox(parent, message, 2,
-		     button1 ? button1 : NO_STRING,
-		     button2 ? button2 : YES_STRING);
-
-  if (continue_first)
-    return ((retval == 1) ? XRN_CB_CONTINUE : XRN_CB_ABORT);
-  else
-    return ((retval == 1) ? XRN_CB_ABORT : XRN_CB_CONTINUE);
-}
-
-/*
- *
- * Pop up a box with an arbitrary number of buttons, and return the
- * number of the button that was selected (starting the count at 1).
- * The last button in the array is the default, and will be selected
- * if the user hits return instead of clicking on one of the buttons.
- */
-#ifdef XRN_USE_STDARG
-int ChoiceBox(Widget parent, char *message, int count, ...)
-#else
-int ChoiceBox(parent, message, count, va_alist)
-     Widget parent;
-     char *message;
-     int count;
-     va_dcl
-#endif /* XRN_USE_STDARG */
-{
-  struct DialogArg *dialog_args;
-  XEvent ev;
-  Widget widget;
-  XtAppContext app = XtWidgetToApplicationContext(parent);
-  int i;
-  va_list args;
-
-  dialog_args = (struct DialogArg *) XtMalloc(sizeof(*dialog_args) * count);
-
-#ifdef XRN_USE_STDARG
-  va_start(args, count);
-#else
-  va_start(args);
-#endif
-
-  for (i = 0; i < count; i++) {
-    dialog_args[i].buttonName = va_arg(args, char *);
-    dialog_args[i].handler = cbHandler;
-    dialog_args[i].data = (XtPointer) (i + 1);
-  }
-
-  va_end(args);
-
-  retVal = -1;
-
-  widget = CreateDialog(parent, message, DIALOG_NOTEXT, dialog_args, count);
-
-  PopUpDialog(widget);
-
-  for (;;) {
-    XtAppNextEvent(app, &ev);
-    (void) MyDispatchEvent(&ev);
-    if (retVal != -1) {
-      PopDownDialog(widget);
-      XtFree((char *) dialog_args);
-      return(retVal);
-    }
-  }
-}
-
-static int password_result;
-static char *dialog_password;
-
-static void passwordHandler _ARGUMENTS((Widget, XtPointer,
-					XtPointer));
-
-static void passwordHandler(widget, client_data, call_data)
-     Widget widget;
-     XtPointer client_data, call_data;
-{
-  Widget dialog = XtParent(XtParent(widget));
-
-  password_result = (int) client_data;
-  if (password_result == XRN_CB_CONTINUE) {
-    dialog_password = GetDialogValue(dialog);
-    dialog_password = XtNewString(dialog_password);
-  }
-  PopDownDialog(dialog);
-  return;
-}
-
-String PasswordBox(widget, prompt)
-     Widget widget;
-     String prompt;
-{
-  Widget dialog;
-  static struct DialogArg args[] = {
-    {ABORT_STRING, passwordHandler, (XtPointer) XRN_CB_ABORT},
-    {DOIT_STRING, passwordHandler, (XtPointer) XRN_CB_CONTINUE},
-  };
-
-  password_result = -1;
-
-  dialog = CreateDialog(TopLevel, prompt, DIALOG_TEXT, args, XtNumber(args));
-  XtVaSetValues(XtNameToWidget(dialog, "dialog.value"), XtNecho, 0, 0);
-  PopUpDialog(dialog);
-
-  while (password_result < 0) {
+    struct DialogArg args[] = {
+	{"no", cbHandler, (XtPointer) XRN_CB_ABORT},
+	{"yes", cbHandler, (XtPointer) XRN_CB_CONTINUE},
+    };
     XEvent ev;
+    Widget widget;
 
-    XtAppNextEvent(TopContext, &ev);
-    MyDispatchEvent(&ev);
-  }
+    if (button1)
+	args[0].buttonName = button1;
+    if (button2)
+	args[1].buttonName = button2;
 
-  if (password_result == XRN_CB_CONTINUE)
-    return dialog_password;
-  else
-    return 0;
+    retVal = -1;
+
+    widget = CreateDialog(parent, message, DIALOG_NOTEXT, args, XtNumber(args));
+    PopUpDialog(widget);
+
+    for(;;) {
+	XtNextEvent(&ev);
+	(void) XtDispatchEvent(&ev);
+	if (retVal != -1) {
+	    PopDownDialog(widget);
+	    return(retVal);
+	}
+    }
 }
