@@ -28,15 +28,11 @@ static int AllStatus = 1;	/* keeps track of which order to put the */
 static Widget AllFrame, AllText, AllInfoLine, AllButtonBox;
 static long First, Last;
 
-static char *LimitString = NULL;
-
 BUTTON(allQuit,quit);
 BUTTON(allNext,next);
 BUTTON(allPrev,prev);
 BUTTON(allScroll,scroll forward);
 BUTTON(allScrollBack,scroll backward);
-BUTTON(allSearch,search);
-BUTTON(allLimit,limit);
 BUTTON(allSub,subscribe);
 BUTTON(allFirst,subscribe first);
 BUTTON(allLast,subscribe last);
@@ -57,8 +53,6 @@ XtActionsRec AllActions[] = {
     {"allPrev",		allPrevAction},
     {"allScroll",	allScrollAction},
     {"allScrollBack",	allScrollBackAction},
-    {"allSearch",	allSearchAction},
-    {"allLimit",	allLimitAction},
     {"allSub",		allSubAction},
     {"allFirst",	allFirstAction},
     {"allLast",		allLastAction},
@@ -77,29 +71,27 @@ XtActionsRec AllActions[] = {
 int AllActionsCount = XtNumber(AllActions);
 
 static ButtonList AllButtonList[] = {
-  {"allQuit",	     allQuitCallbacks,	      ALLQUIT_EXSTR,	      True},
-  {"allNext",	     allNextCallbacks,	      NGNEXT_EXSTR,	      True},
-  {"allPrev",	     allPrevCallbacks,	      NGPREV_EXSTR,	      True},
-  {"allScroll",	     allScrollCallbacks,      ALLSCROLL_EXSTR,	      True},
-  {"allScrollBack",  allScrollBackCallbacks,  ALLSCROLLBACK_EXSTR,    True},
-  {"allSearch",      allSearchCallbacks,      ALLSEARCH_EXSTR,        True},
-  {"allLimit",       allLimitCallbacks,       ALLLIMIT_EXSTR,         True},
-  {"allSub",	     allSubCallbacks,	      ALLSUB_EXSTR,	      True},
-  {"allFirst",	     allFirstCallbacks,	      ALLFIRST_EXSTR,	      True},
-  {"allLast",	     allLastCallbacks,	      ALLLAST_EXSTR,	      True},
-  {"allAfter",	     allAfterCallbacks,	      ALLAFTER_EXSTR,	      True},
-  {"allUnsub",	     allUnsubCallbacks,	      ALLUNSUB_EXSTR,	      True},
-  {"allIgnore",	     allIgnoreCallbacks,      ALLIGNORE_EXSTR,	      True},
-  {"allGoto",	     allGotoCallbacks,	      ALLGOTO_EXSTR,	      True},
-  {"allSelect",	     allSelectCallbacks,      ALLSELECT_EXSTR,	      True},
-  {"allMove",	     allMoveCallbacks,	      ALLMOVE_EXSTR,	      True},
-  {"allToggle",	     allToggleCallbacks,      ALLTOGGLE_EXSTR,	      True},
-  {"allPost",	     allPostCallbacks,	      ALLPOST_EXSTR,	      True},
-  {"allPostAndMail", allPostAndMailCallbacks, ALLPOST_AND_MAIL_EXSTR, True},
-  {"allMail",	     allMailCallbacks,	      MAIL_EXSTR,	      True},
+    {"allQuit",		allQuitCallbacks,		ALLQUIT_EXSTR},
+    {"allNext",		allNextCallbacks,		NGNEXT_EXSTR},
+    {"allPrev",		allPrevCallbacks,		NGPREV_EXSTR},
+    {"allScroll",	allScrollCallbacks,		ALLSCROLL_EXSTR},
+    {"allScrollBack",	allScrollBackCallbacks,		ALLSCROLLBACK_EXSTR},
+    {"allSub",		allSubCallbacks,		ALLSUB_EXSTR},
+    {"allFirst",	allFirstCallbacks,		ALLFIRST_EXSTR},
+    {"allLast",		allLastCallbacks,		ALLLAST_EXSTR},
+    {"allAfter",	allAfterCallbacks,		ALLAFTER_EXSTR},
+    {"allUnsub",	allUnsubCallbacks,		ALLUNSUB_EXSTR},
+    {"allIgnore",	allIgnoreCallbacks,		ALLIGNORE_EXSTR},
+    {"allGoto",		allGotoCallbacks,		ALLGOTO_EXSTR},
+    {"allSelect",	allSelectCallbacks,		ALLSELECT_EXSTR},
+    {"allMove",		allMoveCallbacks,		ALLMOVE_EXSTR},
+    {"allToggle",	allToggleCallbacks,		ALLTOGGLE_EXSTR},
+    {"allPost",		allPostCallbacks,		ALLPOST_EXSTR},
+    {"allPostAndMail",	allPostAndMailCallbacks,	ALLPOST_AND_MAIL_EXSTR},
+    {"allMail",		allMailCallbacks,		MAIL_EXSTR},
 };
 
-static int AllButtonListCount = XtNumber(AllButtonList);
+int AllButtonListCount = XtNumber(AllButtonList);
 
 static void allResetSelection()
 {
@@ -118,10 +110,7 @@ void redrawAllWidget()
 	return;
     }
 
-    while (! (new = getStatusString(TextGetColumns(AllText),
-				    AllStatus, LimitString))) {
-      FREE(LimitString);
-    }
+    new = getStatusString(TextGetColumns(AllText), AllStatus);
 
     if (!AllGroupsString || strcmp(AllGroupsString, new)) {
 	allResetSelection();
@@ -157,8 +146,7 @@ void updateAllWidget(string, left, right)
 void switchToAllMode()
 {
     FREE(AllGroupsString);
-    FREE(LimitString); /* also done in allQuitFunction, but it
-			  doesn't hurt to be cautious */
+
     PreviousMode = CurrentMode;
     CurrentMode = ALL_MODE;
     /* switch buttons */
@@ -166,8 +154,7 @@ void switchToAllMode()
 
     setBottomInfoLine(VIEW_ALLNG_SUB_MSG);
     /* create the screen */
-    AllGroupsString = getStatusString(TextGetColumns(AllText), AllStatus,
-				      LimitString);
+    AllGroupsString = getStatusString(TextGetColumns(AllText), AllStatus);
 
     TextSetString(AllText, AllGroupsString);
 
@@ -189,9 +176,6 @@ void allQuitFunction(widget, event, string, count)
     }
 
     FREE(AllGroupsString);
-    FREE(LimitString); /* also done in switchToAllMode, but it doesn't
-			  hurt to be cautious */
-
     switchToNewsgroupMode(False);
 }
 
@@ -260,8 +244,7 @@ static void doAll(status, first, last, group)
 			     ret, "enterNewsgroup", "doAll");
 		}
 		else if (status == SUBSCRIBE) {
-		  if (! subscribe())
-		    ret = BAD_GROUP;
+		    subscribe();
 		}
 		else {
 		    unsubscribe();
@@ -284,7 +267,7 @@ static void doAll(status, first, last, group)
     XtFree(current_group);
 }
 
-
+    
 /*
  * Make the selected group(s) subscribed to, and leave them in
  * their current position in the newsrc file.
@@ -377,7 +360,7 @@ void allAfterFunction(widget, event, string, count)
     if (CurrentMode != ALL_MODE) {
 	return;
     }
-
+    
     if (AllBox == (Widget) 0) {
       AllBox = CreateDialog(TopLevel, BEHIND_WHAT_GROUP_MSG ,
 				  DIALOG_TEXT, args, XtNumber(args));
@@ -450,87 +433,6 @@ void allScrollBackFunction(widget, event, string, count)
 }
 
 /*
-  Search the group list, using the search functionality built into the Text
-  widget.
-  */
-void allSearchFunction(widget, event, string, count)
-     Widget widget;
-     XEvent *event;
-     String *string;
-     Cardinal *count;
-{
-  if (CurrentMode != ALL_MODE)
-    return;
-
-  TextSearchInteractive(AllText,
-			event ? event : XtLastEventProcessed(XtDisplay(widget)),
-			-1, TextSearchRight,
-			(count && *count) ? string[0] : NULL);
-}
-
-static Widget LimitBox = (Widget) 0;
-
-static void limitHandler _ARGUMENTS((Widget, XtPointer, XtPointer));
-
-/*ARGSUSED*/
-static void limitHandler(widget, client_data, call_data)
-    Widget widget;
-    XtPointer client_data;
-    XtPointer call_data;
-{
-    if (inCommand)
-      return;
-
-    inCommand = 1;
-    xrnBusyCursor();
-
-    if (strcmp(DOIT_STRING, (char *) client_data) == 0) {
-      FREE(LimitString);
-
-      if ((LimitString = GetDialogValue(LimitBox))) {
-	if (! *LimitString)
-	  LimitString = NULL;
-	else
-	  LimitString = XtNewString(LimitString);
-      }
-
-      redrawAllWidget();
-    }
-    
-    if (LimitBox) {
-      PopDownDialog(LimitBox);
-      LimitBox = 0;
-    }
-
-    inCommand = 0;
-    xrnUnbusyCursor();
-    return;
-}
-
-/*ARGSUSED*/
-void allLimitFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    static struct DialogArg args[] = {
-      {ABORT_STRING,limitHandler, (XtPointer) ABORT_STRING},
-      {DOIT_STRING, limitHandler, (XtPointer) DOIT_STRING},
-    };
-
-    if (CurrentMode != ALL_MODE) {
-	return;
-    }
-    if (LimitBox == (Widget) 0) {
-      LimitBox = CreateDialog(TopLevel, REGULAR_EXPR_MSG,
-			      DIALOG_TEXT, args, XtNumber(args));
-    }
-    PopUpDialog(LimitBox);
-    return;
-}
-
-/*
  * Go to the current newsgroup.  The current
  * group is either the first group of a selection,
  * or, if there is no selection, the group the cursor
@@ -549,7 +451,7 @@ void allGotoFunction(widget, event, string, count)
     if (CurrentMode != ALL_MODE) {
 	return;
     }
-
+    
     /* get the current group name */
 
     if (! (allNewsgroupIterator(True, 0) &&
@@ -575,7 +477,6 @@ void allGotoFunction(widget, event, string, count)
 	mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_DELETED_MSG, newGroup);
     }
     else if (ret == XRN_NOMORE) {
-	exitNewsgroup();
 	mesgPane(XRN_SERIOUS, 0, NO_ARTICLES_MSG, newGroup);
     }
     else {
@@ -604,7 +505,7 @@ static void my_post_function(mail_too)
     if (CurrentMode != ALL_MODE) {
 	goto done;
     }
-
+    
     /* get the current group name */
 
     if (! (allNewsgroupIterator(True, 0) &&
@@ -685,7 +586,7 @@ void allSelectFunction(widget, event, string, count)
     if (CurrentMode != ALL_MODE) {
 	return;
     }
-
+    
     if (TextGetSelectedOrCurrentLines(AllText, &First, &Last))
 	TextUnsetSelection(AllText);
 
@@ -779,7 +680,7 @@ void allMoveFunction(widget, event, string, count)
     return;
 }
 
-/*
+/* 
  * Change the order the groups appear on the screen.
  */
 /*ARGSUSED*/
@@ -800,21 +701,6 @@ void allToggleFunction(widget, event, string, count)
     return;
 }
 
-static void resizeAllText _ARGUMENTS((Widget, XtPointer, XEvent *,
-				      Boolean *));
-
-static void resizeAllText(widget, client_data, event,
-			  continue_to_dispatch)
-     Widget widget;
-     XtPointer client_data;
-     XEvent *event;
-     Boolean *continue_to_dispatch;
-{
-  if (event->type == ConfigureNotify) {
-    redrawAllWidget();
-  }
-}
-
 void displayAllWidgets()
 {
     if (! AllFrame) {
@@ -823,15 +709,16 @@ void displayAllWidgets()
 
 	XawPanedSetRefigureMode(AllFrame, False);
 
-	setButtonActive(AllButtonList, "allPost", PostingAllowed);
-	setButtonActive(AllButtonList, "allPostAndMail", PostingAllowed);
-	if (app_resources.fullNewsrc)
-	  setButtonActive(AllButtonList, "allIgnore", False);
-
+	/*
+	  The Box widget is managed only after
+	  its children have been placed in them because there is a
+	  bug in the Xaw Box widget (as of 05/06/95).
+	  */
 #define BUTTON_BOX() {\
 	  AllButtonBox = ButtonBoxCreate("buttons", AllFrame);\
 	  doButtons(app_resources.allButtonList, AllButtonBox,\
 		    AllButtonList, &AllButtonListCount, TOP);\
+	  XtManageChild(AllButtonBox);\
 	}
 
 #define INFO_LINE() {\
@@ -858,12 +745,14 @@ void displayAllWidgets()
 
 	TopInfoLine = AllInfoLine;
 
+	setButtonSensitive(AllButtonBox, "allPost", PostingAllowed);
+	setButtonSensitive(AllButtonBox, "allPostAndMail", PostingAllowed);
+	if (app_resources.fullNewsrc)
+	    setButtonSensitive(AllButtonBox, "allIgnore", False);
+
 	XawPanedSetRefigureMode(AllFrame, True);
 
 	XtSetKeyboardFocus(AllFrame, AllText);
-
-	XtAddEventHandler(AllText, StructureNotifyMask, FALSE,
-			  resizeAllText, NULL);
     }
     else {
 	TopInfoLine = AllInfoLine;

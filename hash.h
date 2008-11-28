@@ -1,14 +1,6 @@
 #ifndef _HASH_H
 #define _HASH_H
 
-#ifndef _ARGUMENTS
-#ifdef __STDC__
-#define _ARGUMENTS(a) a
-#else
-#define _ARGUMENTS(a) ()
-#endif
-#endif
-
 typedef int (*hash_calc_func) _ARGUMENTS((int, int, void *));
 typedef int (*hash_compare_func) _ARGUMENTS((void *, void *));
 typedef void (*hash_free_func) _ARGUMENTS((void *));
