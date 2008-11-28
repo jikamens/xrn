@@ -1,0 +1,99 @@
+!# 
+!# button pixmaps
+!#
+!# the initial size of the pixmaps is calculated on the size of the 
+!# insensitivePixmap. the insensitivePixmap should have the same size
+!# as the other Pixmaps, if the insensitivePixmap isn't defined
+!# the size of the pixmaps is assumed as NULL and they aren't displayed
+!# 
+
+XRnMotif*labelInsensitivePixmap:        /usr/lib/X11/bitmaps/XRn/Insensitive
+
+XRnMotif*artSave.labelType:             PIXMAP
+XRnMotif*artSave.labelPixmap:           /usr/lib/X11/bitmaps/XRn/Save
+XRnMotif*artReply.labelType:            PIXMAP
+XRnMotif*artReply.labelPixmap:          /usr/lib/X11/bitmaps/XRn/Reply
+XRnMotif*artForward.labelType:          PIXMAP
+XRnMotif*artForward.labelPixmap:        /usr/lib/X11/bitmaps/XRn/Forward
+XRnMotif*artFollowup.labelType:         PIXMAP
+XRnMotif*artFollowup.labelPixmap:       /usr/lib/X11/bitmaps/XRn/Followup
+XRnMotif*artFollowupAndReply.labelType: PIXMAP
+XRnMotif*artFollowupAndReply.labelPixmap: /usr/lib/X11/bitmaps/XRn/FollowReply
+XRnMotif*artFollowupAndReply.labelInsensitivePixmap: /usr/lib/X11/bitmaps/XRn/FolRepInsens
+XRnMotif*artCancel.labelType:           PIXMAP
+XRnMotif*artCancel.labelPixmap:         /usr/lib/X11/bitmaps/XRn/Cancel
+XRnMotif*artRot13.labelType:            PIXMAP
+XRnMotif*artRot13.labelPixmap:          /usr/lib/X11/bitmaps/XRn/Rot13
+XRnMotif*artXlate.labelType:            PIXMAP
+XRnMotif*artXlate.labelPixmap:          /usr/lib/X11/bitmaps/XRn/Xlate
+XRnMotif*artHeader.labelString:         \040Artikelkopf\040
+XRnMotif*artHeader.labelType:           PIXMAP
+XRnMotif*artHeader.labelPixmap:         /usr/lib/X11/bitmaps/XRn/Header
+XRnMotif*artPrint.labelType:            PIXMAP
+XRnMotif*artPrint.labelPixmap:          /usr/lib/X11/bitmaps/XRn/Print
+
+
+------- uuencoded pixmaps (tar, gzip) --------
+
+begin 664 bitmaps.tgz
+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
+:?ZO_W^K_M_K_K?Y_OSS_O_\!MXTN@@!X``"_
+`
+end

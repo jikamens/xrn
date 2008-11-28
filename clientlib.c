@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: clientlib.c,v 1.21 2006-01-03 16:17:02 jik Exp $";
+static char XRNrcsid[] = "$Id: clientlib.c,v 1.13 1995-01-25 03:17:52 jik Exp $";
 #endif
 
 /* #define DEBUG */
@@ -57,11 +57,15 @@ static char XRNrcsid[] = "$Id: clientlib.c,v 1.21 2006-01-03 16:17:02 jik Exp $"
 #include "internals.h"
 #include "clientlib.h"
 
+#ifdef BSD_BFUNCS
+#define memset(_Str_, _Chr_, _Len_) bzero(_Str_, _Len_)
+#define memcpy(_To_, _From_, _Len_) bcopy(_From_, _To_, _Len_)
+#endif
+
 FILE	*ser_rd_fp = NULL;
 FILE	*ser_wr_fp = NULL;
 
 char	*server_init_msg = NULL;
-char	*nntp_port = NULL;
 
 #ifdef DECNET
 static int get_dnet_socket _ARGUMENTS((char *));
@@ -189,6 +193,22 @@ int server_init(machine)
 	    return (retval);
 	}
 
+	/*
+	  Make sure we're in READER mode.  Now, you may be saying to
+	  yourself, "Why is this necessary?  The only news server that
+	  supports the MODE command is INN, and if the person
+	  compiling this program is using INN, he's going to link
+	  against the INN client libraries anyway, so this function
+	  won't ever be used."  Well, first of all, other news servers
+	  are probably going to support the MODE command at some point
+	  in the future.  Second, someone may want to compile XRN
+	  without access to the INN client libraries and still talk to
+	  an INN server.
+
+	  In any case, it doesn't hurt to send the MODE command and
+	  see what happens.
+	  */
+
 	put_server("MODE READER");
 
 	if ((retval2 = get_server_init_msg(&mode_init_msg)) < 0) {
@@ -197,7 +217,7 @@ int server_init(machine)
 	    return (retval2);
 	}
 
-	if ((*mode_init_msg == CHAR_OK) || (retval2 == ERR_ACCESS)) {
+	if (*mode_init_msg == CHAR_OK) {
 	    XtFree(server_init_msg);
 	    server_init_msg = mode_init_msg;
 	    return (retval2);
@@ -284,27 +304,17 @@ static int get_tcp_socket(machine)
 #ifdef h_addr
 	register char **cp;
 #endif /* h_addr */
-	static int port = 0;
 	struct	sockaddr_in sin;
 	struct servent *getservbyname _ARGUMENTS((CONST char *, CONST char *));
         struct servent *sp;
 	struct hostent *gethostbyname _ARGUMENTS((CONST char *)), *hp;
 
 	(void) memset((char *) &sin, 0, sizeof(sin));
-
-	if (! port) {
-	  if (nntp_port)
-	    port = htons(atoi(nntp_port));
-	  else {
-	    if ((sp = getservbyname("nntp", "tcp")) ==  NULL) {
-	      (void) fprintf(stderr, "nntp/tcp: Unknown service.\n");
-	      return (-1);
-	    }
-	    port = sp->s_port;
-	  }
+	if ((sp = getservbyname("nntp", "tcp")) ==  NULL) {
+		(void) fprintf(stderr, "nntp/tcp: Unknown service.\n");
+		return (-1);
 	}
-	sin.sin_port = port;
-
+	sin.sin_port = sp->s_port;
 	if ((sin.sin_addr.s_addr = inet_addr(machine)) != -1) {
 	    sin.sin_family = AF_INET;
 	    return(get_tcp_socket1(&sin));
@@ -484,6 +494,7 @@ int handle_server_response(response, server)
 		       server);
 		fputs(server_init_msg, stdout);
 		return(-1);
+		break;
 
   	default:
 		printf("Unexpected response code from the %s news server.\n",
@@ -559,10 +570,10 @@ int get_server(string, size)
 	}
     }
 #endif
-
-    cp = &string[strlen(string)];
-    if ((cp >= &string[2]) && (cp[-2] == '\r') && (cp[-1] == '\n'))
-      cp[-2] = '\0';
+    if ((cp = index(string, '\r')) != NULL)
+	*cp = '\0';
+    else if ((cp = index(string, '\n')) != NULL)
+	*cp = '\0';
 #ifdef DEBUG
     (void) fprintf(stderr, "<<< %s\n", string);
 #endif

@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: refile.c,v 1.17 2001-01-12 16:57:36 jik Exp $";
+static char XRNrcsid[] = "$Id: refile.c,v 1.12 1995-01-25 03:17:52 jik Exp $";
 #endif
 
 /*
@@ -37,7 +37,7 @@ static char XRNrcsid[] = "$Id: refile.c,v 1.17 2001-01-12 16:57:36 jik Exp $";
 #include "config.h"
 #include "utils.h"
 #include <ctype.h>
-#if defined(SYSV) || defined(SVR4)
+#ifdef SYSV
 #include <fcntl.h>
 #else
 #include <sys/file.h>
@@ -56,6 +56,8 @@ static char XRNrcsid[] = "$Id: refile.c,v 1.17 2001-01-12 16:57:36 jik Exp $";
 #include "error_hnds.h"
 #include "mesg_strings.h"
 #include "refile.h"
+
+extern char *strpbrk();
 
 #ifndef S_ISDIR
 #define S_ISDIR(mode) (((mode) & S_IFMT) == S_IFDIR)
@@ -148,7 +150,7 @@ int MHrefile(folder, artfile)
     (void) sprintf(fullpath2, "%s/%s", fullpath, (folder+1));
     if (stat(fullpath2,&st) == -1 && errno == ENOENT) {
 	(void) sprintf(msg,NO_SUCH_MAIL_DIR_MSG ,fullpath2);
-	if (ConfirmationBox(TopLevel, msg, 0, 0, False)  == XRN_CB_ABORT) {
+	if (ConfirmationBox(TopLevel, msg, 0, 0)  == XRN_CB_ABORT) {
 	    return 0;
 	}
 	(void) strcpy(newfolders, (folder+1));
@@ -206,7 +208,7 @@ int RMAILrefile(fullpath, folder, artfile, pos)
 
     if (stat(fullpath,&st) == -1 && errno == ENOENT) {
 	(void) sprintf(msg, NO_SUCH_RMAIL_MSG, fullpath);
-	if (ConfirmationBox (TopLevel, msg, 0, 0, False)  == XRN_CB_ABORT) {
+	if (ConfirmationBox (TopLevel, msg, 0, 0)  == XRN_CB_ABORT) {
 	    return 0;
 	}
 	if ((fp = fopen (fullpath, "w")) == NULL) {
@@ -215,7 +217,7 @@ int RMAILrefile(fullpath, folder, artfile, pos)
 	    return 0;
 	}
 	/* Produce the header */
-	fprintf (fp, "BABYL OPTIONS: -*- rmail -*-\n");
+	fprintf (fp, "BABYL OPTIONS:\n");
 	fprintf (fp, "Version: 5\n");
 	fprintf (fp, "Labels:\n");
 	fprintf (fp, "Note: This is RMAIL file produced by XRN:\n");
@@ -233,7 +235,7 @@ int RMAILrefile(fullpath, folder, artfile, pos)
 	return(0);
     }
     /* Format the header */
-    fprintf (fp, "\f\n1,,\n");
+    fprintf (fp, "\014\n1,,\n");
     /* insert from 0 to pos (from getarticle) for the header */
     n = 0;
     while ((rv = read (artfd, msg, n + 512 > pos ? pos - n : 512)) > 0) {
