@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $";
+static char XRNrcsid[] = "$Id: resources.c,v 1.59 1997-07-31 12:11:47 jik Exp $";
 #endif
 
 /*
@@ -48,6 +48,7 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #include "xthelper.h"
 #include "mesg.h"
 #include "xrn.h"
+#include "patchlevel.h"
 #include "resources.h"
 #include "error_hnds.h"
 #include "internals.h"
@@ -71,8 +72,6 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #define XtCArtButtonList        "ArtButtonList"
 #define XtNartSpecButtonList    "artSpecButtonList"
 #define XtCArtSpecButtonList    "ArtSpecButtonList"
-#define XtNauthenticateOnConnect "authenticateOnConnect"
-#define XtCAuthenticateOnConnect "AuthenticateOnConnect"
 #define XtNauthenticator        "authenticator"
 #define XtCAuthenticator        "Authenticator"
 #define XtNauthenticatorCommand "authenticatorCommand"
@@ -106,11 +105,8 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #define XtNccForward            "ccForward"
 #define XtNcmdLineNntpServer    "cmdLineNntpServer"
 #define XtCCmdLineNntpServer    "CmdLineNntpServer"
-#define XtNcomplainAboutBadDates "complainAboutBadDates"
 #define XtNconfirm              "confirm"
 #define XtCConfirm              "Confirm"
-#define XtNcourtesyCopyMessage	"courtesyCopyMessage"
-#define XtCCourtesyCopyMessage	"CourtesyCopyMessage"
 #define XtNdeadLetters          "deadLetters"
 #define XtCDeadLetters          "DeadLetters"
 #define XtNdefaultLines         "defaultLines"
@@ -246,8 +242,6 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #define XtCValidNewsgroups      "ValidNewsgroups"
 #define XtNverboseKill          "verboseKill"
 #define XtCVerboseKill          "VerboseKill"
-#define XtNverifyFrom		"verifyFrom"
-#define XtCVerifyFrom		"VerifyFrom"
 #define XtNversion              "version"
 #define XtCVersion              "Version"
 #define XtNwatchUnread          "watchUnread"
@@ -361,8 +355,6 @@ static XtResource resources[] = {
      XtOffset(app_res,artButtonList), XtRString, (XtPointer) NULL},
     {XtNartSpecButtonList, XtCArtSpecButtonList, XtRString, sizeof(char *),
      XtOffset(app_res,artSpecButtonList), XtRString, (XtPointer) NULL},
-    {XtNauthenticateOnConnect, XtCAuthenticateOnConnect, XtRBoolean, sizeof(Boolean),
-     XtOffset(app_res,authenticateOnConnect), XtRBoolean, (XtPointer) &defaultFalse},
     {XtNauthenticator, XtCAuthenticator, XtRString, sizeof(char *),
      XtOffset(app_res,authenticator), XtRString, (XtPointer) NULL},
     {XtNauthenticatorCommand, XtCAuthenticatorCommand, XtRString, sizeof(char *),
@@ -397,12 +389,8 @@ static XtResource resources[] = {
      XtOffset(app_res,ccForward), XtRBoolean, (XtPointer) &defaultFalse},
     {XtNcmdLineNntpServer, XtCCmdLineNntpServer, XtRString, sizeof(char *),
      XtOffset(app_res,cmdLineNntpServer), XtRString, (XtPointer) NULL},
-    {XtNcomplainAboutBadDates, XtCDebug, XtRBoolean, sizeof(Boolean),
-     XtOffset(app_res,dumpCore), XtRBoolean, (XtPointer) &defaultFalse},
     {XtNconfirm, XtCConfirm, XtRString, sizeof(char *),
      XtOffset(app_res,confirm), XtRString, (XtPointer) NULL},
-    {XtNcourtesyCopyMessage, XtCCourtesyCopyMessage, XtRString, sizeof(char *),
-     XtOffset(app_res,courtesyCopyMessage), XtRString, (XtPointer) NULL},
     {XtNdeadLetters, XtCDeadLetters, XtRString, sizeof(char *),
      XtOffset(app_res,deadLetters), XtRString, (XtPointer) DEADLETTER},
     {XtNdefaultLines, XtCDefaultLines, XtRInt, sizeof(int),
@@ -559,8 +547,6 @@ static XtResource resources[] = {
      XtOffset(app_res,validNewsgroups), XtRString, (XtPointer) NULL},
     {XtNverboseKill, XtCVerboseKill, XtRString, sizeof(String),
      XtOffset(app_res,verboseKill), XtRString, (XtPointer) "jms"},
-    {XtNverifyFrom, XtCVerifyFrom, XtRBoolean, sizeof(Boolean),
-     XtOffset(app_res,verifyFrom), XtRBoolean, (XtPointer) &defaultTrue},
     {XtNversion, XtCVersion, XtRString, sizeof(char *),
      XtOffset(app_res,version), XtRString, (XtPointer) NULL},
     {XtNwatchUnread, XtCWatchUnread, XtRString, sizeof(char *),
@@ -852,10 +838,10 @@ Widget Initialize(argc, argv)
 
 #if defined(__DATE__) && defined(WANT_DATE)
     (void) sprintf(title, "xrn - version %s (compiled on %s)",
-		   PACKAGE_VERSION, __DATE__);
+		   XRN_VERSION, __DATE__);
 #else
     (void) sprintf(title, "xrn - version %s",
-		   PACKAGE_VERSION);
+		   XRN_VERSION);
 #endif
 
     /* get the resources needed by xrn itself */

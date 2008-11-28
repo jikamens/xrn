@@ -26,15 +26,15 @@
 #define DEF_CHECK_FLAGS		(KILL_SUBJECT|KILL_AUTHOR)
 #define ALL_CHECK_FLAGS		(KILL_SUBJECT|KILL_AUTHOR|\
 				 KILL_NEWSGROUPS|KILL_DATE|\
-				 KILL_ID|KILL_REFERENCES|KILL_APPROVED)
+				 KILL_ID|KILL_REFERENCES)
 
 static void free_entry_contents _ARGUMENTS((kill_entry *));
-static kill_check_flag_t field_to_check_flag _ARGUMENTS((char *, int));
+static char field_to_check_flag _ARGUMENTS((char *, int));
 static Boolean entry_expired _ARGUMENTS((kill_entry *, time_t));
 static void write_kf _ARGUMENTS((kill_file *));
 static kill_file *read_kf _ARGUMENTS((char *file_name,
 				      char *reference,
-				      fetch_flag_t *fetch_flags));
+				      unsigned char *fetch_flags));
 
 
 /*
@@ -68,7 +68,7 @@ static Boolean isQuoted(character, start)
 
 static void parse_kill_entry _ARGUMENTS((char *, char *, kill_file *,
 					 kill_entry *,
-					 fetch_flag_t *, int));
+					 unsigned char *, int));
 
 /*
   Parse a KILL-file entry.  If there's a parse error, this routine
@@ -107,7 +107,7 @@ static void parse_kill_entry(file_name, in_str, file, entry,
      char *in_str;
      kill_file *file;
      kill_entry *entry;
-     fetch_flag_t *fetch_flags;
+     unsigned char *fetch_flags;
      int mesg_name;
 {
   kill_entry my_entry;
@@ -140,7 +140,7 @@ static void parse_kill_entry(file_name, in_str, file, entry,
   /*
     Ignore whitespace at the beginning of the line.
     */
-  for (ptr = str; *ptr && isspace((unsigned char)*ptr); ptr++)
+  for (ptr = str; *ptr && isspace(*ptr); ptr++)
     /* empty */;
 
   if ((*ptr == '&') || (*ptr == '#') || (! *ptr)) {
@@ -154,14 +154,14 @@ static void parse_kill_entry(file_name, in_str, file, entry,
   if (!strncmp (ptr, "include", 7)) {
     ptr += 7;
 
-    if (!isspace((unsigned char)*ptr)) {
+    if (!isspace(*ptr)) {
       mesgPane(XRN_SERIOUS, mesg_name, MALFORMED_KILL_ENTRY_MSG, str,
                file_name, ERROR_INCLUDE_NOT_SEPARATED_MSG);
       my_entry.type = KILL_OTHER;
       goto done;
     }
 
-    for (; *ptr && isspace((unsigned char)*ptr); ptr++)
+    for (; *ptr && isspace(*ptr); ptr++)
       /* empty */;
 
     if (! *ptr) {
@@ -172,7 +172,7 @@ static void parse_kill_entry(file_name, in_str, file, entry,
     }
 
     for (ptr2 = strchr(ptr, '\0');
-	 (ptr2 > ptr) && isspace((unsigned char)*(ptr2 - 1));
+	 (ptr2 > ptr) && isspace(*(ptr2 - 1));
 	 ptr2--)
       /* empty */;
 
@@ -262,7 +262,7 @@ static void parse_kill_entry(file_name, in_str, file, entry,
 
       if (my_entry.entry.check_flags) {
 	ptr = ptr3 + 1;
-	while (*ptr && isspace((unsigned char)*ptr))
+	while (*ptr && isspace(*ptr))
 	  ptr++;
 	*--ptr = '^';
       }
@@ -270,13 +270,13 @@ static void parse_kill_entry(file_name, in_str, file, entry,
 	my_entry.entry.check_flags = ALL_CHECK_FLAGS;
     }
     else if (*ptr2 == 't') {	/* kill timeout */
-      for ( ; *(ptr2+1) && isdigit((unsigned char)*(ptr2 + 1)); ptr2++) {
+      for ( ; *(ptr2+1) && isdigit(*(ptr2 + 1)); ptr2++) {
 	my_entry.entry.timeout *= 10;
 	my_entry.entry.timeout += (*(ptr2+1) - '0');
       }
     }
     else if (*ptr2 == 'u') {	/* last used */
-      for ( ; *(ptr2+1) && isdigit((unsigned char)*(ptr2 + 1)); ptr2++) {
+      for ( ; *(ptr2+1) && isdigit(*(ptr2 + 1)); ptr2++) {
 	my_entry.entry.last_used *= 10;
 	my_entry.entry.last_used += (*(ptr2+1) - '0');
       }
@@ -315,12 +315,6 @@ static void parse_kill_entry(file_name, in_str, file, entry,
     break;
   case 's':
     my_entry.entry.action_flags = KILL_SAVE;
-    break;
-  case 't':
-    my_entry.entry.action_flags = KILL_SUBTHREAD;
-    break;
-  case 'T':
-    my_entry.entry.action_flags = KILL_THREAD;
     break;
   default:
     mesgPane(XRN_SERIOUS, mesg_name, MALFORMED_KILL_ENTRY_MSG, str,
@@ -366,13 +360,6 @@ static void parse_kill_entry(file_name, in_str, file, entry,
     *fetch_flags |= FETCH_REFS;
   if (my_entry.entry.check_flags & KILL_XREF)
     *fetch_flags |= FETCH_XREF;
-  if (my_entry.entry.check_flags & KILL_APPROVED)
-    *fetch_flags |= FETCH_APPROVED;
-
-  if (my_entry.entry.action_flags == KILL_SUBTHREAD)
-    *fetch_flags |= FETCH_IDS;
-  if (my_entry.entry.action_flags == KILL_THREAD)
-    *fetch_flags |= FETCH_IDS & FETCH_REFS;
 
   my_entry.type = KILL_ENTRY;
 
@@ -388,7 +375,7 @@ done:
 
 struct kftab_entry {
   char ref_count;
-  fetch_flag_t fetch_flags;
+  unsigned char fetch_flags;
   kill_file *kill_file;
 };
 
@@ -483,12 +470,6 @@ static void unparse_kill_entry(entry, buffer)
     case KILL_SAVE:
       *ptr++ = 's';
       break;
-    case KILL_SUBTHREAD:
-      *ptr++ = 't';
-      break;
-    case KILL_THREAD:
-      *ptr++ = 'T';
-      break;
     default:
       assert(0);
     }
@@ -502,7 +483,7 @@ static void unparse_kill_entry(entry, buffer)
 
 
 static kill_file *GlobalKillFile = 0;
-static fetch_flag_t GlobalFetchFlags = 0;
+static unsigned char GlobalFetchFlags = 0;
 
 
 void read_global_kill_file(newsgroup)
@@ -532,7 +513,7 @@ void read_local_kill_file(newsgroup)
 static kill_file *read_kf(file_name, reference, fetch_flags)
      char *file_name;
      char *reference;
-     fetch_flag_t *fetch_flags;
+     unsigned char *fetch_flags;
 {
   int entries_size;
   FILE *fp;
@@ -633,28 +614,24 @@ static kill_file *read_kf(file_name, reference, fetch_flags)
   return kf;
 }
 
-static kill_entry *kf_iter _ARGUMENTS((kill_file *, kill_file_iter_handle *,
-				       Boolean, Boolean));
+static kill_entry *kf_iter _ARGUMENTS((kill_file *, kill_entry *,
+				       Boolean));
 
 static kill_entry *kf_iter(
-			   _ANSIDECL(kill_file *,		kf),
-			   _ANSIDECL(kill_file_iter_handle *,	handle_p),
-			   _ANSIDECL(Boolean,			expand_includes),
-			   _ANSIDECL(Boolean,			refresh)
+			   _ANSIDECL(kill_file *,	kf),
+			   _ANSIDECL(kill_entry *,	last_entry),
+			   _ANSIDECL(Boolean,		expand_includes)
 			   )
-     _KNRDECL(kill_file *,		kf)
-     _KNRDECL(kill_file_iter_handle *,	handle_p)
-     _KNRDECL(Boolean,			expand_includes)
-     _KNRDECL(Boolean,			refresh)
+     _KNRDECL(kill_file *,	kf)
+     _KNRDECL(kill_entry *,	last_entry)
+     _KNRDECL(Boolean,		expand_includes)
 {
   kill_entry *sub_entry = 0;
-  int handle = (int) *handle_p;
-  kill_entry *this_entry;
 
   assert(kf);
 
-  if (! handle_p) {
-    handle = 1;
+  if (! last_entry) {
+    last_entry = kf->entries;
     if (expand_includes)
       kf->flags |= KF_SEEN;
   }
@@ -662,68 +639,47 @@ static kill_entry *kf_iter(
     assert(expand_includes);
     assert(kf->cur_entry);
 
-    sub_entry = kf_iter(kf->cur_sub_kf, handle_p, expand_includes, refresh);
+    sub_entry = kf_iter(kf->cur_sub_kf, last_entry, expand_includes);
 
     if (sub_entry)
       return sub_entry;
 
     kf->cur_sub_kf = 0;
-    handle = kf->cur_entry;
-    handle++;
-  } else if (! refresh) {
-    handle++;
+    last_entry = kf->cur_entry;
+    last_entry++;
+  } else {
+    last_entry++;
   }
 
-  if (handle > kf->count)
+  if (last_entry - kf->entries == kf->count)
     return 0;
 
-  this_entry = &kf->entries[handle-1];
-
-#ifdef DEBUG
-  fprintf(stderr, "kf_iter: Processing entry %d in %s: %s\n", handle,
-	  kf->file_name, this_entry->any.value);
-#endif
-
 #if !defined(POSIX_REGEX) && !defined(SYSV_REGEX)
-  if (this_entry->type == KILL_ENTRY)
-    (void) re_comp(this_entry->entry.reStruct);
+  if (last_entry->type == KILL_ENTRY)
+    (void) re_comp(last_entry->entry.reStruct);
 #endif
 
-  if ((this_entry->type == KILL_INCLUDE) && expand_includes) {
-    if (! (this_entry->include.kf->flags & KF_SEEN)) {
-      kill_file_iter_handle sub_handle = 0;
-
-      sub_entry = kf_iter(this_entry->include.kf, &sub_handle,
-			  expand_includes, refresh);
+  if ((last_entry->type == KILL_INCLUDE) && expand_includes) {
+    if (! (last_entry->include.kf->flags & KF_SEEN)) {
+      sub_entry = kf_iter(last_entry->include.kf, 0, expand_includes);
 
       if (sub_entry) {
-	kf->cur_entry = handle;
-	kf->cur_sub_kf = this_entry->include.kf;
-	*handle_p = sub_handle;
+	kf->cur_entry = last_entry;
+	kf->cur_sub_kf = last_entry->include.kf;
 	return sub_entry;
       }
     }
 
-    *handle_p = (kill_file_iter_handle) ++handle;
-    return kf_iter(kf, handle_p, expand_includes, True);
+    return kf_iter(kf, last_entry, expand_includes);
   }
 
-  *handle_p = (kill_file_iter_handle) handle;
-  return this_entry;
+  return last_entry;
 }
 
-/*
-  Iterate through the entries in a kill file, possibly recursively.
-
-  NOTE: If you add an entry to a kill file while iterating through it,
-  and you have cached a previous entry pointer, you must refresh that
-  entry by calling kill_file_iter_refresh(newsgroup, mode, handle).
-*/
-
-kill_entry *kill_file_iter(newsgroup, mode, handle)
+kill_entry *kill_file_iter(newsgroup, mode, last_entry)
      struct newsgroup *newsgroup;
      int mode;
-     kill_file_iter_handle *handle;
+     kill_entry *last_entry;
 {
   kill_file *kf;
 
@@ -732,27 +688,10 @@ kill_entry *kill_file_iter(newsgroup, mode, handle)
   else
     kf = GlobalKillFile;
 
-  if (! (handle || kf->cur_sub_kf))
-    clear_seen();
+  clear_seen();
 
-  return kf_iter(kf, handle, True, False);
+  return kf_iter(kf, last_entry, True);
 }
-
-kill_entry *kill_file_iter_refresh(newsgroup, mode, handle)
-     struct newsgroup *newsgroup;
-     int mode;
-     kill_file_iter_handle *handle;
-{
-  kill_file *kf;
-
-  if (mode == KILL_LOCAL)
-    kf = (kill_file *) newsgroup->kill_file;
-  else
-    kf = GlobalKillFile;
-
-  return kf_iter(kf, handle, True, True);
-}
-  
 
 #define CHECK_WRITE(cmd) if (! (cmd)) { \
        mesgPane(XRN_SERIOUS, mesg_name, ERROR_WRITING_FILE_MSG, temp_file, \
@@ -768,8 +707,7 @@ static void write_kf(kf)
   char *temp_file = 0;
   FILE *fp;
   char buf[MAX_KILL_ENTRY_LENGTH];
-  kill_entry *entry;
-  kill_file_iter_handle handle = 0;
+  kill_entry *entry = 0;
   time_t now = time(0);
   int mesg_name = newMesgPaneName();
 
@@ -807,7 +745,7 @@ static void write_kf(kf)
       CHECK_WRITE(fprintf(fp, "THRU %ld\n", kf->thru) != EOF);
     }
 
-    while ((entry = kf_iter(kf, &handle, False, False))) {
+    while ((entry = kf_iter(kf, entry, False))) {
       if (entry_expired(entry, now))
 	continue;
       unparse_kill_entry(entry, buf);
@@ -831,8 +769,7 @@ done:
     XtFree(temp_file);
   }
 
-  handle = 0;
-  while ((entry = kf_iter(kf, &handle, False, False)))
+  while ((entry = kf_iter(kf, entry, False)))
     free_entry_contents(entry);
   XtFree((char *)kf->entries);
   XtFree((char *)kf);
@@ -873,12 +810,8 @@ static void free_entry_contents(entry)
     XtFree(entry->entry.pattern);
 #ifdef POSIX_REGEX
     regfree(&entry->entry.reStruct);
-#else /* SYSV_REGEX or BSD regexps */
-# ifdef SYSV_REGEX
-    free(entry->entry.reStruct);
-# else /* BSD regexps */
+#else
     XtFree(entry->entry.reStruct);
-# endif /* SYSV_REGEX */
 #endif /* POSIX_REGEX */
     break;
   }
@@ -907,7 +840,7 @@ void add_kill_entry(newsgroup, mode, field, regexp)
   char *file;
   kill_entry my_entry;
   int mesg_name = newMesgPaneName();
-  fetch_flag_t *fetch_ptr;
+  unsigned char *fetch_ptr;
   struct stat statbuf;
 
   if (mode == KILL_LOCAL) {
@@ -987,7 +920,7 @@ void add_kill_entry(newsgroup, mode, field, regexp)
     return(flag); \
   }
 
-static kill_check_flag_t field_to_check_flag(field_name, field_length)
+static char field_to_check_flag(field_name, field_length)
      char *field_name;
      int field_length;
 {
@@ -998,7 +931,6 @@ static kill_check_flag_t field_to_check_flag(field_name, field_length)
   CHECK_FIELD("Message-ID", KILL_ID);
   CHECK_FIELD("References", KILL_REFERENCES);
   CHECK_FIELD("Xref", KILL_XREF);
-  CHECK_FIELD("Approved", KILL_APPROVED);
 
   return 0;
 }
@@ -1026,11 +958,6 @@ void kill_update_last_used(file, entry)
      kill_file *file;
      kill_entry *entry;
 {
-  if (file->cur_sub_kf) {
-    kill_update_last_used(file->cur_sub_kf, entry);
-    return;
-  }
-
   if (entry->type != KILL_ENTRY)
     return;
 
@@ -1039,5 +966,8 @@ void kill_update_last_used(file, entry)
 
   entry->entry.last_used = time(0);
 
-  file->flags |= KF_CHANGED;
+  if (file->cur_sub_kf)
+    kill_update_last_used(file->cur_sub_kf, entry);
+  else
+    file->flags |= KF_CHANGED;
 }

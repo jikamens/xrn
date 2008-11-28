@@ -1,21 +1,7 @@
 
-$Id: COMMON-PROBLMS,v 1.14 2000-03-09 21:57:22 jik Exp $
+$Id: COMMON-PROBLMS,v 1.11 1997-03-30 00:34:40 jik Exp $
 
 List of Common Problems:
-
-*.  XRN is crashing because of long lines in your newsrc file.
-
-    On some UNIX platforms, the "lex" pre-compiler, which XRN uses to
-    produce the code which parses newsrc files, has limit on line
-    lengths which is too small for some lines in newsrc files.
-
-    If XRN crashes or performs unpredictably when you run it, and you
-    have long lines in your newsrc file (200 characters long is the
-    most common limit), then you may be running into this problem.  If
-    so, the easiest way to fix it is to install the GNU "flex" package
-    and use it, rather than lex, when compiling XRN.  After installing
-    flex, you can use it when compiling XRN by adding "LEX=flex" to
-    the end of the "make" command you use to compile XRN.
 
 *.  XRN compiled and installed just fine, and you can use it with the
     mouse, but none of the key bindings work.
@@ -23,8 +9,16 @@ List of Common Problems:
     You are using an old version of the X11 libraries (e.g., you're
     using SunOS 4.x).  As noted in the README file, XRN requires at
     least X11R5 to work properly.  You need to get a newer version of
-    X11 (e.g., the X11R6.3 release from the Open Group), compile and
+    X11 (e.g., the X11R6.1 release from the X Consortium), compile and
     install it, and link XRN against it.
+
+*.  You are linking XRN against INN's libraries, and you get errors
+    which mention "nntp_port" at compile- or run-time.
+
+    You need to either upgrade your INN installation to the current
+    version or compile XRN without INN support.  Note that XRN can
+    talk to an INN News server just fine, even when it is compiled
+    without INN support.
 
 *.  Part of the Subject index occasionally fails to redraw properly in
     article mode.
