@@ -1,5 +1,5 @@
-#if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: cancel.c,v 1.11 1995-09-29 08:02:08 jik Exp $";
+#if !defined(lint) && !defined(SABER)
+static char XRNrcsid[] = "$Header: /d/src/cvsroot/xrn/cancel.c,v 1.3 1994-10-10 18:46:30 jik Exp $";
 #endif
 
 /*
@@ -39,27 +39,25 @@ static char XRNrcsid[] = "$Id: cancel.c,v 1.11 1995-09-29 08:02:08 jik Exp $";
 #include <X11/Intrinsic.h>
 #include <X11/Shell.h>
 
+#ifndef MOTIF
 #include <X11/Xaw/Command.h>
+#else
+#include <Xm/PushB.h>
+#endif
 
 #include "xthelper.h"
 #include "resources.h"
 #include "xrn.h"
 #include "xmisc.h"
-#include "buttons.h"
-#include "butdefs.h"
-#include "ngMode.h"
-#include "ButtonBox.h"
 
 static Widget CancelTopLevel  = (Widget) 0;
 
-BUTDECL(cancel);
-SUBBUTTON(cancel,cancel);
+static void cancelButton _ARGUMENTS((Widget, XtPointer, XtPointer));
 
-void cancelFunction(widget, event, string, count)
+/*ARGSUSED*/
+static void cancelButton(widget, closure, call_data)
     Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
+    XtPointer closure, call_data;
 {
     if (CancelTopLevel) {
 	XtPopdown(CancelTopLevel);
@@ -67,33 +65,48 @@ void cancelFunction(widget, event, string, count)
 	CancelTopLevel = (Widget) 0;
     }
     abortSet();
+    return;
 }
 
 
-void cancelCreate(name)
-char *name;
-{
-    Widget box, button;
+static XtCallbackRec cancelCallbacks[] = {
+    {(XtCallbackProc) cancelButton, 0}, {0, 0}
+};
 
+static Arg cancelArgs[] = {
+    {XtNname, (XtArgVal) "cancel"},
+    {MyNcallback, (XtArgVal) cancelCallbacks}
+};
+
+
+void cancelCreate()
+{
     static Arg shellArgs[] = {
 	{XtNinput, (XtArgVal) True},
 	{XtNsaveUnder, (XtArgVal) False},
+#ifdef notdef
+	{XtNheight,  (XtArgVal) 50},
+	{XtNwidth,  (XtArgVal) 350},
+#endif
     };
 
-    CancelTopLevel = XtCreatePopupShell(name ? name : "Cancel",
-					transientShellWidgetClass,
-					TopLevel, shellArgs,
-					XtNumber(shellArgs));
+    CancelTopLevel = XtCreatePopupShell("Cancel", transientShellWidgetClass,
+					  TopLevel, shellArgs, XtNumber(shellArgs));
 
-    box = ButtonBoxCreate("cancelBox", CancelTopLevel);
-    button = ButtonBoxAddButton("cancel", cancelCallbacks, box);
-    ButtonBoxDoneAdding(box);
-
+#ifndef MOTIF
+    XtCreateManagedWidget("cancel", commandWidgetClass, CancelTopLevel,
+			  cancelArgs, XtNumber(cancelArgs));
+#else
+    XtCreateManagedWidget("cancel", xmPushButtonWidgetClass, CancelTopLevel,
+			  cancelArgs, XtNumber(cancelArgs));
+#endif    
     XtRealizeWidget(CancelTopLevel);
     xthCenterWidgetOverCursor(CancelTopLevel);
     XtPopup(CancelTopLevel, XtGrabNone);
-    xthWaitForMapped(button, True);
-    xthHandleAllPendingEvents();
+#ifdef MOTIF
+/* Do this to make the label text appear */
+    XmUpdateDisplay(CancelTopLevel);
+#endif
     return;
 }
 
