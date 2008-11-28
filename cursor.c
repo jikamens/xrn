@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: cursor.c,v 1.36 2006-10-17 02:23:12 jik Exp $";
+static char XRNrcsid[] = "$Id: cursor.c,v 1.13 1994-12-12 22:02:26 jik Exp $";
 #endif
 
 /*
@@ -42,6 +42,12 @@ static char XRNrcsid[] = "$Id: cursor.c,v 1.36 2006-10-17 02:23:12 jik Exp $";
 #include <X11/StringDefs.h>
 #include <X11/Intrinsic.h>
 
+#ifndef MOTIF
+#include <X11/Xaw/Text.h>
+#else
+#include <Xm/Text.h>
+#endif
+
 #include "news.h"
 #include "mesg.h"
 #include "internals.h"
@@ -51,9 +57,10 @@ static char XRNrcsid[] = "$Id: cursor.c,v 1.36 2006-10-17 02:23:12 jik Exp $";
 #include "error_hnds.h"
 #include "cancel.h"
 #include "mesg_strings.h"
-#include "Text.h"
-#include "buttons.h"
-#include "file_cache.h"
+
+#ifdef VMS
+#define getArticle getArticleFile
+#endif /* VMS */
 
 /*
  * Move the cursor to the beginning of the current line.
@@ -61,7 +68,7 @@ static char XRNrcsid[] = "$Id: cursor.c,v 1.36 2006-10-17 02:23:12 jik Exp $";
  */
 void moveBeginning(tstring, point)
     char *tstring;			/* text string */
-    long *point;		/* cursor position */
+    XawTextPosition *point;		/* cursor position */
 {
     int i = 0;
     while ((*point != 0) && (tstring[*point-1] != '\n') &&
@@ -69,7 +76,7 @@ void moveBeginning(tstring, point)
 	(*point)--;
 	i++;
 	if (i > 1000) {
-	    ehErrorExitXRN( ERROR_INFINITE_LOOP_MSG );
+	    ehErrorExitXRN("XRN panic: moveBeginning in infinite loop\n");
 	}
     }
     return;
@@ -81,14 +88,14 @@ void moveBeginning(tstring, point)
  */
 void moveEnd(tstring, point)
     char *tstring;			/* text string */
-    long *point;		/* cursor position */
+    XawTextPosition *point;		/* cursor position */
 {
     int i = 0;
     while ((tstring[*point] != '\n') && (tstring[*point] != '\0')) {
 	(*point)++;
 	i++;
 	if (i > 1000) {
-	    ehErrorExitXRN( ERROR_INFINITE_LOOP_MSG );
+	    ehErrorExitXRN("XRN panic: moveEnd in infinite loop\n");
 	}
     }
     return;
@@ -103,7 +110,7 @@ void moveEnd(tstring, point)
 int moveCursor(direction, tstring, point)
     int direction;		    /* FORWARD or BACK (defined in cursor.h) */
     char *tstring;		    /* text string */
-    long *point;	    /* cursor position */
+    XawTextPosition *point;	    /* cursor position */
 {
     if (direction == BACK) {
 
@@ -144,7 +151,7 @@ int moveCursor(direction, tstring, point)
  */
 int moveUpWrap(tstring, point)
     char *tstring;			/* text string */
-    long *point;		/* cursor position */
+    XawTextPosition *point;		/* cursor position */
 {
     if (tstring[*point] == '\0') {
 	if (*point == 0) {
@@ -168,7 +175,7 @@ int moveUpWrap(tstring, point)
  */
 void endInsertionPoint(tstring, point)
     char *tstring;			/* text string */
-    long *point;		/* cursor position */
+    XawTextPosition *point;		/* cursor position */
 {
     /* move to the end of the string */
 
@@ -187,24 +194,101 @@ void endInsertionPoint(tstring, point)
 }
 
 /*
-  Remove the line the cursor is on from the given string.  Leaves point
-  at the beginning of the next line.
-  */
-void removeLine(tstring, point)
+ * Gets the selected text or the cursor position, if no selected text.
+ * Moves the left and right positions to include
+ * whole lines only.  Returns false if there is no selected text and the
+ * cursor is sitting on the end of string character.
+ */
+int getSelection(twin, tstring, left, right)
+    Widget twin;			/* text window */
     char *tstring;			/* text string */
-    long *point;	/* position on line to be removed, */
+    XawTextPosition *left, *right;	/* beginning and end of selection */
+				    /* (to be determined here) */
 {
-    long right;	/* end of line to be removed */
+    XawTextGetSelectionPos(twin, left, right);
+    XawTextUnsetSelection(twin);
 
-    moveBeginning(tstring, point);
+    if (*left == *right) {
 
-    right = *point;
+	/* nothing was selected */
+
+	*left = *right = XawTextGetInsertionPoint(twin);
+	if (tstring[*left] == '\0') {
+
+	    /* cursor is at end of string character */
+
+	    return FALSE;
+	}
+
+	/* return the line the cursor was on */
+
+	moveEnd(tstring, right);
+	return TRUE;
+    }
+
+    /* adjust the left marker to the beginning of a string */
+
+    moveBeginning(tstring, left);
+    if (tstring[*right-1] == '\n') {
+
+	/* adjust the right marker to the end of a string */
+
+	(*right)--;
+    }
+    moveEnd(tstring, right);
+
+    return TRUE;
+}
+
+/*
+ * Remove the line the cursor is on (beginning at point)
+ * from the given string.  Update the source tsource and
+ * the text window twin.  Set the 
+ * cursor to the first position in the next line.
+ */
+void removeLine(tstring, twin, tsource, point, ttop)
+    char *tstring;			/* text string */
+    Widget twin;			/* text window */
+    Widget *tsource;
+    XawTextPosition point, *ttop;	/* beginning of line to be removed, */
+				    /* position of top of text window */
+{
+    XawTextPosition right;	/* end of line to be removed */
+
+    right = point;
     moveEnd(tstring, &right);
 
-    if (! tstring[right])
-	tstring[*point] = '\0';
-    else
-	(void) strcpy(&tstring[*point], &tstring[right+1]);
+    (void) strcpy(&tstring[point], &tstring[right+1]);
+
+    /* update the text in the subject window */
+
+    if (*tsource != 0) {
+	*ttop = XawTextTopPosition(twin);
+#ifndef MOTIF
+	XtVaSetValues(*tsource,
+		      XtNstring, tstring,
+		      XtNlength, (XtArgVal) (utStrlen(tstring) + 1),
+		      0);
+#else
+	XawTextSetMotifString(twin, tstring);
+#endif
+    } else {
+#ifndef MOTIF
+	Arg sargs[5];
+
+	*ttop = (XawTextPosition) 0;
+	XtSetArg(sargs[0], XtNstring, tstring);
+	XtSetArg(sargs[1], XtNlength, utStrlen(tstring) + 1);
+	*tsource = XtCreateWidget("subjectTextSource",
+				  asciiSrcObjectClass,
+				  twin, sargs, XtNumber(sargs));
+	XawTextSetSource(twin, *tsource, (XawTextPosition) *ttop);
+#else
+	XawTextSetMotifString(twin, tstring);
+#endif
+    }
+    XawTextSetInsertionPoint(twin, point);
+    return;
 }
 
 /*
@@ -214,87 +298,59 @@ void removeLine(tstring, point)
  */
 int setCursorCurrent(tstring, point)
     char *tstring;			/* text string */
-    long *point;		/* cursor position */
+    XawTextPosition *point;		/* cursor position */
 {
     if (tstring[*point] == '\0') {
 	if (*point == 0) {
 	    return FALSE;
 	} else {
-	    *point = (long) 0;
+	    *point = (XawTextPosition) 0;
 	}
     }
     return TRUE;
 }
 
 /*
- * Return the name of the group on the current line, or null if there
- * isn't one.  Reallocates groupName to contain the group name.
+ * Return the name of the group on the current line.
+ * Assume there is a group there and the cursor is at the beginning
+ * of the line.
  */
 void currentGroup(mode, tstring, groupName, point)
     int mode;			/* xrn Mode */
     char *tstring;			/* text string */
-    char **groupName;		/* string to return group name in */
-    long point;		/* cursor position */
+    char *groupName;		/* string to return group name in */
+    XawTextPosition point;		/* cursor position */
 {
-    char *ptr1 = &tstring[point], *ptr2;
-    int i, len;
-
     if ((mode != ALL_MODE) && (mode != ADD_MODE)) {
-	for (i = 0; i < NEWS_GROUP_OFFSET; ptr1++, i++) {
-	    if (! *ptr1) {
-		if (! *groupName)
-		    *groupName = XtRealloc(*groupName, 1);
-		**groupName = '\0';
-		return;
-	    }
+	if (sscanf(&tstring[point], NEWS_GROUP_LINE, groupName) == 1) {
+	    return;
+	} else {
+	    *groupName = '\0';
+	    return;
 	}
+    } else {
+	(void) sscanf(&tstring[point], "%s", groupName);
     }
-    if (! (ptr2 = index(ptr1, ' ')))
-	ptr2 = index(ptr1, '\n');
-    assert(ptr2);
-    len = ptr2 - ptr1;
-    *groupName = XtRealloc(*groupName, len + 1);
-    (void) strncpy(*groupName, ptr1, len);
-    (*groupName)[len] = '\0';
     return;
 }
 
 /*
- * In "all" mode, return the group on the current line and whether it
- * should be subscribed or unsubscribed (e.g., if it is currently
- * subscribed, return SUBSCRIBE, and if it is currently
- * unsubscribed, return UNSUBSCRIBE).
- * 
- * The group name string passed in should be either null or allocated
- * memory.  It will be reallocated to hold the group name returned.
+ * Return the status of the group on the current line.
  */
 void currentMode(tstring, groupName, mode, point)
     char *tstring;
-    char **groupName;
+    char *groupName;
     int *mode;
-    long point;
+    XawTextPosition point;
 {
-    char *ptr;
-    int len;
+    char status[100];
 
-    /* First, get the group. */
-
-    for (ptr = &tstring[point], len = 0; *ptr != ' '; ptr++, len++) /* empty */;
-    *groupName = XtRealloc(*groupName, len + 1);
-    (void) strncpy(*groupName, &tstring[point], len);
-    (*groupName)[len] = '\0';
-
-    /* Now, get its status. */
-
-    for (; *ptr == ' '; ptr++) /* empty */;
-
-    if (strncmp(ptr, UNSUBED_MSG, strlen(UNSUBED_MSG)) == 0)
+    (void) sscanf(&tstring[point], "%s %s", groupName, status);
+    if (strcmp(status, "unsubscribed") == 0) {
 	*mode = UNSUBSCRIBE;
-    else if (strncmp(ptr, IGNORED_MSG, strlen(IGNORED_MSG)) == 0)
-	*mode = IGNORE;
-    else
+    } else {
 	*mode = SUBSCRIBE;
-
+    }
     return;
 }
 
@@ -307,28 +363,37 @@ void currentMode(tstring, groupName, mode, point)
  */
 int markStringRead(tstring, point)
     char *tstring;			/* text string */
-    long point;		/* cursor position */
+    XawTextPosition point;		/* cursor position */
 {
     if (tstring[point] == ' ') {
-	tstring[point] = READ_MARKER;
+	tstring[point] = '+';
     }
     return atoi(&tstring[point+2]);
 }
 
 /*
- * Mark all groups on the line beginning at left subscribed or
- * unsubscribed, depending on the contents of the string status.
+ * Mark all groups in the region between the left and right bytes
+ * of the text string 'tstring' as subscribed or unsubscribed,
+ * depending on the contents of the string status.
  */
-void markAllString(tstring, left, status)
+void markAllString(tstring, left, right, status)
     char *tstring;			/* text string */
-    long left;
+    XawTextPosition left, right;	/* boundaries of groups to be marked */
     char *status;			/* "subscribed" or "unsubscribed" */
 {
-    int len = utStrlen(status);
-
-    moveEnd(tstring, &left);
-    left -= len;
-    strncpy(&tstring[left], status, len);
+    XawTextPosition temp, point;	/* positions used to move through string */
+    int i;
+    
+    temp = left;
+    while (temp < right) {
+	moveEnd(tstring, &temp);
+	point = temp;
+	for (i = 0; i < utStrlen(status); i++) {
+	    tstring[point-1] = status[utStrlen(status) - i - 1];
+	    point--;
+	}
+	temp++;
+    }
     return;
 }
 
@@ -336,23 +401,17 @@ void markAllString(tstring, left, status)
  * Mark a group of articles between left and right as read or unread.
  * Marks the articles in the text string, and marks them internally.
  */
-void markArticles(
-		  _ANSIDECL(char *,	tstring),	/* text string */
-		  _ANSIDECL(long,	left),		/* boundaries of 	 */
-		  _ANSIDECL(long,	right),		/* articles to be marked */
-		  _ANSIDECL(char,	marker)
-		  )
-     _KNRDECL(char *,	tstring)
-     _KNRDECL(long,	left)
-     _KNRDECL(long,	right)
-     _KNRDECL(char,	marker)
+void markArticles(tstring, left, right, marker)
+    char *tstring;		      /* text string */
+    XawTextPosition left, right;      /* boundaries of articles to be marked */
+    char marker;		      /* either '+' or ' ' */
 {
     long artNum;		/* number of current article to be marked */
 
     while (left < right) {
 	tstring[left] = marker;
 	artNum = atol(&tstring[left+2]);
-	if (marker == READ_MARKER) {
+	if (marker == '+') {
 	    markArticleAsRead(artNum);
 	} else {
 	    markArticleAsUnread(artNum);
@@ -368,32 +427,281 @@ void markArticles(
  */
 void buildString(newString, first, last, oldString)
     char **newString;		       /* New text string */
-    long first, last;       /* portion of old string to be copied */
+    XawTextPosition first, last;       /* portion of old string to be copied */
     char *oldString;		       /* old text string */
 {
-    *newString = ARRAYALLOC(char, (last - first + 1));
-    (void) strncpy(*newString, &oldString[first], (int) (last - first));
-    (*newString)[last - first] = '\0';
+    *newString = ARRAYALLOC(char, (last - first + 2));
+    (void) strncpy(*newString, &oldString[first], (int) (last - first + 1));
+    (*newString)[last - first + 1] = '\0';
 }
 
-int moveToArticle(newsgroup, artNum, file, ques)
-    struct newsgroup *newsgroup;
-    long artNum;			/* number of new article */
-    file_cache_file **file;		/* cache file for new article */
-    char **ques;			/* status line for new article */
+/*
+ * Move the cursor to the position of the article "num"
+ */
+void findArticle(tstring, num, position)
+    char *tstring;			/* text string */
+    art_num num;			/* article number to search for */
+    XawTextPosition *position;		/* cursor position */
 {
-    (void) fillUpArray(newsgroup, artNum, 0, True, False);
+    long artNum;		/* number of current article */
+    long pos = *position + 1;
 
-    if (abortP())
-      return ABORT;
+    /* move over S[aved] / P[rinted] marking */
+    if ((tstring[pos] == 'S') || (tstring[pos] == 'P')) {
+	pos++;
+    }
+    artNum = atol(&tstring[pos]);
+    while (artNum != num) {
+	if (!moveCursor(FORWARD, tstring, position)) {
+	    ehErrorExitXRN("Valid article number not found in findArticle (cursor.c)\n");
+	}
+	pos = *position + 1;
+	/* move over S[aved] / P[rinted] marking */
+	if ((tstring[pos] == 'S') || (tstring[pos] == 'P')) {
+	    pos++;
+	}
+	artNum = atol(&tstring[pos]);
+    }
+    return;
+}
 
-    if (checkArticle(artNum) != XRN_OKAY)
+
+int subjectSearch(dir, tstring, tsource, position, ttop, expr, file, ques,
+		  artNum)
+    int dir;			     /* direction, either FORWARD or BACK */
+    char **tstring;		     /* text string (may be changed here) */
+    Widget tsource;
+    XawTextPosition *position, ttop; /* cursor position, position of
+					top of text */
+    char *expr;			     /* regular expression to search for */
+    char **file, **ques;	     /* filename and status line for
+					new article */
+    long *artNum;		     /* number of new article */
+{
+    static char *reRet = 0;	/* returned by re_comp/regcmp */
+#ifndef NDEBUG
+    static int done_search = 0;
+#endif
+    char *newsubject;		/* subject of current line */
+    char *oldString, *newString; /* strings used to build up new text string */
+    char *newLine;
+    char *newSubjectString;
+    extern void abortClear();
+    extern int abortP();
+
+    oldString = NIL(char);
+
+    abortClear();
+    cancelCreate();
+
+    if (expr != NIL(char)) {
+#ifdef SYSV_REGEX
+	FREE(reRet);
+	if ((reRet = regcmp(expr, NULL)) == NULL)
+#else
+	if ((reRet = re_comp(expr)) != NULL)
+#endif
+        {
+	    /* bad regular expression */
+#ifdef SYSV_REGEX
+	    mesgPane(XRN_SERIOUS, 0, UNKNOWN_REGEXP_ERROR_MSG, expr);
+#else
+	    mesgPane(XRN_SERIOUS, 0, KNOWN_REGEXP_ERROR_MSG, expr, reRet);
+#endif
+	    failedSearch();
+	    cancelDestroy();
+	    return ERROR;
+	}
+#ifndef NDEBUG
+	done_search++;
+#endif
+    }
+#ifndef NDEBUG
+    else {
+	assert(done_search);
+    }
+#endif
+
+    if (dir == FORWARD) {
+	for (;;) {
+	    if (abortP()) {
+		cancelDestroy();
+		return ABORT;
+	    }
+	    if ((*tstring)[*position] == '\0') {
+		cancelDestroy();
+		if (*position == 0) {
+
+		    /* the string is null, no more articles are left */
+
+		    return EXIT;
+		}
+		return NOMATCH;
+	    }
+	    (void) moveCursor(FORWARD, *tstring, position);
+	    if ((*tstring)[*position] == '\0') {
+
+		/* reached end of string */
+		cancelDestroy();
+		return NOMATCH;
+	    }
+	    *artNum = atol(&(*tstring)[*position + 2]);
+	    newsubject = getSubject(*artNum);
+
+#ifdef SYSV_REGEX
+	    if (regex(reRet, newsubject) != NULL)
+#else
+	    if (re_exec(newsubject))
+#endif
+            {
+		/* found a match to the regular expression */
+
+		gotoArticle(*artNum);
+		if (getArticle(file, ques) != XRN_OKAY) {
+		    /* the matching article was invalid */
+
+		    mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
+
+		    removeLine(*tstring, Text, &tsource, *position, &ttop);
+		    continue;
+		}
+		cancelDestroy();
+		return MATCH;
+	    }
+	}
+    } else {
+	startSearch();
+	for (;;) {
+	    if (abortP()) {
+
+		/* reset pointers back to where we began, since the */
+		/* search was aborted */
+
+		failedSearch();
+		cancelDestroy();
+		return ABORT;
+	    }
+	    if ((*position == 0) && ((*tstring)[*position] == '\0')) {
+
+		/* no more articles remain, return to Newgroup mode */
+		cancelDestroy();
+		return EXIT;
+	    }
+	    if (*position != 0) {
+
+		/* we are still within the subject list */
+
+		(void) moveCursor(BACK, *tstring, position);
+		*artNum = atol(&(*tstring)[*position + 2]);
+		newsubject = getSubject(*artNum);
+
+#ifdef SYSV_REGEX
+		if (regex(reRet, newsubject) != NULL)
+#else
+		if (re_exec(newsubject))
+#endif
+                {
+		    /* an article matching the regular expression was found */
+
+		    gotoArticle(*artNum);
+		    if (getArticle(file, ques) != XRN_OKAY) {
+			/* article is invalid, remove it from the text string*/
+
+			mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
+
+			removeLine(*tstring, Text, &tsource, *position, &ttop);
+			continue;
+		    }
+		    cancelDestroy();
+		    return MATCH;
+		}
+	    } else {
+
+		/* must query the news server for articles not shown */
+		/* on the current subject screen */
+
+		if ((newLine = getPrevSubject()) == NIL(char)) {
+		    
+		    /* all articles have been exhausted, reset variables */
+		    /* to what they were before the search was started */
+
+		    failedSearch();
+		    cancelDestroy();
+		    return NOMATCH;
+		}
+		newLine[0] = '+';
+		*artNum = atol(&newLine[2]);
+		newsubject = getSubject(*artNum);
+		if (oldString != NIL(char)) {
+
+		    /* add the newest subject line (newLine) to the */
+		    /* list of new subject lines (oldString) we are */
+		    /* building up.  Put the result in newString.   */
+
+		    newString = ARRAYALLOC(char, (utStrlen(oldString) + utStrlen(newLine) + 2));
+		    (void) strcpy(newString, newLine);
+		    (void) strcat(newString, "\n");
+		    (void) strcat(newString, oldString);
+		    FREE(oldString);
+		} else {
+
+		    /* the first new subject line has been obtained, */
+		    /* allocate space and save it */
+
+		    newString = ARRAYALLOC(char, (utStrlen(newLine) + 2));
+		    (void) strcpy(newString, newLine);
+		    (void) strcat(newString, "\n");
+		}
+
+#ifdef SYSV_REGEX
+		if (regex(reRet, newsubject) != NULL)
+#else
+		if (re_exec(newsubject))
+#endif
+                {
+		    /* the new article (subjectline) obtained here */
+		    /* does not need to be checked for validity, since */
+		    /* getPrevSubject() only returns valid articles */
+
+		    /* re-build the entire subject string, adding the */
+		    /* original subject string to the newly obtained */
+		    /* subjects. Return an indication that the subject */
+		    /* window must be updated. */
+
+		    newSubjectString = ARRAYALLOC(char, (utStrlen(newString) + utStrlen(*tstring)+ 1));
+		    (void) strcpy(newSubjectString, newString);
+		    (void) strcat(newSubjectString, *tstring);
+		    FREE(*tstring);
+		    *tstring = newSubjectString;
+		    gotoArticle(*artNum);
+		    if (getArticle(file, ques) != XRN_OKAY) {
+			mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
+		    }
+		    cancelDestroy();
+		    return WINDOWCHANGE;
+		}
+		oldString = newString;
+		continue;
+	    }
+	}
+    }
+}
+
+
+int moveToArticle(artNum, file, ques)
+    long artNum;			/* number of new article */
+    char **file, **ques;		/* filename and status line for new article */
+{
+    fillUpArray(artNum);
+
+    if (checkArticle(artNum) != XRN_OKAY) {
 	return NOMATCH;
+    }
 
-    if (getArticle(newsgroup, artNum, file, ques) != XRN_OKAY)
+    gotoArticle(artNum);
+    if (getArticle(file, ques) != XRN_OKAY) {
 	return ERROR;
-
-    newsgroup->current = artNum;
+    }
 
     return MATCH;
 }

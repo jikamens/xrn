@@ -18,16 +18,16 @@ char * strstr(s1, s2)
     register char CONST *s2;
 {
     register int n = strlen(s2);
+    char *rs = (*s1) ? 0 : (char *) s2;
 
-    if (! *s2)
-	return (char *) s1;
-
-    while (*s1) {
-	if (! strncmp(s2,s1,n))
-	    return (char *) s1;
-	s1++;
+    while (*s1)
+    {   if (strncmp(s2,s1,n) == 0L)
+	{   rs = (char *) s1;
+	    break;
+	}
+	++s1;
     }
-    return((char *) 0);
+    return(rs);
 }
 #endif
 

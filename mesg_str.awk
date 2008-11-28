@@ -17,22 +17,14 @@ BEGIN {
 	msg_num = 0;
 }
 
-/^\#/ || /^[ 	]*$/ {
-	if (start == 1) {
-		print
-	}
+(start == 1) && (/^\#/ || /^[ 	]*$/) { print }
+
+(start == 1) && /^\/\* < [^ >]* > / {
+	printf("#define %s_MSG message_strings[%d]\n", $3, msg_num);
+	next;
 }
 
-/^\/\* < [^ >]* > / {
-	if (start == 1) {
-		printf("#define %s_MSG message_strings[%d]\n", $3, msg_num);
-		next;
-	}
-}
-
-/",/ {
-	if (start == 1) {
-		msg_num++;
-		next;
-	}
+(start == 1) && /",/ {
+	msg_num++;
+	next;
 }
