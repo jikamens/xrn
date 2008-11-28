@@ -2,7 +2,7 @@
 #define DIALOGS_H
 
 /*
- * $Id: dialogs.h,v 1.8 1997-01-12 03:41:22 jik Exp $
+ * $Id: dialogs.h,v 1.5 1995-10-27 07:47:32 jik Exp $
  */
 
 /*
@@ -55,10 +55,8 @@ extern void PopDownDialog _ARGUMENTS((Widget));
 
 extern char *GetDialogValue _ARGUMENTS((Widget));
 
-extern int ConfirmationBox _ARGUMENTS((Widget,char *, char *, char *, Boolean));
-extern int ChoiceBox _VARARGUMENTS((Widget, char *, int, ...));
-				 
-String PasswordBox _ARGUMENTS((Widget, String));
+extern int ConfirmationBox _ARGUMENTS((Widget,char *, char *, char *,
+				       /* Boolean */ int));
 
 #define XRN_CB_ABORT 0
 #define XRN_CB_CONTINUE 1
