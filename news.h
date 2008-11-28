@@ -2,7 +2,7 @@
 #define NEWS_H
 
 /*
- * $Id: news.h,v 1.35 2006-01-03 16:38:38 jik Exp $
+ * $Id: news.h,v 1.33 2000-10-05 00:37:07 jik Exp $
  */
 
 /*
@@ -41,7 +41,7 @@
 #include "xrn.h"
 
 typedef long art_num;  /* easy way to pick out variables refering to articles */
-typedef unsigned int ng_num;   /* easy way to pick out newsgroup variables            */
+typedef unsigned short ng_num;   /* easy way to pick out newsgroup variables            */
 typedef unsigned char fetch_flag_t;
 
 extern avl_tree *NewsGroupTable;
@@ -175,29 +175,6 @@ struct newsgroup {
   _CLEAR_CHILDREN((art),(free)); \
   _CLEAR_APPROVED((art),(free))
 
-#ifdef DEBUG_NEWS_CLEARS
-
-static __inline__ void inline_CLEAR_FILE(struct article *art, int free)
-{
-  if ((free) && (art)->file)  {
-    fprintf(stderr, "inline_CLEAR_FILE(first=%d, file=0x%x)\n",
-#ifdef ARTSTRUCT_C
-	    art->first,
-#else
-	    art->dont_touch1,
-#endif
-	    art->file);
-    file_cache_file_release(FileCache, *(art)->file);
-    FREE((art)->file);
-  }
-  SET_UNFETCHED(art);
-  (art)->file = 0;
-}
-
-#define _CLEAR_FILE(art,free) inline_CLEAR_FILE(art,free)
-
-#else /* ! DEBUG_NEWS_CLEARS */
-
 #define _CLEAR_FILE(art,free) \
   if ((free) && (art)->file)  { \
     file_cache_file_release(FileCache, *(art)->file); \
@@ -205,8 +182,6 @@ static __inline__ void inline_CLEAR_FILE(struct article *art, int free)
   } \
   SET_UNFETCHED(art); \
   (art)->file = 0;
-
-#endif /* DEBUG_NEWS_CLEARS */
 
 #define _CLEAR_BASE_FILE(art,free) \
   if ((free) && (art)->base_file)  { \
