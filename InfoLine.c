@@ -59,25 +59,16 @@ void InfoLineSet(w, text)
     Widget w;
     String text;
 {
-    char *newString = XtNewString(text), *ptr;
 #ifdef MOTIF
     XmString x;
-#endif
 
-    /* Info lines are one line long, so they can't have newlines in them,
-       and tabs just waste space. */
-    for (ptr = strpbrk(newString, "\n\t"); ptr; ptr = strpbrk(newString, "\n\t"))
-      *ptr = ' ';
-
-#ifdef MOTIF
     /* Yes, I know this is an old function and not the preferred way, but for now...kb */
-    x = XmStringCreateSimple(newString);
+    x = XmStringCreateSimple(text);
     XtVaSetValues(w, XmNlabelString, x, 0);
     XmStringFree(x);
 #else
-    XtVaSetValues(w, XtNlabel, newString, 0);
+    XtVaSetValues(w, XtNlabel, text, 0);
 #endif
-    XtFree(newString);
 }
 
 void InfoLineDestroy(widget)
