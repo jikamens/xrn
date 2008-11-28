@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: internals.c,v 1.244 2005-10-06 12:35:57 jik Exp $";
+static char XRNrcsid[] = "$Id: internals.c,v 1.233 2000-10-05 02:49:50 jik Exp $";
 #endif
 
 /*
@@ -87,7 +87,7 @@ static struct newsgroup *PrefetchedGroup = 0;
 static struct newsgroup *PrefetchingGroup = 0;
 static int PrefetchStage;
 static XtWorkProc PrefetchingProc;
-static XtWorkProcId prefetch_id = 0;
+static XtWorkProcId prefetch_id;
 static Boolean FinishingPrefetch = False;
 static int InWorkProc = 0;
 
@@ -136,8 +136,6 @@ void checkLock()
 {
     char *buffer = findServerFile(app_resources.lockFile, isLongNewsrcFile(),
 				  NULL);
-    /* If you change the size of these arrays, make sure you change the
-       field width in the fscanf format below. */
     char host[64];
     char myhost[64];
     int pid;
@@ -161,16 +159,11 @@ void checkLock()
 	}
 	XtFree(buffer);
 	(void) fprintf(fp, "%s %d\n", myhost, getpid());
-	
 	(void) fclose(fp);
 	return;
     }
 
-    /* If you change the field width below, change the declaration of
-       "host" and "myhost" above! */
-    host[sizeof(host)-1] = '\0';
-    (void) fscanf(fp, "%63s %d", host, &pid);
-    assert(! host[sizeof(host)-1]);
+    (void) fscanf(fp, "%s %d", host, &pid);
 
     /* see if I'm on the same host */
     if (strcmp(host, myhost) == 0) {
@@ -426,8 +419,6 @@ static int unreadArticleCount(newsgroup)
 	    count += last - first + 1;
     }
 
-    ART_STRUCT_UNLOCK;
-
     return count;
 }
 
@@ -455,8 +446,6 @@ static int totalArticleCount(newsgroup)
 	if (IS_AVAIL(art))
 	    count += last - first + 1;
     }
-
-    ART_STRUCT_UNLOCK;
 
     return count;
 }
@@ -488,7 +477,6 @@ Boolean articleIsAvailable(newsgroup, i)
     (void) fillUpArray(newsgroup, i, i, False, False);
 
     art = artStructGet(newsgroup, i, False);
-    ART_STRUCT_UNLOCK;
     if (art->subject)
       return True;
     else
@@ -547,7 +535,6 @@ static Boolean setCurrentArticle(
 	    art = artStructGet(newsgroup, start, False);
 	    if (IS_UNREAD(art) && IS_AVAIL(art))
 		avail++;
-	    ART_STRUCT_UNLOCK;
 	}
 	start++;
     }
@@ -557,7 +544,6 @@ static Boolean setCurrentArticle(
 
     for (i = start; i<= newsgroup->last; i++) {
 	art = artStructGet(newsgroup, i, False);
-	ART_STRUCT_UNLOCK;
 	if (IS_UNREAD(art) && IS_AVAIL(art)) {
 	  if (!check_available || articleIsAvailable(newsgroup, i)) {
 	    if (finished)
@@ -578,7 +564,6 @@ static Boolean setCurrentArticle(
     else {
 	for (i = newsgroup->last; i >= newsgroup->first; i--) {
 	    art = artStructGet(newsgroup, i, False);
-	    ART_STRUCT_UNLOCK;
 	    if (IS_AVAIL(art)) {
 	      if (!check_available || articleIsAvailable(newsgroup, i)) {
 		if (finished)
@@ -988,10 +973,8 @@ void articleArrayResync(newsgroup, first, last, number)
     art_num first, last;
     int number;
 {
-#ifdef DEBUG
-    fprintf(stderr, "articleArrayResync(%s, %d, %d, %d)\n",
-	    newsgroup ? newsgroup->name : "NULL", first, last, number);
-#endif
+    struct article *art, copy;
+    int i;
 
     /*
      * if there are actually no articles in the group, free up the
@@ -1025,27 +1008,28 @@ void articleArrayResync(newsgroup, first, last, number)
 
     if (! artListFirst(newsgroup, 0, 0)) {
 	newsgroup->first = first;
-	newsgroupSetLast(newsgroup, last);
+	newsgroup->last = last;
 	artListSet(newsgroup);
     }
     else {
-	int i;
-	struct article *art, copy;
-
-        ART_STRUCT_UNLOCK;
-
-	newsgroupSetLast(newsgroup, last);
-
 	copy.status = ART_CLEAR_READ;
+
 	CLEAR_ALL_NO_FREE(&copy);
 
 	SET_UNAVAIL(&copy);
-	for (i = newsgroup->first; (i < first) && (i <= newsgroup->last); i++) {
+	for (i = newsgroup->first; i < first; i++) {
+	    art = artStructGet(newsgroup, i, False);
+	    artStructReplace(newsgroup, &art, &copy, i);
+	}
+
+	copy.status = ART_CLEAR;
+	for (i = MAX(newsgroup->last + 1, first); i <= last; i++) {
 	    art = artStructGet(newsgroup, i, False);
 	    artStructReplace(newsgroup, &art, &copy, i);
 	}
 
 	newsgroup->first = first;
+	newsgroup->last = last;
     }
 }
 
@@ -1114,7 +1098,6 @@ char *stringToRegexp(input, max_length)
 {
     static char output[BUFFER_SIZE];
     char *inptr, *outptr;
-    int back;
 
     max_length -= 2; /* to make room for braces */
     
@@ -1135,7 +1118,6 @@ char *stringToRegexp(input, max_length)
 	case '$':
 	    *outptr++ = '\\';
 	    *outptr = *inptr;
-	    back = 1;
 	    break;
 	/*
 	  Some characters can't be backslashed, because they are
@@ -1169,17 +1151,13 @@ char *stringToRegexp(input, max_length)
 	    *outptr++ = '[';
 	    *outptr++ = *inptr;
 	    *outptr = ']';
-	    back = 2;
 	    break;
 	default:
 	    *outptr = *inptr;
-	    back = 0;
 	    break;
 	}
-	if (outptr - output >= max_length) {
-	  outptr -= back;
+	if (outptr - output >= max_length)
 	  break;
-	}
     }
     *outptr = '\0';
     return output;
@@ -1214,7 +1192,6 @@ static Boolean killArticles(newsgroup, max)
     start = MAX(newsgroup->current, MIN(kf->thru + 1, newsgroup->last));
     do {
 	art = artStructGet(newsgroup, start, False);
-	ART_STRUCT_UNLOCK;
 	if (IS_KILLED(art))
 	    start++;
     } while (IS_KILLED(art) && (start <= newsgroup->last));
@@ -1226,7 +1203,6 @@ static Boolean killArticles(newsgroup, max)
 
     for (i = start; i <= last; i++) {
 	art = artStructGet(newsgroup, i, False);
-	ART_STRUCT_UNLOCK;
 	if (IS_KILLED(art) || IS_UNAVAIL(art))
 	    last = MIN(newsgroup->last, last + 1);
     }
@@ -1264,10 +1240,8 @@ static Boolean killArticles(newsgroup, max)
 	if (IS_KILLED(art) || IS_UNAVAIL(art) ||
 	    ((entry->entry.action_flags & (KILL_JUNK|KILL_SUBTHREAD|KILL_THREAD))
 	     && IS_READ(art)) ||
-	    ((entry->entry.action_flags & KILL_MARK) && IS_UNREAD(art))) {
-	  ART_STRUCT_UNLOCK;
+	    ((entry->entry.action_flags & KILL_MARK) && IS_UNREAD(art)))
 	  continue;
-	}
 
 #define CHECK_FIELD(flag, name) \
 	if (entry->entry.check_flags & flag) { \
@@ -1366,11 +1340,7 @@ static Boolean killArticles(newsgroup, max)
 
 	  if (changed)
 	    artStructReplace(newsgroup, &art, &copy, i);
-	  else
-	    ART_STRUCT_UNLOCK;
 	}
-	else
-	  ART_STRUCT_UNLOCK;
       }
     }
 
@@ -1510,28 +1480,14 @@ void resetPrefetch()
   else if (PrefetchingGroup) {
     newsgroup = PrefetchingGroup;
     PrefetchingGroup = 0;
-    /* XXX assumes work proc id's are always non-zero; I don't know if
-       this is guaranteed by the specs */
-    if (prefetch_id) {
-      XtRemoveWorkProc(prefetch_id);
-      prefetch_id = 0;
-    }
+    XtRemoveWorkProc(prefetch_id);
   }
 
   if (newsgroup)
     prefetchGroup(newsgroup->name);
-}
 
-void suspendPrefetch()
-{
-  /* XXX assumes work proc id's are always non-zero; I don't know if
-     this is guaranteed by the specs */
-  if (PrefetchingGroup && prefetch_id) {
-    XtRemoveWorkProc(prefetch_id);
-    prefetch_id = 0;
-  }
 }
-
+    
 void cancelPrefetch()
 {
     char msg[LABEL_SIZE];
@@ -1642,8 +1598,6 @@ static Boolean threadIncremental(
       this_art = artStructNext(newsgroup, this_art, &this_first, &this_last);
     } while (this_art);
 
-    ART_STRUCT_UNLOCK;
-
     if (! count)
       /* We can't thread yet because we haven't decided which articles
 	 to display. */
@@ -1657,7 +1611,6 @@ static Boolean threadIncremental(
 
     for (i = first; i <= last; i++) {
       struct article *art = artStructGet(newsgroup, i, False);
-      ART_STRUCT_UNLOCK;
       if (art->id && THREAD_IT(art)) {
 	int ret = hash_table_insert(newsgroup->thread_table,
 				    (void *)art->id, (void *)i, 0);
@@ -1673,14 +1626,11 @@ static Boolean threadIncremental(
   for (i = first; (i <= last) && (! stage || (done_count < chunk_size)); i++) {
     struct article *art = artStructGet(newsgroup, i, False), copy;
     char *references, *ptr;
-    art_num parent = (art_num)HASH_NO_VALUE;
-    
-    if (art->parent || !THREAD_IT(art)) {
-      ART_STRUCT_UNLOCK;
-      continue;
-    }
-
+    art_num parent;
     copy = *art;
+
+    if (copy.parent || !THREAD_IT(&copy))
+      continue;
 
     if (! (copy.references && *copy.references)) {
       copy.parent = (art_num)-1;
@@ -1702,21 +1652,21 @@ static Boolean threadIncremental(
 
       if ((parent = (art_num)hash_table_retrieve(newsgroup->thread_table,
 						 (void *)ptr, 0)) !=
-	  (art_num)HASH_NO_VALUE)
+	  (art_num)HASH_NO_VALUE) {
+	struct article *parent_struct = artStructGet(newsgroup, parent, True);
+
+	copy.parent = parent;
+	artStructAddChild(parent_struct, i);
+	artStructSet(newsgroup, &parent_struct);
 	break;
+      }
     }
 
     XtFree(references);
 
-    copy.parent = (parent == (art_num)HASH_NO_VALUE) ? (art_num) -1 : parent;
+    if (! copy.parent)
+      copy.parent = (art_num)-1;
     artStructReplace(newsgroup, &art, &copy, i);
-
-    if (parent != (art_num)HASH_NO_VALUE) {
-      struct article *parent_struct = artStructGet(newsgroup, parent, True);
-
-      artStructAddChild(parent_struct, i);
-      artStructSet(newsgroup, &parent_struct);
-    }
   }
 
   if (i > last) {
@@ -1728,8 +1678,6 @@ static Boolean threadIncremental(
 	CLEAR_PARENT(&copy);
 	artStructReplace(newsgroup, &art, &copy, i);
       }
-      else
-	ART_STRUCT_UNLOCK;
     }
     hash_table_destroy(newsgroup->thread_table);
     newsgroup->thread_table = 0;
@@ -1764,19 +1712,16 @@ static void checkThreading(
 
   for (i = first; i <= newsgroup->last; i++) {
     art = artStructGet(newsgroup, i, False);
-    ART_STRUCT_UNLOCK;
     if (art->parent) {
       parent = artStructGet(newsgroup, art->parent, False);
       if ((art->parent < first) || !IS_LISTED(parent) || !IS_LISTED(art)) {
 	copy = *parent;
 	artStructRemoveChild(&copy, i);
 	artStructReplace(newsgroup, &parent, &copy, art->parent);
-	art = artStructGet(newsgroup, i, True);
-	CLEAR_PARENT(art);
-	artStructSet(newsgroup, &art);
+	copy = *art;
+	CLEAR_PARENT(&copy);
+	artStructReplace(newsgroup, &art, &copy, i);
       }
-      else
-	ART_STRUCT_UNLOCK;
     }
   }
 }
@@ -2027,18 +1972,15 @@ static Boolean setUpGroupIncremental(
 	    if (! my_last)
 	      my_last = newsgroup->last;
 
-	    if (my_first > my_last)
-	      finished = True;
-	    else {
-	      if ((! stage) ||
-		  ((*stage >= PREFETCH_START_HEADERS_STAGE) &&
-		   (*stage <= PREFETCH_LAST_HEADERS_STAGE)))
-		finished = fetchHeadersIncremental(newsgroup, stage,
-						   my_first, my_last,
-						   unread_only,
-						   kill_files);
+	    if ((! stage) ||
+		((*stage >= PREFETCH_START_HEADERS_STAGE) &&
+		 (*stage <= PREFETCH_LAST_HEADERS_STAGE)))
+	      finished = fetchHeadersIncremental(newsgroup, stage,
+						 my_first, my_last,
+						 unread_only,
+						 kill_files);
 
-	      if (! stage || *stage == PREFETCH_KILL_STAGE) {
+	    if (! stage || *stage == PREFETCH_KILL_STAGE) {
 	        if ((app_resources.killFiles == TRUE) && kill_files) {
 		  fetch_flag_t fetched = newsgroup->fetch;
 
@@ -2087,16 +2029,13 @@ static Boolean setUpGroupIncremental(
 			SET_READ(&copy);
 			artStructReplace(newsgroup, &art, &copy, i);
 		      }
-		      else
-			ART_STRUCT_UNLOCK;
 		    }
 		  }
 		}
-	      }
-	      if ((! stage || *stage == PREFETCH_THREAD_STAGE) && threading)
-		finished = threadIncremental(newsgroup, stage, my_first, my_last,
-					     ART_READ);
 	    }
+	    if ((! stage || *stage == PREFETCH_THREAD_STAGE) && threading)
+	      finished = threadIncremental(newsgroup, stage, my_first, my_last,
+					   ART_READ);
 	}
     }
 
@@ -2242,17 +2181,20 @@ void catchUp()
 /*
  * subscribe to a specified newsgroup
  *
- *   returns: true on success, false on failure
+ *   returns: void
  *
  */
-static Boolean subscribe_group _ARGUMENTS((struct newsgroup *));
+static void subscribe_group _ARGUMENTS((struct newsgroup *));
 
-static Boolean subscribe_group(newsgroup)
+static void subscribe_group(newsgroup)
     struct newsgroup *newsgroup;
 {
     if (!IS_SUBSCRIBED(newsgroup)) {
 	art_num first, last;
 	int number;
+
+	if (IS_NOENTRY(newsgroup))
+	    addToNewsrcEnd(newsgroup->name, SUBSCRIBE);
 
 	/*
 	  Update the first and last article numbers for the newsgroup,
@@ -2262,22 +2204,18 @@ static Boolean subscribe_group(newsgroup)
 	    SET_SUB(newsgroup);
 	    articleArrayResync(newsgroup, first, last, number);
 	    (void) updateArticleArray(newsgroup, False);
-	    return True;
 	}
-	else
-	  return False;
     }
-    return True;
+    return;
 }
 
 
 /*
   subscribe to the current newsgroup
-  returns: true on success, false on failure
   */
-Boolean subscribe()
+void subscribe()
 {
-    return subscribe_group(CurrentGroup);
+    subscribe_group(CurrentGroup);
 }
 
 
@@ -2368,10 +2306,6 @@ static void handleXref(cur_newsgroup, article)
     struct article *this_art;
 
     this_art = artStructGet(cur_newsgroup, article, False);
-
-    /* OK to put this here, despite xhdr() call below, because the
-       xhdr() call won't happen until we're done using this_art. */
-    ART_STRUCT_UNLOCK;
 
     if (IS_XREFED(this_art))
       return;
@@ -2488,9 +2422,9 @@ int getArticle(newsgroup, article, file, question)
 	if (IS_XLATED(art))
 	  xlation = XLATED;
 #endif
-	ART_STRUCT_UNLOCK;
 	artfile = getarticle(newsgroup, article, 0, header | rotation |
 			     xlation | PAGEBREAKS | BACKSPACES);
+	/* need to refetch it since getarticle() modifies it */
 	art = artStructGet(newsgroup, article, True);
 	if (artfile)
 	  art->file = artfile;
@@ -2517,11 +2451,10 @@ int getArticle(newsgroup, article, file, question)
     if (IS_UNMARKED(art)) {
 	SET_READ(art);
     }
-    artStructSet(newsgroup, &art);
     *question = buildQuestion(newsgroup, article);
-
     handleXref(newsgroup, article);
 
+    artStructSet(newsgroup, &art);
     return XRN_OKAY;
 }
 
@@ -2627,15 +2560,6 @@ static Boolean prefetchSetFetched(pClient)
 	goto done;
     }
 
-    if ((newsgroup->current < newsgroup->first) ||
-	(newsgroup->last < newsgroup->current)) {
-#ifdef DEBUG
-	fprintf(stderr, "prefetchSetFetched[%d] returning (current out of range)\n",
-		mesg_name);
-#endif
-	goto done;
-    }
-
     artListSet(newsgroup);
 
 #ifdef DEBUG
@@ -2651,9 +2575,9 @@ static Boolean prefetchSetFetched(pClient)
 	    file_cache_file *artfile;
 
 	    /* if the article can be fetched, mark it so */
-	    ART_STRUCT_UNLOCK;
 	    artfile = getarticle(newsgroup, newsgroup->current, 0,
 				 PAGEBREAKS | BACKSPACES);
+	    /* need to refetch it since getarticle() modifies it */
 	    art = artStructGet(newsgroup, newsgroup->current, True);
 
 	    if (artfile) {
@@ -2828,7 +2752,7 @@ static void prefetchNextGroup _ARGUMENTS((struct newsgroup *));
 static void prefetchNextGroup(in_newsgroup)
     struct newsgroup *in_newsgroup;
 {
-    struct newsgroup *newsgroup WALL(= 0);
+    struct newsgroup *newsgroup;
     register ng_num number;
     char msg[LABEL_SIZE];
 #ifdef DEBUG
@@ -2947,8 +2871,8 @@ void prefetchNextArticle()
 	file_cache_file *artfile;
 
 	if (IS_UNFETCHED(art)) {
-	  ART_STRUCT_UNLOCK;
 	  artfile = getarticle(newsgroup, artnum, 0, PAGEBREAKS | BACKSPACES);
+	  /* need to refetch it since getarticle() modifies it */
 	  art = artStructGet(newsgroup, artnum, True);
 
 	  if (artfile) {
@@ -2982,11 +2906,15 @@ Boolean updateArticleArray(
      _KNRDECL(Boolean,			do_unsubbed)
 {
     struct list *item;
-    struct article *art;
+    struct article *art, copy;
     art_num artnum;
 #ifndef FIXED_C_NEWS_ACTIVE_FILE
     int number;
 #endif
+
+    if (newsgroup->last == 0) {
+	return True;
+    }
 
 #define CHECK_CACHED(label) \
     if (newsgroup->from_cache) { \
@@ -3009,7 +2937,7 @@ Boolean updateArticleArray(
     }
 
 empty_retry:
-    if ((newsgroup->last == 0) || EMPTY_GROUP(newsgroup)) {
+    if (EMPTY_GROUP(newsgroup)) {
       CHECK_CACHED(empty_retry);
 	artListFree(newsgroup);
 	return True;
@@ -3086,9 +3014,10 @@ retry:
 	    }
 	    for (artnum = item->contents.range.start;
 		 artnum <= item->contents.range.end; artnum++) {
-		art = artStructGet(newsgroup, artnum, True);
-		art->status = ART_CLEAR_READ;
-		artStructSet(newsgroup, &art);
+		art = artStructGet(newsgroup, artnum, False);
+		copy = *art;
+		copy.status = ART_CLEAR_READ;
+		artStructReplace(newsgroup, &art, &copy, artnum);
 	    }
 	}
     }
@@ -3179,13 +3108,12 @@ int addToNewsrcBeginning(newGroup, status)
     return BAD_GROUP;
   }
     
+  CLEAR_NOENTRY(newsgroup);
   if (status == SUBSCRIBE) {
-    if (! subscribe_group(newsgroup))
-      return BAD_GROUP;
+    subscribe_group(newsgroup);
   } else {
     SET_UNSUB(newsgroup);
   }
-  CLEAR_NOENTRY(newsgroup);
   if (newsgroup->newsrc == NOT_IN_NEWSRC) {
     for (i = MaxGroupNumber - 1; i != NOT_IN_NEWSRC; i--) {
       Newsrc[i + 1] = Newsrc[i];
@@ -3219,13 +3147,12 @@ int addToNewsrcEnd(newGroup, status)
       return BAD_GROUP;
     }
     
-    if (status == SUBSCRIBE) {
-      if (! subscribe_group(newsgroup))
-	return BAD_GROUP;
-    } else {
-      SET_UNSUB(newsgroup);
-    }
     CLEAR_NOENTRY(newsgroup);
+    if (status == SUBSCRIBE) {
+	subscribe_group(newsgroup);
+    } else {
+	SET_UNSUB(newsgroup);
+    }
     if (newsgroup->newsrc == NOT_IN_NEWSRC) {
       INC_MAXGROUPNUMBER();
     } else {
@@ -3255,13 +3182,12 @@ int addToNewsrcAfterGroup(newGroup, afterGroup, status)
       return BAD_GROUP;
     }
     
+    CLEAR_NOENTRY(newsgroup);
     if (status == SUBSCRIBE) {
-      if (! subscribe_group(newsgroup))
-	return BAD_GROUP;
+	subscribe_group(newsgroup);
     } else {
 	SET_UNSUB(newsgroup);
     }
-    CLEAR_NOENTRY(newsgroup);
 
     if (! avl_lookup(NewsGroupTable, afterGroup, (char **) &ng)) {
       Boolean no_group = True;
@@ -3668,7 +3594,6 @@ int subjectIndexLine(
 	  }
 	}
 
-	ART_STRUCT_UNLOCK;
 	parent = artStructGet(newsgroup, parent->parent, False);
       }
     }
@@ -3695,7 +3620,6 @@ int subjectIndexLine(
     else if (IS_PRINTED(art))
 	*(out + 1) = PRINTED_MARKER;
 
-    ART_STRUCT_UNLOCK;
     return lineLength;
 }
 
@@ -3789,7 +3713,6 @@ char * getSubject(article)
     artListSet(newsgroup);
 
     art = artStructGet(newsgroup, article, False);
-    ART_STRUCT_UNLOCK;
     return art->subject ? subjectStrip(art->subject) : 0;
 }
 
@@ -3804,7 +3727,6 @@ char * getAuthor(article)
     struct article *art;
 
     art = artStructGet(newsgroup, article, False);
-    ART_STRUCT_UNLOCK;
     return art->author;
 }
 
@@ -3817,9 +3739,6 @@ art_num getPrevNumber()
     /* search for the next available article in the reverse direction */
     for ( ; NextPreviousArticle >= newsgroup->first; NextPreviousArticle--) {
 	art = artStructGet(newsgroup, NextPreviousArticle, False);
-	/* This is OK here because any time we call another function
-	   below, we're done with "art". */
-	ART_STRUCT_UNLOCK;
 
 	if (IS_UNAVAIL(art))
 	    continue;
@@ -4037,9 +3956,6 @@ int enterNewsgroup(name, flags)
 
     if (! IS_SUBSCRIBED(newsgroup)) {
 	if (flags & ENTER_UNSUBBED) {
-	    if (! updateArticleArray(newsgroup, flags & ENTER_SETUP)) {
-	      return BAD_GROUP;
-	    }
 	    if (flags & ENTER_SUBSCRIBE) {
 		if (IS_NOENTRY(newsgroup)) {
 		    if (addToNewsrcEnd(name, SUBSCRIBE) != GOOD_GROUP)
@@ -4048,6 +3964,9 @@ int enterNewsgroup(name, flags)
 		else {
 		    SET_SUB(newsgroup);
 		}
+	    }
+	    if (! updateArticleArray(newsgroup, flags & ENTER_SETUP)) {
+	      return BAD_GROUP;
 	    }
 	    unsubbed = True;
 	}
@@ -4113,7 +4032,6 @@ int enterNewsgroup(name, flags)
 		ret = XRN_NOUNREAD;
 	    else
 		ret = GOOD_GROUP;
-	    ART_STRUCT_UNLOCK;
 	}
 
 	if ((ret == XRN_NOUNREAD) && (flags & ENTER_UNREAD))
@@ -4215,9 +4133,8 @@ parseRegexpList(list, list_name, count)
 /*
   Returns -2 if the article doesn't exist, -1 if it exists but is not
   in the specified  newsgroup (or is not in the currently available
-  range in the newsgroup), 0 if the article has no xref header or the
-  NNTP server doesn't support xhdr by message ID, or the article
-  number of the article.
+  range in the newsgroup), 0 if the article has no xref header, or
+  the article number of the article.
   */
 art_num getArticleNumberFromIdXref(
 			       _ANSIDECL(struct newsgroup *,	newsgroup),
@@ -4283,20 +4200,4 @@ char *getFirstReference(references)
   ref_buf[rbrace - lbrace] = '\0';
 
   return ref_buf;
-}
-
-/*
-  Set the "last" field for the specified newsgroup structure, updating
-  other data structures as appropriate to take into account the new
-  setting for the field.
-*/
-
-void newsgroupSetLast(newsgroup, new_last)
-     struct newsgroup *newsgroup;
-     art_num new_last;
-{
-  art_num old_last = newsgroup->last;
-
-  newsgroup->last = new_last;
-  artListExtend(newsgroup, old_last);
 }
