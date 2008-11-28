@@ -2,7 +2,7 @@
 #define INTERNALS_H
 
 /*
- * $Id: internals.h,v 1.54 2002-05-14 19:54:43 jik Exp $
+ * $Id: internals.h,v 1.45 1997-05-29 20:51:58 jik Exp $
  */
 
 /*
@@ -37,7 +37,6 @@
 
 #include "server.h"
 #include "config.h"
-#include "file_cache.h"
 
 #define XRN_ERROR 0
 #define XRN_NOMORE 0
@@ -86,7 +85,7 @@ extern int enterNewsgroup _ARGUMENTS((char *name, int flags));
 extern void exitNewsgroup _ARGUMENTS((void));
 
 /* subscribe to the current newsgroup */
-extern Boolean subscribe _ARGUMENTS((void));
+extern void subscribe _ARGUMENTS((void));
 /* unsubscribe to the current newsgroup */
 extern void unsubscribe _ARGUMENTS((void));
 
@@ -100,12 +99,11 @@ extern void catchUp _ARGUMENTS((void));
 
 extern int checkArticle _ARGUMENTS((art_num));
 
-extern int getArticle _ARGUMENTS((struct newsgroup *, art_num,
-				  file_cache_file **, char **));
-extern int toggleHeaders _ARGUMENTS((file_cache_file **,char **));
-extern int toggleRotation _ARGUMENTS((file_cache_file **,char **));
+extern int getArticle _ARGUMENTS((struct newsgroup *, art_num, char **,char **));
+extern int toggleHeaders _ARGUMENTS((char **,char **));
+extern int toggleRotation _ARGUMENTS((char **,char **));
 #ifdef XLATE
-extern int toggleXlation _ARGUMENTS((file_cache_file **, char **));
+extern int toggleXlation _ARGUMENTS((char **, char **));
 #endif
 
 extern void prefetchNextArticle _ARGUMENTS((void));
@@ -165,7 +163,7 @@ extern int getNearbyNewsgroup _ARGUMENTS((char *, char **));
 extern char *getSubjects _ARGUMENTS((int, art_num, Boolean));
 
 /* build and return the status string */
-extern char *getStatusString _ARGUMENTS((int, int, char *));
+extern char *getStatusString _ARGUMENTS((int, int));
 
 extern void releaseNewsgroupResources _ARGUMENTS((struct newsgroup *));
 
@@ -178,9 +176,8 @@ extern void releaseNewsgroupResources _ARGUMENTS((struct newsgroup *));
 
 extern void articleArrayResync _ARGUMENTS((struct newsgroup *, art_num,
 					   art_num, int));
-extern Boolean updateArticleArray _ARGUMENTS((struct newsgroup *, Boolean));
+extern Boolean updateArticleArray _ARGUMENTS((struct newsgroup *));
 
-extern void suspendPrefetch _ARGUMENTS((void));
 extern void cancelPrefetch _ARGUMENTS((void));
 extern void resetPrefetch _ARGUMENTS((void));
 extern void finishPrefetch _ARGUMENTS((void));
@@ -221,10 +218,9 @@ char *subjectStrip _ARGUMENTS((char *));
 #define PREFETCH_IDS_STAGE		8
 #define PREFETCH_REFS_STAGE		9
 #define PREFETCH_XREF_STAGE		10
-#define PREFETCH_APPROVED_STAGE		11
-#define PREFETCH_LAST_HEADERS_STAGE	PREFETCH_APPROVED_STAGE
-#define PREFETCH_KILL_STAGE		12
-#define PREFETCH_THREAD_STAGE		13
+#define PREFETCH_LAST_HEADERS_STAGE	PREFETCH_XREF_STAGE
+#define PREFETCH_KILL_STAGE		11
+#define PREFETCH_THREAD_STAGE		12
 #define PREFETCH_LAST_OPTIONAL_STAGE	PREFETCH_THREAD_STAGE
 #define PREFETCH_LAST_STAGE		PREFETCH_THREAD_STAGE
 
@@ -239,27 +235,16 @@ char *subjectStrip _ARGUMENTS((char *));
 
 #define PREFETCH_FIELD_BIT(stage) (1<<(stage-PREFETCH_START_OPTIONAL_STAGE))
 
-/* If there end up being more than 8 of these, then the typedef of
-   fetch_flag_t in news.h needs to change. */
 #define FETCH_NEWSGROUPS	PREFETCH_FIELD_BIT(PREFETCH_NEWSGROUPS_STAGE)
 #define FETCH_DATES		PREFETCH_FIELD_BIT(PREFETCH_DATE_STAGE)
 #define FETCH_IDS		PREFETCH_FIELD_BIT(PREFETCH_IDS_STAGE)
 #define FETCH_REFS		PREFETCH_FIELD_BIT(PREFETCH_REFS_STAGE)
 #define FETCH_XREF		PREFETCH_FIELD_BIT(PREFETCH_XREF_STAGE)
-#define FETCH_APPROVED		PREFETCH_FIELD_BIT(PREFETCH_APPROVED_STAGE)
 #define FETCH_THREADS		PREFETCH_FIELD_BIT(PREFETCH_THREAD_STAGE)
 
 /* Given an article's message ID, get its number in a newsgroup.
    Returns the article number on success, 0 on failure, or -1 on abort.
    */
 extern art_num getArticleNumberFromIdXref _ARGUMENTS((struct newsgroup *, char *));
-
-/* Get the first valid message ID in a list of message IDs (i.e., a
-   references line).  The returned memory is static, should not be
-   tampered with, and is only valid until the next call to the
-   function. */
-char *getFirstReference _ARGUMENTS((char *));
-
-void newsgroupSetLast _ARGUMENTS((struct newsgroup *newsgroup, art_num new_last));
 
 #endif /* INTERNALS_H */

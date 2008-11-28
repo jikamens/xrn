@@ -55,9 +55,6 @@ extern void	TextSelectAll			_ARGUMENTS((Widget));
 extern long	TextSearch			_ARGUMENTS((Widget, long,
 							    TextDirection,
 							    String));
-extern void	TextSearchInteractive		_ARGUMENTS((Widget, XEvent *,
-							    long, TextDirection,
-							    String));
 extern void	TextEnableWordWrap		_ARGUMENTS((Widget));
 extern void	TextDisableWordWrap		_ARGUMENTS((Widget));
 
