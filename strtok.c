@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "config.h"
+#include <stdio.h>
 
 #ifdef NEED_STRTOK
 

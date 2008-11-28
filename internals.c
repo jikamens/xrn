@@ -1,5 +1,6 @@
-#if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: internals.c,v 1.244 2005-10-06 12:35:57 jik Exp $";
+
+#if !defined(lint) && !defined(SABER)
+static char XRNrcsid[] = "$Header: /d/src/cvsroot/xrn/internals.c,v 1.19 1994-10-12 17:43:44 jik Exp $";
 #endif
 
 /*
@@ -39,12 +40,23 @@ static char XRNrcsid[] = "$Id: internals.c,v 1.244 2005-10-06 12:35:57 jik Exp $
 #include <X11/Xos.h>
 #include <errno.h>
 #include <assert.h>
-#include <signal.h>
-#include <fcntl.h>
+#ifndef VMS
+#include <sys/param.h>
+#else
+#ifndef R_OK
+#define F_OK            0       /* does file exist */
+#define X_OK            1       /* is it executable by caller */
+#define W_OK            2       /* writable by caller */
+#define R_OK            4       /* readable by caller */
+#endif /* R_OK */
+#define getArticle getArticleFile
 #include <ctype.h>
+#endif /* VMS */
+#ifdef aiws
+#include <unistd.h>
+#endif /* aiws */
 #include "avl.h"
 #include "news.h"
-#include "artstruct.h"
 #include "newsrcfile.h"
 #include "resources.h"
 #include "server.h"
@@ -55,26 +67,17 @@ static char XRNrcsid[] = "$Id: internals.c,v 1.244 2005-10-06 12:35:57 jik Exp $
 #include "buttons.h"
 #include "internals.h"
 #include "mesg_strings.h"
-#include "xmisc.h"
-#include "ngMode.h"
-#include "artMode.h"
-#include "snapshot.h"
-#include "modes.h"
-#include "cursor.h"
-#include "varfile.h"
-#include "dialogs.h"
-#include "activecache.h"
-#include "sort.h"
-#include "killfile.h"
-#include "file_cache.h"
-#include "hash.h"
 
 #ifndef R_OK
 #define R_OK 4
 #endif
 
+#define SETARTICLES(newsgroup) if (newsgroup->articles == 0) (void) getarticles(newsgroup)
+
+static char *strip _ARGUMENTS((char *, /* Boolean */ int));
 
 #define BUFFER_SIZE 1024
+#define LABEL_SIZE 128
 #define FATAL 0
 #define OKAY  1
 /*
@@ -82,31 +85,28 @@ static char XRNrcsid[] = "$Id: internals.c,v 1.244 2005-10-06 12:35:57 jik Exp $
  */
 #define LINE_LENGTH 200
 
+#ifdef XRN_PREFETCH
+/* don't prefetch the next group if you got to a group via 'goto newsgroup' */
+#define OKAY_TO_XRN_PREFETCH_GROUP 1
+#define DO_NOT_XRN_PREFETCH_GROUP  0
+
+/*
+ * this flag is set to DO_NOT_XRN_PREFETCH_GROUP if you got to the current
+ * group by 'goto newsgroup' (jumpToNewsgroup).  You do not want to prefetch
+ * the next group if you are randomly jumping around.  The next group
+ * after the one jumped to is probably not the next one you will go to.
+ */
+static int PrefetchGroupMode = OKAY_TO_XRN_PREFETCH_GROUP;
+
 /* set to the value of a group if that group has been prefetched */
 static struct newsgroup *PrefetchedGroup = 0;
 static struct newsgroup *PrefetchingGroup = 0;
-static int PrefetchStage;
-static XtWorkProc PrefetchingProc;
-static XtWorkProcId prefetch_id = 0;
-static Boolean FinishingPrefetch = False;
-static int InWorkProc = 0;
+static XtWorkProcId PrefetchWorkId;
+static Boolean PrefetchInProgress = False;
 
-#define maybeInfoNow(mesg) \
-	_info((mesg), !InWorkProc || FinishingPrefetch)
+static void prefetchNextGroup _ARGUMENTS((XtPointer));
 
-static void prefetchNextGroup _ARGUMENTS((struct newsgroup *));
-
-#ifndef PREFETCH_CHUNK
-#define PREFETCH_CHUNK 5
-#endif
-#ifndef PREFETCH_MIN_CHUNK
-#define PREFETCH_MIN_CHUNK 5
-#endif
-#ifndef PREFETCH_CHUNK_TIME
-#define PREFETCH_CHUNK_TIME 1
-#endif
-
-extern Boolean FastServer;
+#endif /* XRN_PREFETCH */
 
 /*
  * next article to get when faulting in articles that are of the top
@@ -126,18 +126,17 @@ struct newsgroup * CurrentGroup = 0;
 /* number of groups in the .newsrc file */
 ng_num MaxGroupNumber = 0;
 
-struct var_rec *cache_variables = 0;
-char *cache_file;
-
 /*
- * see if another xrn is running for this nntpserver
+ * see if another xrn is running
  */
 void checkLock()
 {
-    char *buffer = findServerFile(app_resources.lockFile, isLongNewsrcFile(),
-				  NULL);
-    /* If you change the size of these arrays, make sure you change the
-       field width in the fscanf format below. */
+#ifndef VMS
+    char *buffer = utTildeExpand(app_resources.lockFile);
+#else
+    char *buffer = "SYS$LOGIN:XRN.LOCK";
+    char *ptr;
+#endif /* VMS */
     char host[64];
     char myhost[64];
     int pid;
@@ -149,28 +148,34 @@ void checkLock()
 	return;
     }
 
+#ifndef VMS
     if (gethostname(myhost, sizeof(myhost)) == -1) {
 	(void) strcpy(myhost, "bogusHost");
     }
+#else
+    ptr = getenv("SYS$NODE");
+    (void) strcpy(myhost, ptr);
+    ptr = index(myhost, ':');
+    if (ptr != NIL(char)) {
+	*ptr = '\0';
+    }
+
+    if (*myhost == NIL(char)) {
+	(void) strcpy(myhost, "bogusHost");
+    }
+#endif /* VMS */
 
     if ((fp = fopen(buffer, "r")) == NULL) {
 	if ((fp = fopen(buffer, "w")) == NULL) {
 	    /* silently ignore this condition */
-	  XtFree(buffer);
-	  return;
+	    return;
 	}
-	XtFree(buffer);
 	(void) fprintf(fp, "%s %d\n", myhost, getpid());
-	
 	(void) fclose(fp);
 	return;
     }
 
-    /* If you change the field width below, change the declaration of
-       "host" and "myhost" above! */
-    host[sizeof(host)-1] = '\0';
-    (void) fscanf(fp, "%63s %d", host, &pid);
-    assert(! host[sizeof(host)-1]);
+    (void) fscanf(fp, "%s %d", host, &pid);
 
     /* see if I'm on the same host */
     if (strcmp(host, myhost) == 0) {
@@ -180,13 +185,14 @@ void checkLock()
 	    /* why do it right when you can just do this... */
 	    removeLock();
 	    checkLock();
-	    XtFree(buffer);
 	    return;
 	}
     }
-    (void) fprintf(stderr, ERR_XRN_RUN_MSG , host, pid, buffer);
-    XtFree(buffer);
-
+    (void) fprintf(stderr, "An XRN of yours is running on %s as process %d.\n",
+		   host, pid);
+    (void) fprintf(stderr,
+		   "If it is no longer running, remove the file \"%s\".\n",
+		   buffer);
     exit(-1);
 
     return;
@@ -195,11 +201,14 @@ void checkLock()
 
 void removeLock()
 {
-    char *buffer = findServerFile(app_resources.lockFile, True, NULL);
+#ifndef VMS
+    char *buffer = utTildeExpand(app_resources.lockFile);
+#else
+    char *buffer = "SYS$LOGIN:XRN.LOCK";
+#endif /* VMS */
 
     if (buffer) {
 	(void) unlink(buffer);
-	XtFree(buffer);
     }
     return;
 }
@@ -214,179 +223,59 @@ void removeLock()
  */
 void initializeNews()
 {
-    char *err_buf;
-
-    xrnBusyCursor();
-
-    if (! (cache_file = findServerFile(app_resources.cacheFile, True, NULL))) {
-	err_buf = XtMalloc(strlen(CANT_EXPAND_MSG)+MAXPATHLEN);
-	(void) sprintf(err_buf, CANT_EXPAND_MSG, app_resources.cacheFile);
-	ehErrorExitXRN(err_buf);
-    }
-
-    cache_variables = var_read_file(cache_file);
-
-    start_server();
+    start_server(app_resources.nntpServer);
 
     do {
 	 NewsGroupTable = avl_init_table(strcmp);
 	 if (! NewsGroupTable) {
-           ehErrorExitXRN(ERROR_OUT_OF_MEM_MSG);
+	     ehErrorExitXRN("out of memory");
 	 }
 
-	 if (app_resources.cacheActive) {
-	   active_cache_read(cache_file);
-	 }
-	 else {
-	   getactive(False);
-	   if (! app_resources.fullNewsrc)
-	     getactive(True);
-	 }
-
-	 if (readnewsrc())
+	 getactive();
+	 
+	 if (readnewsrc(app_resources.newsrcFile,
+			app_resources.saveNewsrcFile))
 	      break;
 	 
-       ehErrorRetryXRN(ERROR_CANT_READ_NEWSRC_MSG, True);
+	 ehErrorRetryXRN("Can not read the .newsrc file", True);
 
 	 avl_free_table(NewsGroupTable, XtFree,
 			(void (*) _ARGUMENTS((void *))) XtFree);
     } while (1);
-
-    if (app_resources.cacheActive)
-      rescanBackground();
-
-    xrnUnbusyCursor();
-
+	
+#ifndef FIXED_ACTIVE_FILE
+    badActiveFileCheck();
+#endif
     return;
 }
 
-static XtWorkProcId rescan_id = 0;
-static int active_serial;
-static ng_num rescan_group_number;
-
-/*
-  A work procedure which fetches the statistics for a single
-  newsgroup, using the getgroup() function.  Give up if the group
-  number we're passed in is negative or greater than MaxGroupNumber.
-  When we reach MaxGroupNumber, display a message indicating that
-  we're done.
-  */
-static Boolean rescanWorkProc(data)
-XtPointer data;
-{
-  art_num first, last;
-  int number;
-
-#ifdef DEBUG
-  fprintf(stderr, "rescanWorkProc(%d)\n", rescan_group_number);
-#endif
-
-  if (active_read > active_serial) {
-    rescan_id = 0;
-    return True;
-  }
-
-  if (rescan_group_number == MaxGroupNumber) {
-    char *buf = XtMalloc(strlen(RESCANNING_BACKGROUND_MSG) + strlen(DONE_MSG) +
-			 2);
-    (void) sprintf(buf, "%s %s", RESCANNING_BACKGROUND_MSG, DONE_MSG);
-    INFO(buf);
-    XtFree(buf);
-    rescan_group_number++;
-  }
-
-  if (rescan_group_number > MaxGroupNumber) {
-    rescan_id = 0;
-    return True;
-  }
-
-  if (Newsrc[rescan_group_number] == CurrentGroup) {
-    rescan_group_number++;
-    return False;
-  }
-
-  if (! IS_SUBSCRIBED(Newsrc[rescan_group_number])) {
-    rescan_group_number++;
-    return False;
-  }
-
-  if (! getgroup(Newsrc[rescan_group_number], &first, &last, &number, False)) {
-    articleArrayResync(Newsrc[rescan_group_number], first, last, number);
-    redrawNewsgroupTextWidget(Newsrc[rescan_group_number]->name, False);
-    resetArticleNewsgroupsList();
-  }
-
-  if ((Newsrc[rescan_group_number] == PrefetchingGroup) ||
-      (Newsrc[rescan_group_number] == PrefetchedGroup))
-    resetPrefetch();
-  else
-    doPrefetch(0, 0, 0, 0);
-    
-  rescan_group_number++;
-  return False;
-}
-    
-
-/*
-  Do a NEWGROUPS command to check for new groups, then start a
-  background procedure to rescan subscribed groups in the .newsrc.
-  */
-void rescanBackground()
-{
-#ifdef DEBUG
-  fprintf(stderr, "rescanBackground()\n");
-#endif
-
-  getactive(True);
-
-  infoNow(RESCANNING_BACKGROUND_MSG);
-
-  if (rescan_id)
-    XtRemoveWorkProc(rescan_id);
-  active_serial = active_read;
-  rescan_group_number = 0;
-  rescan_id = XtAppAddWorkProc(TopContext, rescanWorkProc, 0);
-}
-
-void cancelRescanBackground()
-{
-#ifdef DEBUG
-  fprintf(stderr, "cancelRescanBackground()\n");
-#endif
-
-  if (rescan_id) {
-    XtRemoveWorkProc(rescan_id);
-    rescan_id = 0;
-  }
-}
 
 /*
  * get the active file again and grow the Newsrc array if necessary
  */
-void rescanServer(
-		  _ANSIDECL(Boolean,	force_list)
-		  )
-     _KNRDECL(Boolean,	force_list)
+void rescanServer()
 {
-    cancelPrefetch();
+    int old = ActiveGroupsCount;
 
     /* update the newsrc file */
     while (!updatenewsrc())
-      ehErrorRetryXRN(ERROR_CANT_UPDATE_NEWSRC_MSG, True);
+	ehErrorRetryXRN("Can not update the newsrc file", True);
 
 #if !defined(NNTP_REREADS_ACTIVE_FILE)
     stop_server();
-    start_server();
+    start_server(NIL(char));
 #endif
+    
+    getactive();
 
-    if (app_resources.cacheActive && !force_list) {
-      rescanBackground();
-      return;
+    if (ActiveGroupsCount > old) {
+	/* new newsgroups were found, allocate a bigger array */
+	Newsrc = (struct newsgroup **) XtRealloc((char *) Newsrc, (unsigned) (sizeof(struct newsgroup *) * ActiveGroupsCount));
     }
 
-    getactive(False);
-    if (! app_resources.fullNewsrc)
-      getactive(True);
+#ifndef FIXED_ACTIVE_FILE
+    badActiveFileCheck();
+#endif
 
     return;
 }
@@ -412,21 +301,99 @@ static int unreadArticleCount _ARGUMENTS((struct newsgroup *));
 static int unreadArticleCount(newsgroup)
     struct newsgroup *newsgroup;
 {
-    struct article *art;
-    art_num first, last;
+#ifdef STUPIDMMU
+    struct article *articles;
+    struct list *item;
+#else
+    struct article *articles = GETARTICLES(newsgroup);
+#endif
     int count = 0;
 
-    if (EMPTY_GROUP(newsgroup) ||
-	((newsgroup->first == 0) && (newsgroup->last == 0)))
+    if (EMPTY_GROUP(newsgroup)) {
 	return 0;
-
-    for (art = artListFirst(newsgroup, &first, &last);
-	 art; art = artStructNext(newsgroup, art, &first, &last)) {
-	if (IS_UNREAD(art) && IS_AVAIL(art))
-	    count += last - first + 1;
     }
+    
+    if ((newsgroup->first == 0) && (newsgroup->last == 0)) {
+	return 0;
+    }
+    
+#ifdef STUPIDMMU
+    /* try to be clever and not use articles array */
+    if (!newsgroup->articles) {
+	int cleared = 0;
 
-    ART_STRUCT_UNLOCK;
+	if (!newsgroup->nglist)
+	  return 0;
+
+	/* process the .newsrc line */
+
+	for (item = newsgroup->nglist; item != NIL(struct list);
+		     item = item->next) {
+
+	    /* this is really stupid, we need this because
+	       rescans cause a newsgroup to forget its previous idea of
+	       first */
+	    int start;
+
+	    switch (item->type) {
+		case SINGLE:
+		if (item->contents.single > newsgroup->last) {
+		    /* something really bad has happened */
+		    mesgPane(XRN_SERIOUS, ART_NUMBERING_PROBLEM_MSG,
+			     newsgroup->name);
+		    lsDestroy(newsgroup->nglist);
+		    newsgroup->nglist = NIL(struct list);
+		    return 0;
+		}
+		if (item->contents.single >= newsgroup->first) {
+		    cleared++;
+		}
+		break;
+
+		case RANGE:
+		if ((item->contents.range.start > newsgroup->last) ||
+		    (item->contents.range.end > newsgroup->last)) {
+		    /* something really bad has happened */
+		    mesgPane(XRN_SERIOUS, ART_NUMBERING_PROBLEM_MSG,
+			     newsgroup->name);
+		    lsDestroy(newsgroup->nglist);
+		    newsgroup->nglist = NIL(struct list);
+		    return 0;
+		}
+		if (item->contents.range.start < newsgroup->first) {
+		    start = newsgroup->first;
+		} else {
+		    start = item->contents.range.start;
+		}
+		
+		if (item->contents.range.end < newsgroup->first) {
+		    break;
+		}
+		cleared += item->contents.range.end - start + 1;
+	    }
+	}
+	return(newsgroup->last - newsgroup->first + 1 - cleared);
+    }
+#endif
+
+#ifdef STUPIDMMU
+    articles = newsgroup->articles;
+#endif
+
+    {
+	register struct article	*ap;
+	register art_num	last	= newsgroup->last;
+	register art_num	i;
+
+	ap = &articles[INDEX(newsgroup->first)];
+
+	for (i = newsgroup->first; i <= last; i++) {
+	    if (IS_UNREAD(*ap) && !IS_UNAVAIL(*ap)) {
+		count++;
+	    }
+	    ap++;
+	}
+    }
 
     return count;
 }
@@ -442,162 +409,69 @@ static int totalArticleCount _ARGUMENTS((struct newsgroup *));
 static int totalArticleCount(newsgroup)
     struct newsgroup *newsgroup;
 {
-    struct article *art;
-    art_num first, last;
+    struct article *articles = GETARTICLES(newsgroup);
     int count = 0;
   
-    if (EMPTY_GROUP(newsgroup) ||
-	((newsgroup->first == 0) && (newsgroup->last == 0)))
+    if (EMPTY_GROUP(newsgroup)) {
 	return 0;
-    
-    for (art = artListFirst(newsgroup, &first, &last);
-	 art; art = artStructNext(newsgroup, art, &first, &last)) {
-	if (IS_AVAIL(art))
-	    count += last - first + 1;
     }
+    
+    if ((newsgroup->first == 0) && (newsgroup->last == 0)) {
+	return 0;
+    }
+    
+    {
+	register struct article	*ap;
+	register art_num	last	= newsgroup->last;
+	register art_num	i;
 
-    ART_STRUCT_UNLOCK;
+	ap = &articles[INDEX(newsgroup->first)];
+
+	for (i = newsgroup->first; i <= last; i++) {
+	    if (!IS_UNAVAIL(*ap)) {
+		count++;
+	    }
+	    ap++;
+	}
+    }
 
     return count;
 }
 
 
 /*
-  When this function returns false, it modifies the article list for
-  the newsgroup as a side effect, so any outstanding article
-  structures in the caller should be considered invalid.
-  */
-Boolean articleIsAvailable(newsgroup, i)
+ * find the first unread article in a group and set 'current' to it
+ *
+ * returns: void
+ *
+ */
+static void setCurrentArticle _ARGUMENTS((struct newsgroup *));
+
+static void setCurrentArticle(newsgroup)
     struct newsgroup *newsgroup;
+{
+    struct article *articles = GETARTICLES(newsgroup);
     art_num i;
-{
-    struct article *art;
+    art_num start;
+    
+    newsgroup->current = newsgroup->last + 1;
 
-    art = artStructGet(newsgroup, i, True);
+    /* if the resource 'onlyShow' is > 0, then mark all but the last
+     * 'onlyShow' articles as read */
 
-    if (art->file && *art->file && !IS_ALL_HEADERS(art) && !IS_ROTATED(art) &&
-	!IS_XLATED(art) &&
-	(access(file_cache_file_name(FileCache, *art->file), R_OK) == 0)) {
-      artStructSet(newsgroup, &art);
-      return True;
-    }
-
-    CLEAR_SUBJECT(art);
-    artStructSet(newsgroup, &art);
-
-    (void) fillUpArray(newsgroup, i, i, False, False);
-
-    art = artStructGet(newsgroup, i, False);
-    ART_STRUCT_UNLOCK;
-    if (art->subject)
-      return True;
-    else
-      return False;
-}
-
-
-/*
-  Find the first unread article, or the last article if unread_only is
-  false and there are no unread articles, in a group and set the
-  group's 'current' to it.  If "check_available" is true, actually
-  contacts the NNTP server to verify that the article is available.
- 
-  Returns True if the group's current article was modified in a way
-  which might require the group to be prefetched again, False
-  otherwise.
-
-  If the "finished" parameter is non-null, then this function will
-  only make "max" attempts to find a current article by contacting the
-  NNTP server.  If it succeeds, the parameter will be filled in True;
-  otherwise, it'll be filled in False.
-  */
-static Boolean setCurrentArticle _ARGUMENTS((struct newsgroup *,
-					     Boolean, Boolean,
-					     Boolean *, int *));
-
-static Boolean setCurrentArticle(
-				 _ANSIDECL(struct newsgroup *,	newsgroup),
-				 _ANSIDECL(Boolean,		unread_only),
-				 _ANSIDECL(Boolean,		check_available),
-				 _ANSIDECL(Boolean *,		finished),
-				 _ANSIDECL(int *,		max_ptr)
-				 )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(Boolean,			unread_only)
-     _KNRDECL(Boolean,			check_available)
-     _KNRDECL(Boolean *,		finished)
-     _KNRDECL(int *,			max_ptr)
-{
-    struct article *art;
-    art_num i, start, avail = 0;
-    art_num orig = newsgroup->current;
-    int max;
-
-    if (max_ptr)
-      max = *max_ptr;
-    else
-      max = 0;
-
+    start = newsgroup->first;
     if (app_resources.onlyShow > 0) {
-	/* if the resource 'onlyShow' is > 0, then mark all but the last
-	   'onlyShow' articles as read */
-	for (start = newsgroup->last;
-	     start >= newsgroup->first && (avail < app_resources.onlyShow);
-	     start--) {
-	    art = artStructGet(newsgroup, start, False);
-	    if (IS_UNREAD(art) && IS_AVAIL(art))
-		avail++;
-	    ART_STRUCT_UNLOCK;
-	}
-	start++;
+	start = MAX(start, newsgroup->last - app_resources.onlyShow);
     }
-    else {
-	start = newsgroup->first;
-    }
-
+    
     for (i = start; i<= newsgroup->last; i++) {
-	art = artStructGet(newsgroup, i, False);
-	ART_STRUCT_UNLOCK;
-	if (IS_UNREAD(art) && IS_AVAIL(art)) {
-	  if (!check_available || articleIsAvailable(newsgroup, i)) {
-	    if (finished)
-	      *finished = True;
+	long indx = INDEX(i);
+	if (IS_UNREAD(articles[indx]) && !IS_UNAVAIL(articles[indx])) {
 	    newsgroup->current = i;
-	    goto done;
-	  }
-	  else if (finished && ! --max) {
-	    *finished = False;
-	    goto done;
-	  }
+	    return;
 	}
     }
-
-    if (unread_only) {
-	newsgroup->current = newsgroup->last + 1;
-    }
-    else {
-	for (i = newsgroup->last; i >= newsgroup->first; i--) {
-	    art = artStructGet(newsgroup, i, False);
-	    ART_STRUCT_UNLOCK;
-	    if (IS_AVAIL(art)) {
-	      if (!check_available || articleIsAvailable(newsgroup, i)) {
-		if (finished)
-		  *finished = True;
-		newsgroup->current = i;
-		goto done;
-	      }
-	      else if (finished && ! --max) {
-		*finished = False;
-		goto done;
-	      }
-	    }
-	}
-	newsgroup->current = newsgroup->last + 1;
-    }
-
-  done:
-    return ((orig != newsgroup->current) &&
-	    (newsgroup->current <= newsgroup->last));
+    return;
 }
 
 /*
@@ -644,146 +518,33 @@ int unreadNews()
 
     for (i = 0; i < MaxGroupNumber; i++) {
 	newsgroup = Newsrc[i];
+#ifdef WATCH
 	if (IS_SUBSCRIBED(newsgroup) && watchingGroup(newsgroup->name))
+#else
+	if (IS_SUBSCRIBED(newsgroup))
+#endif
+        {
 	    count += unreadArticleCount(newsgroup);
-    }
-    return count;
-}
-
-/*
-  Find the line in the specified newsgroup list (as returned by
-  unreadGroups, below) closest in the newsrc file to the specified
-  group, but not before it, and return the index of the first
-  character on the line containing the found group.  If the specified
-  group is actually in the newsgroup list, return the index of the
-  first character on the line containing the specified group.
-
-  When returning a line containing a newsgroup other than the one
-  specified, copies the new group into group_name, after reallocating
-  it so that it is just long enough to hold it.
-
-  When returning 0 because no match could be found, makes group_name
-  an empty string.
-  */
-int getNearbyNewsgroup(list, group_name)
-    char *list;
-    char **group_name;
-{
-    struct newsgroup *group;
-    char *ptr;
-    char *match_group = 0;
-
-    if (! group_name)
-	return 0;
-
-    if (! *group_name) {
-	*group_name = XtRealloc(*group_name, 1);
-	**group_name = '\0';
-    }
-
-    if (! **group_name) {
-	currentGroup(NEWSGROUP_MODE, list, group_name, 0);
-	return 0;
-    }
-
-    if (! avl_lookup(NewsGroupTable, *group_name, (char **) &group)) {
-	**group_name = '\0';
-	return 0;
-    }
-
-    /*
-      First, check the easy case -- the group is in the string.
-      */
-    for (ptr = list;
-	 ptr && (ptr = strstr(ptr, group->name));
-	 ptr = index(ptr, '\n')) {
-	while ((*ptr != '\n') && (ptr > list))
-	    ptr--;
-	if (ptr > list)
-	    ptr++;
-	currentGroup(NEWSGROUP_MODE, ptr, &match_group, 0);
-	if (! strcmp(group->name, match_group))
-	    break;
-    }
-
-    if (ptr) {
-	XtFree(match_group);
-	return ptr - list;
-    }
-
-    /*
-      Well, OK, that didn't work.  Algorithm: Figure out the position
-      in the Newsrc array of each newsgroup in the newsgroup list in
-      order, until we find one whose position is greater than or equal
-      to the position of the group we're looking for.  Return that
-      group's position in the list.
-
-      If all the newsgroups in the list are earlier in the Newsrc than
-      the one we're looking for, return the index of the beginning of
-      the end of the list.
-      */
-
-    for (ptr = list;
-	 ptr && *ptr;
-	 ptr = (ptr = index(ptr, '\n')) ? (ptr + 1) : 0) {
-	char *gptr;
-
-	currentGroup(NEWSGROUP_MODE, ptr, &match_group, 0);
-	if (! avl_lookup(NewsGroupTable, match_group, &gptr))
-	    continue;
-	if (((struct newsgroup *)gptr)->newsrc >= group->newsrc) {
-	    XtFree(*group_name);
-	    *group_name = match_group;
-	    return ptr - list;
 	}
     }
-
-    XtFree(match_group);
-
-    *group_name = XtRealloc(*group_name, 1);
-    **group_name = '\0';
-
-    if (ptr && *ptr)
-	return ptr - list;
-
-    /*
-      This shouldn't ever really happen, because the loop above should
-      terminate when it gets to the last line and realizes that
-      there's nothing on it, i.e., ptr is true but *ptr is false.
-      Just in case, though, we'll put a return here.
-      */
-    return 0;
+    return count;
 }
 
 
 /*
  * build and return a string of information about groups that need to be read
  */
-char *unreadGroups(line_length, mode)
-    int line_length;
+char * unreadGroups(mode)
     int mode;	/* 0 for unread groups, 1 for all subscribed to groups */
 {
-    static char *dummy = NULL;
-    static int dummy_size = 0, padding_size = 0;
+    char dummy[LINE_LENGTH];
     struct newsgroup *newsgroup;
     ng_num i;
     int unread, j;
     int bytes = 0, subscribedGroups = 0;
     char *string, **ar;
-    int newsgroup_length = line_length - NEWS_GROUP_LINE_CHARS;
-
-    if (newsgroup_length < 0)
-	newsgroup_length = 0;
 
     ar = ARRAYALLOC(char *, MaxGroupNumber);
-
-    if (! dummy_size) {
-      dummy_size = LINE_LENGTH;
-      dummy = XtMalloc(dummy_size);
-      padding_size = strlen(NEWSGROUPS_INDEX_MSG) + strlen(UNREAD_MSG) +
-	strlen(NEWS_IN_MSG) + 10 /* for unread count */ + strlen(NOT_ONE_MSG) +
-	10 /* for old count */ + 1 /* for null */;
-    }
 
     for (i = 0; i < MaxGroupNumber; i++) {
 	newsgroup = Newsrc[i];
@@ -791,21 +552,12 @@ char *unreadGroups(line_length, mode)
 	if (IS_SUBSCRIBED(newsgroup) &&
 	   (((unread = unreadArticleCount(newsgroup)) > 0) || mode)) {
 	    int total = totalArticleCount(newsgroup);
-	    while (dummy_size < padding_size + 
-		   MAX(newsgroup_length, strlen(newsgroup->name))) {
-	      dummy_size *= 2;
-	      dummy = XtRealloc(dummy, dummy_size);
-	    }
-	    (void) sprintf(dummy, NEWSGROUPS_INDEX_MSG,
-	                   (unread > 0 ? UNREAD_MSG : ""),
-	                   (total > 0 ? NEWS_IN_MSG : ""),
-			   -newsgroup_length, newsgroup->name, unread,
-			   ((unread != 1) ? NOT_ONE_MSG : " "),
-			   total - unread,
-			   /* It's OK if you get warnings about this
-			      argument not being used when compiling
-			      anything besides the French version. */
-			   ((total - unread != 1) ? NOT_ONE_MSG : " "));
+	    (void) sprintf(dummy, "%6s %7s %-40s%5d article%s +%5d old",
+	                   (unread > 0 ? "Unread" : ""),
+	                   (total > 0 ? "news in" : ""),
+			   newsgroup->name, unread,
+			   ((unread != 1) ? "s" : " "),
+			   total-unread);
 
 	    ar[subscribedGroups++] = XtNewString(dummy);
 	    bytes += strlen(dummy);
@@ -818,20 +570,6 @@ char *unreadGroups(line_length, mode)
     }
     FREE(ar);
     return string;
-}
-
-/*
-  Change a group's status so that it's no longer considered new.
-  */
-void clearNew(group)
-char *group;
-{
-  struct newsgroup *newsgroup;
-  
-  if (! avl_lookup(NewsGroupTable, group, (char **) &newsgroup))
-    return;
-
-  CLEAR_NEW(newsgroup);
 }
 
 
@@ -852,13 +590,13 @@ char * newGroups()
 
     gen = avl_init_gen(NewsGroupTable, AVL_FORWARD);
     if (! gen) {
-      ehErrorExitXRN(ERROR_OUT_OF_MEM_MSG);
+	ehErrorExitXRN("out of memory");
     }
 
     while (avl_gen(gen, &key, &value)) {
 	struct newsgroup *newsgroup = (struct newsgroup *) value;
 
-	if (IS_NEW(newsgroup)) {
+	if (IS_NOENTRY(newsgroup)) {
 	    ar[count++] = newsgroup->name;
 	    bytes += utStrlen(newsgroup->name);
 	}
@@ -878,56 +616,137 @@ char * newGroups()
     return string;
 }
 
+#ifdef XRN_PREFETCH
+
 void freePrefetchedGroupArticle()
 {
-#ifdef DEBUG
-    fprintf(stderr, "freePrefetchedGroupArticle()\n");
-#endif
+    struct article *articles;
+    long indx;
 
     if (PrefetchedGroup) {
-	struct article *art = artStructGet(PrefetchedGroup,
-					   PrefetchedGroup->current, True);
-	if (IS_FETCHED(art))
-	    CLEAR_FILE(art);
-	artStructSet(PrefetchedGroup, &art);
+	articles = GETARTICLES(PrefetchedGroup);
+	indx = PrefetchedGroup->current - PrefetchedGroup->first;
+    
+	/* free the first article if it has been prefetched */
+	if (IS_FETCHED(articles[indx])) {
+	    CLEAR_FILE(articles[indx]);
+	}
     }
-
-#ifdef DEBUG
-    fprintf(stderr, "freePrefetchedGroupArticle() done\n");
-#endif
-
+    
     return;
 }
 
-static void adjustPrefetchChunk _ARGUMENTS((long, long, int *));
+#endif /* XRN_PREFETCH */
 
-static void adjustPrefetchChunk(actual_time, desired_time, chunk_size)
-    long actual_time, desired_time;
-    int *chunk_size;
+#ifdef STUPIDMMU
+
+/* utterly disgusting interface so things will work like before
+	should store this info in some other format than struct list
+	and some other field than nglist
+*/
+
+static void updateNglist _ARGUMENTS((struct newsgroup *));
+
+static void updateNglist(newsgroup)
+    struct newsgroup *newsgroup;
 {
-#ifdef DEBUG
-    fprintf(stderr, "adjustPrefetchChunk(%ld, %ld, %d)\n", actual_time,
-	    desired_time, *chunk_size);
-#endif
+	int nocomma = 1, inrange = 1;
+	art_num lastread = 1, j;
+	struct list *item, *it, *next;
 
-    if (! desired_time)
-	goto done;
-    if (! actual_time) {
-	*chunk_size *= 2;
-    }
-    else {
-	*chunk_size = *chunk_size * desired_time / actual_time;
-    }
+	if ((newsgroup->articles == NIL(struct article))
+				|| newsgroup->nglist) {
+	  printf("unexpected call to updateNglist\n");
+	  return;
+	}
+	
+	if (newsgroup->last >= newsgroup->first) {
 
-  done:
-    if (*chunk_size < PREFETCH_MIN_CHUNK)
-      *chunk_size = PREFETCH_MIN_CHUNK;
-#ifdef DEBUG
-    fprintf(stderr, "adjustPrefetchChunk(%ld, %ld, %d) done\n",
-	    actual_time, desired_time, *chunk_size);
-#endif
-    return;
+	    for (j = newsgroup->first; j <= newsgroup->last; j++) {
+		if (inrange && IS_UNREAD(newsgroup->articles[INDEX(j)]) &&
+		    !IS_UNAVAIL(newsgroup->articles[INDEX(j)])) {
+		    if (lastread == j - 1) {
+			item = ALLOC(struct list);
+			item->type = SINGLE;
+			item->contents.single = lastread;
+			item->next = newsgroup->nglist;
+			newsgroup->nglist = item;
+		    } else {
+			if ((j - 1) > 0) {
+			  item = ALLOC(struct list);
+			  item->type = RANGE;
+			  item->contents.range.start = lastread;
+			  item->contents.range.end = j - 1;
+			  item->next = newsgroup->nglist;
+			  newsgroup->nglist = item;
+			}
+		    }
+
+		    inrange = 0;
+		} else if (!inrange && IS_READ(newsgroup->articles[INDEX(j)])) {
+		    inrange = 1;
+		    lastread = j;
+		}
+	    }
+	    
+	    if (inrange) {
+		if (lastread == newsgroup->last) {
+		  item = ALLOC(struct list);
+		  item->type = SINGLE;
+		  item->contents.single = lastread;
+		  item->next = newsgroup->nglist;
+		  newsgroup->nglist = item;
+		} else {
+		  item = ALLOC(struct list);
+		  item->type = RANGE;
+		  item->contents.range.start = lastread;
+		  item->contents.range.end = newsgroup->last;
+		  item->next = newsgroup->nglist;
+		  newsgroup->nglist = item;
+		}
+	    }
+	} else {
+	    if (newsgroup->last > 1) {
+		  item = ALLOC(struct list);
+		  item->type = RANGE;
+		  item->contents.range.start = 1;
+		  item->contents.range.end = lastread;
+		  item->next = newsgroup->nglist;
+		  newsgroup->nglist = item;
+	    }
+	}
+
+	/* reverse order */
+	for (it = newsgroup->nglist, newsgroup->nglist = NIL(struct list);
+			it; it = next) {
+	  next = it->next;
+	  it->next = newsgroup->nglist;
+	  newsgroup->nglist = it;
+	}
 }
+
+
+#if 0 /* not used */
+void dumpNg(newsgroup)
+    struct newsgroup *newsgroup;
+{
+	struct list *it;
+
+	for (it = (struct list *) newsgroup->nglist; it; it = it->next) {
+	  printf("type = %d", it->type);
+	  if (it->type == RANGE) {
+	    printf(" start = %d, end = %d, next = 0x%x\n",
+	      it->contents.range.start, it->contents.range.end,
+	      it->next);
+	  } else {
+	    printf(" single = %d, next = 0x%x\n", it->contents.single,
+	      it->next);
+	  }
+	}
+}
+#endif
+
+#endif /* STUPIDMMU */
 
 
 /*
@@ -940,38 +759,36 @@ void releaseNewsgroupResources(newsgroup)
 {
 #ifdef DEBUG
     fprintf(stderr, "releaseNewsgroupResources(%s)\n",
-	newsgroup ? newsgroup->name : "NULL");
+	newsgroup->name ? newsgroup->name : "NULL");
 #endif /* DEBUG */
 
     if (newsgroup) {
-	struct article *original, copy;
-	art_num artnum;
-
-	groupSnapshotFree(newsgroup);
-
-	if (newsgroup->thread_table) {
-	  hash_table_destroy(newsgroup->thread_table);
-	  newsgroup->thread_table = 0;
-	}
+	struct article *articles = GETARTICLES(newsgroup);
+	art_num art;
 
 	if ((newsgroup->last == 0) || EMPTY_GROUP(newsgroup)) {
 	    return;
 	}
 
-	for (artnum = newsgroup->first; artnum <= newsgroup->last; artnum++) {
-	    original = artStructGet(newsgroup, artnum, False);
-	    copy = *original;
-
-	    CLEAR_ALL_NO_FREE(&copy);
-
-	    SET_UNMARKED(&copy);
-	    SET_STRIPPED_HEADERS(&copy);
-	    SET_UNROTATED(&copy);
-	    SET_UNXLATED(&copy);
-	    SET_UNLISTED(&copy);
-
-	    artStructReplace(newsgroup, &original, &copy, artnum);
+	for (art = newsgroup->first; art <= newsgroup->last; art++) {
+	    long indx = INDEX(art);
+	    
+	    CLEAR_SUBJECT(articles[indx]);
+	    CLEAR_AUTHOR(articles[indx]);
+	    CLEAR_LINES(articles[indx]);
+	    CLEAR_FILE(articles[indx]);
+	    SET_UNMARKED(articles[indx]);
+#ifndef STUPIDMMU
+	    SET_STRIPPED_HEADERS(articles[indx]);
+	    SET_UNROTATED(articles[indx]);
+	    SET_UNXLATED(articles[indx]);
+#endif
 	}
+#ifdef STUPIDMMU
+	/* free the articles array every time */
+	updateNglist(newsgroup);
+	CLEAR_ARTICLES(newsgroup);
+#endif
     }
 
     return;
@@ -988,10 +805,13 @@ void articleArrayResync(newsgroup, first, last, number)
     art_num first, last;
     int number;
 {
-#ifdef DEBUG
-    fprintf(stderr, "articleArrayResync(%s, %d, %d, %d)\n",
-	    newsgroup ? newsgroup->name : "NULL", first, last, number);
+#ifdef STUPIDMMU
+    struct article *articles;
+#else
+    struct article *articles = GETARTICLES(newsgroup);
 #endif
+    struct article *newarticles;
+    int i;
 
     /*
      * if there are actually no articles in the group, free up the
@@ -999,7 +819,7 @@ void articleArrayResync(newsgroup, first, last, number)
      */
        
     if (number == 0) {
-	artListFree(newsgroup);
+	CLEAR_ARTICLES(newsgroup);
 	newsgroup->first = newsgroup->last + 1;
 	return;
     }
@@ -1012,41 +832,85 @@ void articleArrayResync(newsgroup, first, last, number)
     if (first > last) {
 	/* all articles have been removed */
 
-	artListFree(newsgroup);
+	CLEAR_ARTICLES(newsgroup);
 	newsgroup->first = newsgroup->last + 1;
 	return;
     }
 
-    /* don't allow first or last to go backwards!!! */
-    if (first < newsgroup->first)
-	first = newsgroup->first;
-    if (last < newsgroup->last)
+    /* don't allow last to go backwards!!! */
+    if (last < newsgroup->last) {
 	last = newsgroup->last;
-
-    if (! artListFirst(newsgroup, 0, 0)) {
-	newsgroup->first = first;
-	newsgroupSetLast(newsgroup, last);
-	artListSet(newsgroup);
     }
-    else {
-	int i;
-	struct article *art, copy;
 
-        ART_STRUCT_UNLOCK;
+    if ((first != newsgroup->first) || (last != newsgroup->last)) {
 
-	newsgroupSetLast(newsgroup, last);
+#ifdef STUPIDMMU
+	/* only do this if the articles array has been allocated */
+	if (newsgroup->articles) {
+#endif
 
-	copy.status = ART_CLEAR_READ;
-	CLEAR_ALL_NO_FREE(&copy);
+	/* the first/last values have changed, resync */
+	newarticles = ARRAYALLOC(struct article, last - first + 1);
 
-	SET_UNAVAIL(&copy);
-	for (i = newsgroup->first; (i < first) && (i <= newsgroup->last); i++) {
-	    art = artStructGet(newsgroup, i, False);
-	    artStructReplace(newsgroup, &art, &copy, i);
+	/*
+	 * initialize the new article structures
+	 */
+	
+	for (i = first; i <= last; i++) {
+	    newarticles[i - first].subject = NIL(char);
+	    newarticles[i - first].author = NIL(char);
+	    newarticles[i - first].filename = NIL(char);
+	    newarticles[i - first].lines = NIL(char);
+	    if (i < newsgroup->first) {
+		/* handle first decreasing... mark them as read */
+		newarticles[i - first].status = ART_CLEAR_READ;
+	    } else {
+		newarticles[i - first].status = ART_CLEAR;
+	    }
 	}
 
+#ifdef STUPIDMMU
+	articles = newsgroup->articles;
+#endif
+	if (!EMPTY_GROUP(newsgroup) && (newsgroup->first != 0) && (newsgroup->last != 0)) {
+	    for (i = first; i <= last; i++) {
+		if ((i >= newsgroup->first) && (i <= newsgroup->last)) {
+		    newarticles[i - first] = articles[INDEX(i)];
+		}
+	    }
+
+	    /* free up the old resources - before the new first */
+	    for (i = newsgroup->first; i < first; i++) {
+		long indx = INDEX(i);
+		CLEAR_SUBJECT(articles[indx]);
+		CLEAR_AUTHOR(articles[indx]);
+		CLEAR_LINES(articles[indx]);
+		CLEAR_FILE(articles[indx]);
+	    }
+	    /* after the new last */
+	    for (i = last + 1; i < newsgroup->last; i++) {
+		long indx = INDEX(i);
+		CLEAR_SUBJECT(articles[indx]);
+		CLEAR_AUTHOR(articles[indx]);
+		CLEAR_LINES(articles[indx]);
+		CLEAR_FILE(articles[indx]);
+	    }
+	}
+
+	if (articles != NIL(struct article)) {
+	    FREE(articles);
+	}
+	newsgroup->articles = newarticles;
+
+#ifdef STUPIDMMU
+	}
+#endif
+
 	newsgroup->first = first;
+	newsgroup->last = last;
     }
+
+    return;
 }
 
 
@@ -1065,6 +929,7 @@ char *localKillFile(newsgroup, mode)
     (void) strcpy(buffer, app_resources.expandedSaveDir);
     i = strlen(buffer);
 
+#ifndef VMS
     buffer[i++] = '/';
 
     for (ptr = newsgroup->name; *ptr != 0; ptr++) {
@@ -1083,7 +948,11 @@ char *localKillFile(newsgroup, mode)
     if (mode) {
 	(void) mkdir(buffer, 0777);
     }
-    (void) sprintf(&buffer[i], "/%s", app_resources.killFileName);
+    (void) strcpy(&buffer[i], "/KILL");
+#else
+    i = i + utGroupToVmsFilename(&buffer[i], newsgroup->name);
+    (void) strcpy(&buffer[i], ".KILL");
+#endif
 
     return buffer;
 }
@@ -1095,1052 +964,458 @@ char * globalKillFile()
     if (!createNewsDir()) {
 	return NIL(char);
     }
-    (void) sprintf(buffer, "%s/%s", app_resources.expandedSaveDir,
-		   app_resources.killFileName);
+    (void) strcpy(buffer, app_resources.expandedSaveDir);
+#ifndef VMS
+    (void) strcat(buffer, "/KILL");
+#else
+    (void) strcat(buffer, "NEWS$GLOBAL.KILL");
+#endif
     return buffer;
 }
 
 
 /*
-  Convert a string to a regular expression matching that string.  The
-  resulting regular expression is *not* anchored, i.e., it will match
-  any string of which the string passed into it is a subsctring.
-
-  The returned string is static memory which is not valid after the
-  next call to this function.
-  */
-char *stringToRegexp(input, max_length)
-    char *input;
+ * add a kill subject/author entry to a kill file
+ */
+void killItem(item, type)
+    char *item;
+    int type;
 {
-    static char output[BUFFER_SIZE];
-    char *inptr, *outptr;
-    int back;
+    char input[BUFFER_SIZE], *iptr;
+    char output[BUFFER_SIZE], *optr;
+    FILE *fp;
+    struct newsgroup *newsgroup = CurrentGroup;
+    char *file;
 
-    max_length -= 2; /* to make room for braces */
-    
-    /* quote or get rid of all magic characters */
-    for (inptr = input, outptr = output;
-	 (*inptr && (outptr - output < sizeof(output) - 4));
-	 inptr++, outptr++) {
-	switch (*inptr) {
-	case '/':
-	case '\\':
-	case '[':
-	/* Theoretically, ']' shouldn't be special when it isn't
-	   preceded by '[', but it doesn't hurt to be cautious. */
-	case ']':
-	case '.':
-	case '^':
-	case '*':
-	case '$':
-	    *outptr++ = '\\';
-	    *outptr = *inptr;
-	    back = 1;
-	    break;
-	/*
-	  Some characters can't be backslashed, because they are
-	  literal when backslashed in some regular expression
-	  libraries, and when not backslashed in others.  We could do
-	  different things here based on whether SYSV_REGEX is
-	  defined, but that seems like a bad idea, because it means
-	  that the KILL file will have a different meaning based on
-	  what kind of system it's read on.  We want KILL file regexps
-	  to be portable.
-
-	  Some day, we'll use the GNU regexp library or something on
-	  all platforms, and we'll be able to do the right thing for
-	  all characters.  In the meantime, we'll check for these
-	  special characters by putting them inside square braces,
-	  which means the same thing in all of the regular expression
-	  packages.
-	*/
-	    /*
-	      The POSIX regexp functions apparently treat \?, \+,
-	      \{, and \} specially.
-	      */
-	case '{':
-	case '}':
-	case '?':
-	case '+':
-	case '(':
-	/* On some systems, it's an error for there to be a ')' with
-	   no matching '(' before it. */
-	case ')':
-	    *outptr++ = '[';
-	    *outptr++ = *inptr;
-	    *outptr = ']';
-	    back = 2;
-	    break;
-	default:
-	    *outptr = *inptr;
-	    back = 0;
-	    break;
-	}
-	if (outptr - output >= max_length) {
-	  outptr -= back;
-	  break;
-	}
+    if (type == KILL_LOCAL) {
+	file = localKillFile(newsgroup, 1);
+    } else {
+	file = globalKillFile();
     }
-    *outptr = '\0';
-    return output;
+
+    if ((fp = fopen(file, "a")) == NULL) {
+	mesgPane(XRN_SERIOUS, CANT_OPEN_KILL_MSG,
+		 ((type == KILL_LOCAL) ? "local" : "global"),
+		 file, newsgroup->name, errmsg(errno));
+	return;
+    }
+
+    /* get rid of all magic characters */
+    (void) strncpy(input, item, sizeof(input));
+    iptr = input;
+    optr = output;
+    while (*iptr) {
+	if ((*iptr == '/')  ||
+	    (*iptr == '\\') ||
+	    (*iptr == '(')  ||
+	    /* On some systems, it's an error for there to be a ')'
+	       with no matching '(' before it. */
+	    (*iptr == ')')  ||
+	    (*iptr == '[')  ||
+	    /* Theoretically, ']' shouldn't be special when it isn't
+	       preceded by '[', but it doesn't hurt to be cautious. */
+	    (*iptr == ']')  ||
+	    (*iptr == '+')  ||
+	    (*iptr == '-')  ||
+	    (*iptr == ':')  ||
+	    (*iptr == '.')  ||
+	    (*iptr == '^')  ||
+	    (*iptr == '*')  ||
+	    (*iptr == '$')  ||
+	    (*iptr == '\'') ||
+	    (*iptr == '\"')) {
+	    /* XXX Why replace with '.' instead of quoting with
+	       backslash?  I don't know the answer to this, but on the
+	       off chance that there's a reason, I'm not going to
+	       change it. -- jik 10/12/94 */
+	    *iptr = '.';
+	}
+	*optr++ = *iptr++;
+    }
+    *optr = '\0';
+
+    fprintf(fp, "/%.24s/:j\n", output);
+    (void) fclose(fp);
+    return;
 }
 
 
 /*
  * kill all subjects in the newsgroup that match the kill
  * orders in fp.
- *
- * Returns True if it gets to the end of the group, False otherwise.
  */
 /* XXX  THIS ROUTINE REALLY NEEDS TO BE CLEANED UP */
-static Boolean killArticles _ARGUMENTS((struct newsgroup *, int *));
+static void killArticles _ARGUMENTS((struct newsgroup *, FILE *));
 
-static Boolean killArticles(newsgroup, max)
+static void killArticles(newsgroup, fp)
     struct newsgroup *newsgroup;
-    int *max;
+    FILE *fp;
 {
-    struct article *art;
-    art_num i, start, last;
-    char *subject, *from, *newsgroups, *date, *id, *references, *xref, *approved;
-    int scount = 0, kcount = 0, mcount = 0, tcount = 0;
-    int mesg_name;
-    kill_entry *entry;
-    kill_file_iter_handle handle = 0;
-    kill_file *kf;
-    int cur_mode = KILL_LOCAL;
+    char string[BUFFER_SIZE], pattern[BUFFER_SIZE], commands[BUFFER_SIZE];
+    char dummy[BUFFER_SIZE];
+    art_num i, start = newsgroup->current;
+    char *subject, *author, *subj, *ptr, *pptr;
+    int scount = 0, kcount = 0, ucount = 0, mcount = 0;
+    int append;
+    char *reRet;
+    char type;
 
-    kf = (kill_file *)newsgroup->kill_file;
+    mesgDisableRedisplay();
 
-    start = MAX(newsgroup->current, MIN(kf->thru + 1, newsgroup->last));
-    do {
-	art = artStructGet(newsgroup, start, False);
-	ART_STRUCT_UNLOCK;
-	if (IS_KILLED(art))
-	    start++;
-    } while (IS_KILLED(art) && (start <= newsgroup->last));
+    (void) sprintf(dummy, "Processing KILL file for newsgroup `%s'...",
+		   newsgroup->name);
+    info(dummy);
 
-    if (max)
-	last = MIN(newsgroup->last, start + *max - 1);
-    else
-	last = newsgroup->last;
+    /* XXX don't reprocess global each time, keep in persistent hash table */
 
-    for (i = start; i <= last; i++) {
-	art = artStructGet(newsgroup, i, False);
-	ART_STRUCT_UNLOCK;
-	if (IS_KILLED(art) || IS_UNAVAIL(art))
-	    last = MIN(newsgroup->last, last + 1);
-    }
+    while (fgets(string, sizeof(string), fp) != NULL) {
+	append = 0;
 
-    if (kf->count)
-      kf->flags |= KF_CHANGED;
-
-    kf->thru = MAX(kf->thru, MIN(start, last));
-
-    if (start > last)
-	return True;
-
-    kf->thru = last;
-
-    while (1) {
-      if (! (entry = kill_file_iter(newsgroup, cur_mode, &handle))) {
-	if (cur_mode != KILL_LOCAL)
-	  break;
-	cur_mode = KILL_GLOBAL;
-	handle = 0;
-	continue;
-      }
-
-      if (entry->type != KILL_ENTRY)
-	continue;
-
-      mesg_name = newMesgPaneName();
-
-      for (i = start; i <= last; i++) {
-	int field_count = 0;
-
-	art = artStructGet(newsgroup, i, False);
-
-	/* short cut */
-	if (IS_KILLED(art) || IS_UNAVAIL(art) ||
-	    ((entry->entry.action_flags & (KILL_JUNK|KILL_SUBTHREAD|KILL_THREAD))
-	     && IS_READ(art)) ||
-	    ((entry->entry.action_flags & KILL_MARK) && IS_UNREAD(art))) {
-	  ART_STRUCT_UNLOCK;
-	  continue;
+	/*
+	 * see if there is a 'THRU artnum' line, if so,
+	 * only compare subjects from that article on
+	 * XXX need to update THRU
+	 */
+	if (STREQN(string, "THRU", 4)) {
+	    i = atol(&string[5]);
+	    /* if THRU is less than current, ignore it */
+	    start = MAX(i + 1, newsgroup->current);
+	    continue;
 	}
 
-#define CHECK_FIELD(flag, name) \
-	if (entry->entry.check_flags & flag) { \
-	  if ((name = art->name)) \
-	    field_count++; \
-	} \
-	else \
-	  name = 0;
+	if (*string == '&') {
+	    /* 'rn' switch setting, ignore */
+	    continue;
+	}
 
-	CHECK_FIELD(KILL_SUBJECT, subject);
-	CHECK_FIELD(KILL_AUTHOR, from);
-	CHECK_FIELD(KILL_NEWSGROUPS, newsgroups);
-	CHECK_FIELD(KILL_DATE, date);
-	CHECK_FIELD(KILL_ID, id);
-	CHECK_FIELD(KILL_REFERENCES, references);
-	CHECK_FIELD(KILL_XREF, xref);
-	CHECK_FIELD(KILL_APPROVED, approved);
+	/*
+	 * process kill file request should be in the form
+	 */
+	ptr = string + 1;
+	pptr = pattern;
 
-	if (field_count) {
-	  struct article copy;
-	  unsigned char changed = FALSE;
+	while (*ptr && (*ptr != '/' || ((*ptr == '/') &&
+					*(ptr - 1) == '\\'))) {
+	   *pptr++ = *ptr;
+	   ptr++;
+	}
+	*pptr = '\0';
 
-	  copy = *art;
+	if (!*ptr) {
+	    mesgPane(XRN_SERIOUS, MALFORMED_KILL_ENTRY_MSG, string,
+		     newsgroup->name, "no slash terminating the regular expression");
+	    continue;
+	}
 
-#ifdef POSIX_REGEX
-# define KILL_MATCH(a)	((a) && (! regexec(&entry->entry.reStruct, (a), 0, 0, 0)))
+	/* rn puts ': *' in front of patterns, xrn doesn't */
+	if (strncmp(pattern, ": *", 3) == 0) {
+	    /* deal with overlapping strings */
+	    (void) strcpy(dummy, pattern + 3);
+	    (void) strcpy(pattern, dummy);
+	}
+
+	/* XXX kludge to deal with :.*checks */
+	if (*pattern == ':') {
+	    /* deal with overlapping strings */
+	    (void) strcpy(dummy, pattern + 1);
+	    (void) strcpy(pattern, dummy);
+	}
+
+#ifdef SYSV_REGEX
+	if ((reRet = regcmp(pattern, NULL)) == NULL)
 #else
-# ifdef SYSV_REGEX
-#  define KILL_MATCH(a)	((a) && (regex(entry->entry.reStruct, (a)) != NULL))
-# else
-#  define KILL_MATCH(a)	((a) && re_exec(a))
-# endif
+	if ((reRet = re_comp(pattern)) != NIL(char))
 #endif
-
-	  if (KILL_MATCH(subject) || KILL_MATCH(from) ||
-	      KILL_MATCH(date) || KILL_MATCH(newsgroups) ||
-	      KILL_MATCH(id) || KILL_MATCH(references) ||
-	      KILL_MATCH(xref) || KILL_MATCH(approved)) {
-	    kill_update_last_used(kf, entry);
-
-	    switch (entry->entry.action_flags) {
-	    case KILL_SUBTHREAD:
-	    case KILL_THREAD: {
-	      char *id = 0, *quoted_id;
-
-	      if (entry->entry.action_flags == KILL_THREAD)
-		id = getFirstReference(art->references);
-	      if (! id)
-		id = art->id;
-
-	      quoted_id = stringToRegexp(id, MAX_KILL_PATTERN_VALUE_LENGTH);
-	      add_kill_entry(newsgroup, cur_mode, "References", quoted_id);
-	      entry = kill_file_iter_refresh(newsgroup, cur_mode, &handle);
-	      if (index(app_resources.verboseKill, 't'))
-		mesgPane(XRN_INFO, mesg_name, KILL_THREAD_MSG, art->subject);
-	      tcount++;
-	      /* fall through to kill the article itself */
-	    }
-	    case KILL_JUNK:
-	      SET_READ(&copy);
-	      if (index(app_resources.verboseKill, 'j')) {
-		mesgPane(XRN_INFO, mesg_name, KILL_KILLED_MSG,
-			 art->subject);
-	      }
-	      kcount++;
-	      changed = TRUE;
-	      break;
-
-	    case KILL_MARK:
-	      SET_UNREAD(&copy);
-	      if (index(app_resources.verboseKill, 'm')) {
-		mesgPane(XRN_INFO, mesg_name, KILL_UNREAD_MSG,
-			 art->subject);
-	      }
-	      mcount++;
-	      changed = TRUE;
-	      break;
-
-	    case KILL_SAVE:
-	      (void) saveArticle(NIL(char), newsgroup, i, False,
-				 False);
-	      if (index(app_resources.verboseKill, 's')) {
-		mesgPane(XRN_INFO, mesg_name, KILL_SAVED_MSG,
-			 art->subject);
-	      }
-	      scount++;
-	      changed = TRUE;
-	      break;
-	    default:
-	      mesgPane(XRN_SERIOUS, mesg_name, UNKNOWN_FUNC_RESPONSE_MSG,
-		       entry->entry.action_flags, "kill_file_iter(action_flags)",
-		       "killArticles");
-	      break;
-	    }
-	  }
-
-	  if (changed)
-	    artStructReplace(newsgroup, &art, &copy, i);
-	  else
-	    ART_STRUCT_UNLOCK;
+	{
+#ifdef SYSV_REGEX
+	    mesgPane(XRN_SERIOUS, UNKNOWN_KILL_REGEXP_ERROR_MSG, string);
+#else
+	    mesgPane(XRN_SERIOUS, KNOWN_KILL_REGEXP_ERROR_MSG, string, reRet);
+#endif
+	    continue;
 	}
-	else
-	  ART_STRUCT_UNLOCK;
-      }
+
+	ptr++;	/* skip past the slash */
+	(void) strcpy(commands, ptr);
+	if ((ptr = index(commands, ':')) == NIL(char)) {
+	    mesgPane(XRN_SERIOUS, MALFORMED_KILL_ENTRY_MSG, string,
+		     newsgroup->name, "no colon after the regular expression");
+#ifdef SYSV_REGEX
+	    FREE(reRet);
+#endif
+	    continue;
+	}
+	ptr++;	/* skip past the colon */
+	type = *ptr;
+
+	switch (type) {
+	    case 'j':
+	    case 'm':
+	    case 's':
+	        break;
+	    default:
+	        mesgPane(XRN_INFO, MALFORMED_KILL_ENTRY_MSG, string,
+			 newsgroup->name,
+			 "unknown command (valid commands are `j', `m', and `s')");
+	        break;
+	}
+	    
+	for (i = start; i <= newsgroup->last; i++) {
+
+	    /* short cut */
+	    if (IS_UNAVAIL(newsgroup->articles[INDEX(i)]) ||
+		((type == 'j') && IS_READ(newsgroup->articles[INDEX(i)])) ||
+		((type == 'm') && IS_UNREAD(newsgroup->articles[INDEX(i)]))) {
+		continue;
+	    }
+
+	    if (newsgroup->articles[INDEX(i)].subject ||
+	        newsgroup->articles[INDEX(i)].author) {
+
+		subject = newsgroup->articles[INDEX(i)].subject;
+		author = newsgroup->articles[INDEX(i)].author;
+
+		if (subject) {
+		    subj = strip(subject, FALSE);
+		}
+
+#ifdef SYSV_REGEX
+		if ((subject && (regex(reRet, subj) != NULL)) ||
+		    (author  && (regex(reRet, author) != NULL)))
+#else
+		if ((subject && re_exec(subj)) ||
+		    (author  && re_exec(author)))
+#endif
+                {
+		    switch (type) {
+			case 'j':
+			    SET_READ(newsgroup->articles[INDEX(i)]);
+			    if (app_resources.verboseKill == True) {
+			        mesgPane(XRN_INFO | append, "killed - %s",
+					 subject);
+				append = XRN_APPEND;
+			    }
+			    kcount++;
+			    break;
+
+			case 'm':
+			    SET_UNREAD(newsgroup->articles[INDEX(i)]);
+			    mesgPane(XRN_INFO | append, "marked unread - %s",
+				     subject);
+			    append = XRN_APPEND;
+			    mcount++;
+			    break;
+
+			case 's':
+			    (void) saveArticle(NIL(char), newsgroup, i);
+			    mesgPane(XRN_INFO | append, "saved - %s",
+				     subject);
+			    append = XRN_APPEND;
+			    scount++;
+			    break;
+
+			default:
+			    ucount++;
+			    break;
+		    }
+		}
+	    }
+	}
+
+#ifdef SYSV_REGEX
+	FREE(reRet);
+#endif
     }
 
-    for (i = start; i <= last; i++) {
-	art = artStructGet(newsgroup, i, True);
-	SET_KILLED(art);
-	artStructSet(newsgroup, &art);
-    }
-
-    mesg_name = newMesgPaneName();
-
-#define printcount(c,cmd,m) \
-    if (c && index(app_resources.verboseKill, cmd)) { \
-	mesgPane(XRN_INFO, mesg_name, m, c, ((c==1) ? "" : NOT_ONE_MSG), \
+    append = 0;
+	    
+#define printcount(c,m) \
+    if( c != 0 ) \
+    {	\
+	mesgPane(XRN_INFO | append, m, c, \
+		 ((c==1) ? "" : "s"), \
 		 newsgroup->name); \
+	append = XRN_APPEND; \
     }
 
-    printcount(kcount, 'j', COUNT_KILLED_MSG);
-    printcount(mcount, 'm', COUNT_UNREAD_MSG);
-    printcount(scount, 's', COUNT_SAVED_MSG);
-    printcount(tcount, 't', COUNT_THREAD_MSG);
+    if (app_resources.verboseKill == True) {
+	printcount(kcount, "killed %d article%s in %s");
+	printcount(mcount, "marked %d article%s unread in %s");
+	printcount(scount, "saved %d article%s in %s");
+	printcount(ucount, "matched %d article%s with unknown option in %s");
+    }
 
 #undef printcount
 
-    if (last == newsgroup->last)
-	return True;
-    else {
-      if (max)
-	*max = last - start + 1;
-      return False;
-    }
+    mesgEnableRedisplay();
+
+    (void) sprintf(dummy, "Processing KILL file for newsgroup `%s'... done.",
+		   newsgroup->name);
+    info(dummy);
+
+    return;
 }
 
     
 /*
  * mark articles as read if in the kill files
  */
-static Boolean checkKillFiles _ARGUMENTS((struct newsgroup *, Boolean));
+static void checkKillFiles _ARGUMENTS((struct newsgroup *));
     
-static Boolean checkKillFiles(
-			      _ANSIDECL(struct newsgroup *,	newsgroup),
-			      _ANSIDECL(Boolean,		prefetching)
-			      )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(Boolean,			prefetching)
+static void checkKillFiles(newsgroup)
+    struct newsgroup *newsgroup;
 {
-    static int chunk_size;
-    long start WALL(= 0), end;
-    static struct newsgroup *last_group = 0;
-    char dummy[LABEL_SIZE];
-    Boolean finished = True;
-    fetch_flag_t fetched = newsgroup->fetch;
+    FILE *fp;
 
-#ifdef DEBUG
-    fprintf(stderr, "checkKillFiles(%s, %d)\n", newsgroup->name, prefetching);
-#endif
-
-    /*
-      Make sure the local and global kill files for the group are read in.
-      */
-    read_local_kill_file(newsgroup);
-    read_global_kill_file(newsgroup);
-
-    if (fetched != newsgroup->fetch) {
-      finished = False;
-      goto done;
+    if ((fp = fopen(globalKillFile(), "r")) != NULL) {
+	killArticles(newsgroup, fp);
+	(void) fclose(fp);
     }
 
-    if (! has_kill_files(newsgroup))
-      goto done;
-
-    (void) sprintf(dummy, PROCESS_KILL_FOR_MSG, newsgroup->name);
-    maybeInfoNow(dummy);
-
-    /*
-      Reset the chunk size for each newsgroup, because different
-      newsgroups have different KILL files and therefore will take
-      different amounts of time to kill.
-      */
-    if (last_group != newsgroup) {
-	chunk_size = PREFETCH_CHUNK;
-	last_group = newsgroup;
-    }
-    if (prefetching)
-	start = time(0);
-    
-    finished = killArticles(newsgroup, prefetching ? &chunk_size : 0);
-
-    if (prefetching && !finished) {
-	end = time(0);
-	adjustPrefetchChunk(end - start, PREFETCH_CHUNK_TIME, &chunk_size);
+    if ((fp = fopen(localKillFile(newsgroup, 0), "r")) != NULL) {
+	killArticles(newsgroup, fp);
+	(void) fclose(fp);
     }
 
-    if (finished) {
-	(void) sprintf(dummy, PROCESS_KILL_FOR_MSG, newsgroup->name);
-	(void) strcat(dummy, " ");
-	(void) strcat(dummy, DONE_MSG);
-	INFO(dummy);
-    }
-
-done:
-#ifdef DEBUG
-    fprintf(stderr, "checkKillFiles(%s, %d) = %d\n",
-	    newsgroup->name, prefetching, finished);
-#endif
-    return finished;
-
+    return;
 }
 
+
+#ifdef XRN_PREFETCH
+
+/*ARGSUSED*/
+static void checkPrefetch _ARGUMENTS((XtPointer, XtIntervalId *));
+
+static void checkPrefetch(closure, id)
+    XtPointer closure;
+    XtIntervalId *id;
+{
+    if (PrefetchInProgress)
+	 XtAddTimeOut(1000, checkPrefetch, 0);
+}
 
 void finishPrefetch()
 {
-    struct newsgroup *our_group = PrefetchingGroup;
-
-#ifdef DEBUG
-    fprintf(stderr, "finishPrefetch()\n");
-#endif
-
-    FinishingPrefetch = True;
-    while (our_group == PrefetchingGroup)
-	(*PrefetchingProc)(PrefetchingGroup);
-    FinishingPrefetch = False;
-
-#ifdef DEBUG
-    fprintf(stderr, "finishPrefetch() done\n");
-#endif
-}
-
-void resetPrefetch()
-{
-  struct newsgroup *newsgroup = 0;
-
-  if (PrefetchedGroup) {
-    newsgroup = PrefetchedGroup;
-    PrefetchedGroup = 0;
-  }
-  else if (PrefetchingGroup) {
-    newsgroup = PrefetchingGroup;
-    PrefetchingGroup = 0;
-    /* XXX assumes work proc id's are always non-zero; I don't know if
-       this is guaranteed by the specs */
-    if (prefetch_id) {
-      XtRemoveWorkProc(prefetch_id);
-      prefetch_id = 0;
+    while (PrefetchInProgress) {
+	XtAddTimeOut(1000, checkPrefetch, 0);
+	XtProcessEvent(XtIMTimer);
     }
-  }
-
-  if (newsgroup)
-    prefetchGroup(newsgroup->name);
-}
-
-void suspendPrefetch()
-{
-  /* XXX assumes work proc id's are always non-zero; I don't know if
-     this is guaranteed by the specs */
-  if (PrefetchingGroup && prefetch_id) {
-    XtRemoveWorkProc(prefetch_id);
-    prefetch_id = 0;
-  }
 }
 
 void cancelPrefetch()
 {
-    char msg[LABEL_SIZE];
-
-#ifdef DEBUG
-    fprintf(stderr, "cancelPrefetch()\n");
-#endif
-
     if (PrefetchedGroup) {
 	freePrefetchedGroupArticle();
 	releaseNewsgroupResources(PrefetchedGroup);
+	PrefetchedGroup = 0;
     }
-
-    if (PrefetchingGroup) {
-	releaseNewsgroupResources(PrefetchingGroup);
-	(void) sprintf(msg, PREFETCHING_MSG, PrefetchingGroup->name);
-	(void) strcat(msg, " ");
-	(void) strcat(msg, ABORTED_MSG);
-	INFO(msg);
+    else if (PrefetchInProgress) {
+	if (PrefetchingGroup) {
+	    releaseNewsgroupResources(PrefetchingGroup);
+	}
+	PrefetchInProgress = False;
+	XtRemoveWorkProc(PrefetchWorkId);
     }
-
-    PrefetchedGroup = 0;
-    PrefetchingGroup = 0;
-
-#ifdef DEBUG
-    fprintf(stderr, "cancelPrefetch() done\n");
-#endif
 }
 
-static int art_num_compare _ARGUMENTS((void *, void *));
-
-static int art_num_compare(key1, key2)
-     void *key1, *key2;
-{
-  return (art_num)key1 - (art_num)key2;
-}
-
-static char *backTo _ARGUMENTS((char *, char *, char));
-
-static char *backTo(
-		    _ANSIDECL(char *,	start),
-		    _ANSIDECL(char *,	ptr),
-		    _ANSIDECL(char,	character)
-		    )
-     _KNRDECL(char *,	start)
-     _KNRDECL(char *,	ptr)
-     _KNRDECL(char,	character)
-{
-  for (ptr--; ptr >= start; ptr--)
-    if (*ptr == character)
-      return ptr;
-  return 0;
-}
-
-#define THREAD_IT(art) ((listed_or_read == ART_LISTED) ? \
-			IS_LISTED(art) : IS_UNREAD(art))
-
-static Boolean threadIncremental _ARGUMENTS((struct newsgroup *,
-					     int *,
-					     art_num, art_num,
-					     int));
-
-static Boolean threadIncremental(
-				 _ANSIDECL(struct newsgroup *,	newsgroup),
-				 _ANSIDECL(int *,		stage),
-				 _ANSIDECL(art_num,		first),
-				 _ANSIDECL(art_num,		last),
-				 _ANSIDECL(int,			listed_or_read)
-				 )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(int *,			stage)
-     _KNRDECL(art_num,			first)
-     _KNRDECL(art_num,			last)
-     _KNRDECL(int,			listed_or_read)
-{
-  static int chunk_size = PREFETCH_CHUNK;
-  time_t start_time WALL (= 0), end_time;
-  art_num i, done_count = 0;
-  char dummy[LABEL_SIZE];
-
-  if (! (newsgroup->fetch & FETCH_THREADS))
-    return True;
-
-  if (stage) {
-    if (*stage != PREFETCH_THREAD_STAGE)
-      return True;
-    start_time = time(0);
-  }
-
-  if (! newsgroup->thread_table) {
-    art_num this_first, this_last;
-    art_num count = 0;
-    struct article *this_art;
-
-    (void) sprintf(dummy, THREADING_FOR_MSG, newsgroup->name);
-    maybeInfoNow(dummy);
-
-    this_art = artStructGet(newsgroup, first, False);
-    if (artStructNext(newsgroup, this_art, &this_first, &this_last))
-      this_last--;
-    else
-      this_last = last;
-    this_first = first;
-
-    do {
-      if (THREAD_IT(this_art))
-	count += this_last - this_first + 1;
-      this_art = artStructNext(newsgroup, this_art, &this_first, &this_last);
-    } while (this_art);
-
-    ART_STRUCT_UNLOCK;
-
-    if (! count)
-      /* We can't thread yet because we haven't decided which articles
-	 to display. */
-      return True;
-
-    newsgroup->thread_table = hash_table_create(count,
-						hash_string_calc,
-						hash_string_compare,
-						art_num_compare,
-						0, 0);
-
-    for (i = first; i <= last; i++) {
-      struct article *art = artStructGet(newsgroup, i, False);
-      ART_STRUCT_UNLOCK;
-      if (art->id && THREAD_IT(art)) {
-	int ret = hash_table_insert(newsgroup->thread_table,
-				    (void *)art->id, (void *)i, 0);
-	assert(ret);
-      }
-    }
-
-    if (stage)
-      return False;
-  }
-
-  
-  for (i = first; (i <= last) && (! stage || (done_count < chunk_size)); i++) {
-    struct article *art = artStructGet(newsgroup, i, False), copy;
-    char *references, *ptr;
-    art_num parent = (art_num)HASH_NO_VALUE;
-    
-    if (art->parent || !THREAD_IT(art)) {
-      ART_STRUCT_UNLOCK;
-      continue;
-    }
-
-    copy = *art;
-
-    if (! (copy.references && *copy.references)) {
-      copy.parent = (art_num)-1;
-      artStructReplace(newsgroup, &art, &copy, i);
-      continue;
-    }
-
-    done_count++;
-
-    references = XtNewString(copy.references);
-
-    for (ptr = strrchr(references, '>'); ptr;
-	 ptr = backTo(references, ptr, '>')) {
-      *(ptr + 1) = '\0';
-      ptr = backTo(references, ptr, '<');
-
-      if (! ptr)
-	break;
-
-      if ((parent = (art_num)hash_table_retrieve(newsgroup->thread_table,
-						 (void *)ptr, 0)) !=
-	  (art_num)HASH_NO_VALUE)
-	break;
-    }
-
-    XtFree(references);
-
-    copy.parent = (parent == (art_num)HASH_NO_VALUE) ? (art_num) -1 : parent;
-    artStructReplace(newsgroup, &art, &copy, i);
-
-    if (parent != (art_num)HASH_NO_VALUE) {
-      struct article *parent_struct = artStructGet(newsgroup, parent, True);
-
-      artStructAddChild(parent_struct, i);
-      artStructSet(newsgroup, &parent_struct);
-    }
-  }
-
-  if (i > last) {
-    for (i = first; i <= last; i++) {
-      struct article *art = artStructGet(newsgroup, i, False);
-      if (art->parent == (art_num)-1) {
-	struct article copy;
-	copy = *art;
-	CLEAR_PARENT(&copy);
-	artStructReplace(newsgroup, &art, &copy, i);
-      }
-      else
-	ART_STRUCT_UNLOCK;
-    }
-    hash_table_destroy(newsgroup->thread_table);
-    newsgroup->thread_table = 0;
-    (void) sprintf(dummy, THREADING_FOR_MSG, newsgroup->name);
-    (void) strcat(dummy, " ");
-    (void) strcat(dummy, DONE_MSG);
-    INFO(dummy);
-
-    return True;
-  }
-
-  end_time = time(0);
-  chunk_size = done_count;
-  adjustPrefetchChunk(end_time - start_time,
-		      PREFETCH_CHUNK_TIME, &chunk_size);
-  return False;
-}
-
-#undef THREAD_IT
-
-static void checkThreading _ARGUMENTS((struct newsgroup *, art_num));
-
-static void checkThreading(
-			   _ANSIDECL(struct newsgroup *,	newsgroup),
-			   _ANSIDECL(art_num,			first)
-			   )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			first)
-{
-  art_num i;
-  struct article *art, *parent, copy;
-
-  for (i = first; i <= newsgroup->last; i++) {
-    art = artStructGet(newsgroup, i, False);
-    ART_STRUCT_UNLOCK;
-    if (art->parent) {
-      parent = artStructGet(newsgroup, art->parent, False);
-      if ((art->parent < first) || !IS_LISTED(parent) || !IS_LISTED(art)) {
-	copy = *parent;
-	artStructRemoveChild(&copy, i);
-	artStructReplace(newsgroup, &parent, &copy, art->parent);
-	art = artStructGet(newsgroup, i, True);
-	CLEAR_PARENT(art);
-	artStructSet(newsgroup, &art);
-      }
-      else
-	ART_STRUCT_UNLOCK;
-    }
-  }
-}
-
-  
-static void rethreadGroup _ARGUMENTS((struct newsgroup *, art_num,
-				      Boolean));
-
-static void rethreadGroup(
-			  _ANSIDECL(struct newsgroup *,	newsgroup),
-			  _ANSIDECL(art_num,		art),
-			  _ANSIDECL(Boolean,		rethread)
-			  )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			art)
-     _KNRDECL(Boolean,			rethread)
-{
-  art_num i;
-
-  if (rethread) {
-    /*
-      We're generating a new list after "List Old" or "Goto article",
-      which means that articles which weren't displayed before are
-      displayed now, so we have to reset everything.
-
-      Otherwise, the only thing that might have happened is some
-      articles getting marked read as a result of cross-posts after
-      the group was already prefetched, and those will be detected by
-      checkThreading(), so we don't have to worry about them here.
-      */
-    for (i = art; i <= newsgroup->last; i++) {
-      struct article *art = artStructGet(newsgroup, i, True);
-      CLEAR_CHILDREN(art);
-      CLEAR_PARENT(art);
-      artStructSet(newsgroup, &art);
-    }
-  }
-  else {
-    checkThreading(newsgroup, art);
-  }
-
-  (void) threadIncremental(newsgroup, 0, art, newsgroup->last, ART_LISTED);
-}
-     
-static Boolean fetchHeadersIncremental _ARGUMENTS((struct newsgroup *,
-						   int *, art_num, art_num,
-						   Boolean, Boolean));
-
-static Boolean fetchHeadersIncremental(
-				       _ANSIDECL(struct newsgroup *,	newsgroup),
-				       _ANSIDECL(int *,			stage),
-				       _ANSIDECL(art_num,		first),
-				       _ANSIDECL(art_num,		last),
-				       _ANSIDECL(Boolean,		unread_only),
-				       _ANSIDECL(Boolean,		kill_files)
-				       )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(int *,			stage)
-     _KNRDECL(art_num,			first)
-     _KNRDECL(art_num,			last)
-     _KNRDECL(Boolean,			unread_only)
-     _KNRDECL(Boolean,			kill_files)
-{
-    static int chunk_size;
-    static struct newsgroup *last_group = 0;
-    time_t start_time WALL (= 0), end_time;
-    Boolean finished = True;
-
-    /*
-      Reset the chunk size for each newsgroup, because we may be using
-      different mechanisms for fetching headers in different
-      newsgroups, and we may even switch from one mechanism to another
-      in the middle of fetching a newsgroup.
-    */
-    if (last_group != newsgroup) {
-      chunk_size = PREFETCH_CHUNK;
-      last_group = newsgroup;
-    }
-
-    if (stage) {
-      if ((*stage < PREFETCH_START_HEADERS_STAGE) ||
-	  (*stage > PREFETCH_LAST_HEADERS_STAGE))
-	return True;
-      start_time = time(0);
-    }
-
-    if (! stage || *stage == PREFETCH_SUBJECT_STAGE)
-      finished = getsubjectlist(newsgroup, first, last,
-				unread_only,
-				(stage && ! FinishingPrefetch)
-				? &chunk_size : 0);
-    if (! stage || *stage == PREFETCH_AUTHOR_STAGE)
-      finished = getauthorlist(newsgroup, first, last,
-			       unread_only,
-			       (stage && ! FinishingPrefetch)
-			       ? &chunk_size : 0);
-    if (! stage || *stage == PREFETCH_LINES_STAGE)
-      finished = getlineslist(newsgroup, first, last,
-			      unread_only,
-			      (stage && ! FinishingPrefetch)
-			      ? &chunk_size : 0);
-    if ((newsgroup->fetch & FETCH_NEWSGROUPS) && kill_files &&
-	(! stage || *stage == PREFETCH_NEWSGROUPS_STAGE))
-      finished = getnewsgroupslist(newsgroup, first, last,
-				   unread_only,
-				   (stage && ! FinishingPrefetch)
-				   ? &chunk_size : 0);
-    if ((newsgroup->fetch & FETCH_DATES) &&
-	(! stage || *stage == PREFETCH_DATE_STAGE))
-      finished = getdatelist(newsgroup, first, last,
-			     unread_only,
-			     (stage && ! FinishingPrefetch)
-			     ? &chunk_size : 0);
-    if ((newsgroup->fetch & FETCH_IDS) &&
-	(! stage || *stage == PREFETCH_IDS_STAGE))
-      finished = getidlist(newsgroup, first, last,
-			   unread_only,
-			   (stage && ! FinishingPrefetch)
-			   ? &chunk_size : 0);
-    if ((newsgroup->fetch & FETCH_XREF) &&
-	(! stage || *stage == PREFETCH_XREF_STAGE))
-      finished = getxreflist(newsgroup, first, last,
-			     unread_only,
-			     (stage && ! FinishingPrefetch)
-			     ? &chunk_size : 0);
-    if ((newsgroup->fetch & FETCH_APPROVED) &&
-	(! stage || *stage == PREFETCH_APPROVED_STAGE))
-      finished = getapprovedlist(newsgroup, first, last,
-				 unread_only,
-				 (stage && ! FinishingPrefetch)
-				 ? &chunk_size : 0);
-    if ((newsgroup->fetch & FETCH_REFS) &&
-	(! stage || *stage == PREFETCH_REFS_STAGE))
-      finished = getreflist(newsgroup, first, last,
-			    unread_only,
-			    (stage && ! FinishingPrefetch)
-			    ? &chunk_size : 0);
-    if (! finished) { /* that means it was a full chunk */
-      end_time = time(0);
-      adjustPrefetchChunk(end_time - start_time,
-			  PREFETCH_CHUNK_TIME, &chunk_size);
-    }
-
-    return finished;
-}
+#endif /* XRN_PREFETCH */
 
 /*
  * The reason this is divided into "stages" is so that it can be used
  * in a toolkit work procedure.  The stages allow the work to be
  * divided up so a single work procedure invocation doesn't take too long.
  */
-static Boolean setUpGroupIncremental _ARGUMENTS((struct newsgroup *, int *,
-						 Boolean, Boolean,
-						 Boolean, Boolean,
-						 art_num, art_num));
+static void setUpGroup _ARGUMENTS((struct newsgroup *, int));
 
-static Boolean setUpGroupIncremental(
-				     _ANSIDECL(struct newsgroup *,	newsgroup),
-				     _ANSIDECL(int *,			stage),
-				     _ANSIDECL(Boolean,			update_last),
-				     _ANSIDECL(Boolean,			kill_files),
-				     _ANSIDECL(Boolean,			unread_only),
-				     _ANSIDECL(Boolean,			threading),
-				     _ANSIDECL(art_num,			first),
-				     _ANSIDECL(art_num,			last)
-				     )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(int *,			stage)
-     _KNRDECL(Boolean,			update_last)
-     _KNRDECL(Boolean,			kill_files)
-     _KNRDECL(Boolean,			unread_only)
-     _KNRDECL(Boolean,			threading)
-     _KNRDECL(art_num,			first)
-     _KNRDECL(art_num,			last)
+static void setUpGroup(newsgroup, stage)
+    struct newsgroup *newsgroup;
+    int stage;
 {
-    Boolean finished = True;
-    static int chunk_size = PREFETCH_CHUNK;
-    struct article *art, copy;
-    art_num i;
+    art_num first, last;
+    int number;
+    Boolean do_prefetch, unread_only;
 
 #ifdef DEBUG
-    fprintf(stderr, "setUpGroupIncremental(%s, %d, %d, %d, %d)\n",
-	    newsgroup->name, stage ? *stage : 0, update_last, kill_files,
-	    unread_only);
+    fprintf(stderr, "setUpGroup(%s, %d)\n", newsgroup->name, stage);
 #endif
 
-    if (PrefetchingGroup && !stage) {
-	if ((PrefetchingGroup == newsgroup) && kill_files && unread_only)
+#ifdef XRN_PREFETCH
+    if (PrefetchInProgress && (stage == 0)) {
+	if (PrefetchingGroup == newsgroup) {
 	    finishPrefetch();
-	else
+	}
+	else {
 	    cancelPrefetch();
+	}
     }
 
     if (PrefetchedGroup && (newsgroup != PrefetchedGroup)) {
 	cancelPrefetch();
     }
+#endif /* XRN_PREFETCH */
 
-    if (! PrefetchedGroup) {
-	if (! stage || *stage == PREFETCH_GETGROUP_STAGE) {
-	    art_num first, last;
-	    int number;
-	   /*
-	    * Update our idea of what the first article in the group
-	    * is.  This is necessary because sites that don't
-	    * regularly renumber their active files will report a
-	    * different first article number for a group in the
-	    * response to the LIST command than they will in response
-	    * to the GROUP command, and the first article number in
-	    * response to the latter command is, in fact, the correct
-	    * one.
-	    *
-	    * If we don't use the first article number returned by the
-	    * GROUP command when it is higher than the first article
-	    * number returned by the LIST command, then we end up with
-	    * two problems: (1) article arrays are much bigger than
-	    * they need to be; (2) when the user clicks on "List Old"
-	    * in a newsgroup, XRN will have to try to retrieve a large
-	    * number of articles before actually finding the first
-	    * article in the group.
-	    *
-	    * Also, update our idea of what the last article in the
-	    * group is, if the update_last argument to setUpGroup is
-	    * true.
-	    */
-	    (void) getgroup(newsgroup, &first, &last, &number,
-			    stage ? False : True);
-	    articleArrayResync(newsgroup, first,
-			       update_last ? last : newsgroup->last, number);
+    /* get the latest group information */
+    /*
+     * No, don't!  This would be a neat thing to do if it were
+     * possible to do it without confusing the routines that call
+     * setUpGroup, but it's not.  For example, the enterNewsgroup
+     * function calls findUnreadArticle before it calls setUpGroup.
+     * If there are no unread articles in the newsgroup, then
+     * findUnreadArticle will mark one unread so that enterNewsgroup
+     * can enter the newsgroup.  However, if we then get the latest
+     * group information in setUpGroup and there are new unread
+     * articles, then what findUnreadArticle did is no longer correct.
+     *
+     * It's more reliable to guarantee that the group information is
+     * only updated if either (a) a rescan is done or (b) an
+     * unsubscribed newsgroup is resubscribed.
+    if (getgroup(newsgroup, &first, &last, &number)) {
+	return;
+    }
+    */
+
+#ifdef XRN_PREFETCH
+    do_prefetch = ! PrefetchedGroup;
+#else
+    do_prefetch = True;
+#endif
+
+#ifdef XRN_PREFETCH_UNREAD_ONLY
+    unread_only = True;
+#else
+    unread_only = False;
+#endif
+
+    if (do_prefetch) {
+	if (! stage || stage == 1) {
+	    setCurrentArticle(newsgroup);
 	}
 	if (! EMPTY_GROUP(newsgroup)) {
-	    art_num my_first = first, my_last = last;
-
-	    if (! stage || *stage == PREFETCH_SETCURRENT_STAGE) {
-	      time_t start_time, end_time;
-	      start_time = time(0);
-	      (void) setCurrentArticle(newsgroup, unread_only, False,
-				       (stage && ! FinishingPrefetch)
-				       ? &finished : 0, &chunk_size);
-	      end_time = time(0);
-	      if (! finished) {
-		adjustPrefetchChunk(end_time - start_time,
-				    PREFETCH_CHUNK_TIME, &chunk_size);
-	      }
-	    }
-
-	    if (! my_first)
-	      my_first = newsgroup->current;
-	    if (! my_last)
-	      my_last = newsgroup->last;
-
-	    if (my_first > my_last)
-	      finished = True;
-	    else {
-	      if ((! stage) ||
-		  ((*stage >= PREFETCH_START_HEADERS_STAGE) &&
-		   (*stage <= PREFETCH_LAST_HEADERS_STAGE)))
-		finished = fetchHeadersIncremental(newsgroup, stage,
-						   my_first, my_last,
-						   unread_only,
-						   kill_files);
-
-	      if (! stage || *stage == PREFETCH_KILL_STAGE) {
-	        if ((app_resources.killFiles == TRUE) && kill_files) {
-		  fetch_flag_t fetched = newsgroup->fetch;
-
-		  finished = checkKillFiles(newsgroup,
-					    (stage && ! FinishingPrefetch)
-					    ? True : False);
-
-		  if (! finished || newsgroup->fetch != fetched) {
-		    int i;
-
-		    if (! stage)
-		      return setUpGroupIncremental(newsgroup, stage,
-						   update_last, kill_files,
-						   unread_only, threading,
-						   first, last);
-
-		    for (i = PREFETCH_START_OPTIONAL_STAGE;
-			 i <= PREFETCH_LAST_OPTIONAL_STAGE;
-			 i++)
-		      if ((PREFETCH_FIELD_BIT(i) & fetched) !=
-			  (PREFETCH_FIELD_BIT(i) & newsgroup->fetch)) {
-			*stage = i;
-			finished = False;
-			break;
-		      }
-		  }
-		}
-		if (finished) {
-		  if (setCurrentArticle(newsgroup, unread_only, True, 0, 0)) {
-		    if (! stage)
-		      return setUpGroupIncremental(newsgroup, stage, update_last,
-						   kill_files, unread_only,
-						   threading,
-						   first, last);
-		    else {
-		      *stage = PREFETCH_SETCURRENT_STAGE;
-		      finished = False;
-		    }
-		  }
-		  else if ((app_resources.onlyShow > 0) &&
-			   app_resources.discardOld) {
-		    for (i = newsgroup->first; i < newsgroup->current; i++) {
-		      art = artStructGet(newsgroup, i, False);
-		      if (IS_UNREAD(art)) {
-			copy = *art;
-			SET_READ(&copy);
-			artStructReplace(newsgroup, &art, &copy, i);
-		      }
-		      else
-			ART_STRUCT_UNLOCK;
-		    }
-		  }
-		}
-	      }
-	      if ((! stage || *stage == PREFETCH_THREAD_STAGE) && threading)
-		finished = threadIncremental(newsgroup, stage, my_first, my_last,
-					     ART_READ);
-	    }
+	    if (! stage || stage == 2)
+		 getsubjectlist(newsgroup, newsgroup->current, newsgroup->last,
+				unread_only);
+	    if (! stage || stage == 3)
+		 getauthorlist(newsgroup, newsgroup->current, newsgroup->last,
+			       unread_only);
+	    if (! stage || stage == 4)
+		 getlineslist(newsgroup, newsgroup->current, newsgroup->last,
+			      unread_only);
+	    if ((! stage || stage == 5) && (app_resources.killFiles == TRUE))
+		checkKillFiles(newsgroup);
 	}
     }
 
+#ifdef XRN_PREFETCH
     PrefetchedGroup = 0;
 
 #ifndef NO_IMMEDIATE_WORK_PROC_PREFETCH
-    if (! stage)
-	prefetchNextGroup(newsgroup);
+    if ((stage == 0) && (PrefetchGroupMode == OKAY_TO_XRN_PREFETCH_GROUP)) {
+	prefetchNextGroup((XtPointer)newsgroup);
+    }
 #endif
+#endif /* XRN_PREFETCH */
 
-#ifdef DEBUG
-    fprintf(stderr, "setUpGroupIncremental(%s, %d, %d, %d, %d) = %d\n",
-	    newsgroup->name, stage ? *stage : 0, update_last, kill_files,
-	    unread_only, finished);
-#endif
-    return finished;
-}
-
-static void setUpGroup _ARGUMENTS((struct newsgroup *, Boolean,
-				   Boolean, Boolean, Boolean));
-
-static void setUpGroup(
-		       _ANSIDECL(struct newsgroup *,	newsgroup),
-		       _ANSIDECL(Boolean,		update_last),
-		       _ANSIDECL(Boolean,		kill_files),
-		       _ANSIDECL(Boolean,		unread_only),
-		       _ANSIDECL(Boolean,		threading)
-		       )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(Boolean,			update_last)
-     _KNRDECL(Boolean,			kill_files)
-     _KNRDECL(Boolean,			unread_only)
-     _KNRDECL(Boolean,			threading)
-{
-#ifdef DEBUG
-    fprintf(stderr, "setUpGroup(%s, %d, %d, %d)\n", newsgroup->name,
-	    update_last, kill_files, unread_only);
-#endif
-    (void) setUpGroupIncremental(newsgroup, 0, update_last,
-				 kill_files, unread_only, threading, 0, 0);
-#ifdef DEBUG
-    fprintf(stderr, "setUpGroup(%s, %d, %d, %d) done\n", newsgroup->name,
-	    update_last, kill_files, unread_only);
-#endif
+    return;
 }
 
 
@@ -2149,11 +1424,7 @@ static struct newsgroup * findNewsGroupMatch _ARGUMENTS((char *));
 static struct newsgroup * findNewsGroupMatch(name)
     char *name;
 {
-#ifdef POSIX_REGEX
-    regex_t reStruct;
-#else
     static char *reRet;
-#endif
     int i;
 
     /* no single character queries -- too confusing */
@@ -2161,48 +1432,34 @@ static struct newsgroup * findNewsGroupMatch(name)
 	return NIL(struct newsgroup);
     }
 
-#ifdef POSIX_REGEX
-    if (regcomp(&reStruct, name, REG_NOSUB))
-	return 0;
-#else
-# ifdef SYSV_REGEX
+#ifdef SYSV_REGEX
     if ((reRet = regcmp(name, NULL)) == NULL) {
 	return NIL(struct newsgroup);
     }
-# else
+#else
     if ((reRet = re_comp(name)) != NULL) {
 	return NIL(struct newsgroup);
     }
-# endif
 #endif
+
 
     for (i = 0; i < MaxGroupNumber; i++) {
 	struct newsgroup *newsgroup = Newsrc[i];
-#ifdef POSIX_REGEX
-	if (! regexec(&reStruct, newsgroup->name, 0, 0, 0)) {
-	    regfree(&reStruct);
-	    return newsgroup;
-	}
-#else
-# ifdef SYSV_REGEX
+#ifdef SYSV_REGEX
 	if (regex(reRet, newsgroup->name) != NULL) {
 	    FREE(reRet);
 	    return newsgroup;
 	}
-# else
+#else
 	if (re_exec(newsgroup->name)) {
 	    return newsgroup;
 	}
-# endif
 #endif
+	    
     }
 
-#ifdef POSIX_REGEX
-    regfree(&reStruct);
-#else
-# ifdef SYSV_REGEX
-    free(reRet);
-# endif
+#ifdef SYSV_REGEX
+    FREE(reRet);
 #endif
 
     return NIL(struct newsgroup);
@@ -2219,65 +1476,49 @@ void catchUp()
  *
  */
 {
-    struct article *art, copy;
     struct newsgroup *newsgroup = CurrentGroup;
-    art_num artnum;
+    art_num art;
 
-    artListSet(newsgroup);
-    for (artnum = newsgroup->first; artnum <= newsgroup->last; artnum++) {
-	art = artStructGet(newsgroup, artnum, False);
-	copy = *art;
-	if (IS_UNMARKED(art)) {
-	    SET_READ(&copy);
+    SETARTICLES(newsgroup);
+    for (art = newsgroup->first; art <= newsgroup->last; art++) {
+	if (!IS_MARKED(newsgroup->articles[INDEX(art)])) {
+	    SET_READ(newsgroup->articles[INDEX(art)]);
 	} else {
-	    SET_UNREAD(&copy);
-	    SET_UNMARKED(&copy);
+	    SET_UNREAD(newsgroup->articles[INDEX(art)]);
+	    SET_UNMARKED(newsgroup->articles[INDEX(art)]);
 	}
-	artStructReplace(newsgroup, &art, &copy, artnum);
     }
     return;
 }
 
 
-/*
- * subscribe to a specified newsgroup
- *
- *   returns: true on success, false on failure
- *
- */
-static Boolean subscribe_group _ARGUMENTS((struct newsgroup *));
-
-static Boolean subscribe_group(newsgroup)
-    struct newsgroup *newsgroup;
+int issubscribed()
 {
-    if (!IS_SUBSCRIBED(newsgroup)) {
-	art_num first, last;
-	int number;
+    struct newsgroup *newsgroup = CurrentGroup;
 
-	/*
-	  Update the first and last article numbers for the newsgroup,
-	  since "Rescan" doesn't update groups we're not subscribed to.
-	  */
-	if (! getgroup(newsgroup, &first, &last, &number, True)) {
-	    SET_SUB(newsgroup);
-	    articleArrayResync(newsgroup, first, last, number);
-	    (void) updateArticleArray(newsgroup, False);
-	    return True;
-	}
-	else
-	  return False;
+    if (IS_SUBSCRIBED(newsgroup)) {
+	return 1;
+    } else {
+	return 0;
     }
-    return True;
 }
 
 
 /*
-  subscribe to the current newsgroup
-  returns: true on success, false on failure
-  */
-Boolean subscribe()
+ * subscribe to a newsgroup
+ *
+ *   returns: void
+ *
+ */
+void subscribe()
 {
-    return subscribe_group(CurrentGroup);
+    struct newsgroup *newsgroup = CurrentGroup;
+
+    if (!IS_SUBSCRIBED(newsgroup)) {
+	SET_SUB(newsgroup);
+	updateArticleArray(newsgroup);
+    }
+    return;
 }
 
 
@@ -2291,10 +1532,7 @@ void unsubscribe()
 {
     struct newsgroup *newsgroup = CurrentGroup;
 
-    if (IS_NOENTRY(newsgroup))
-	addToNewsrcEnd(newsgroup->name, UNSUBSCRIBE);
-    else
-	SET_UNSUB(newsgroup);
+    SET_UNSUB(newsgroup);
     return;
 }
 
@@ -2305,27 +1543,33 @@ void unsubscribe()
  *   returns: the question in a static area
  *
  */
-static char * buildQuestion _ARGUMENTS((struct newsgroup *, art_num));
+static char * buildQuestion _ARGUMENTS((struct newsgroup *));
 
-static char * buildQuestion(newsgroup, article)
+static char * buildQuestion(newsgroup)
     struct newsgroup *newsgroup;
-    art_num article;
 {
     static char dummy[LABEL_SIZE];
-    long unread, next_unread WALL(= 0);
+    art_num i;
+    struct article *articles = GETARTICLES(newsgroup);
+    long unread = 0;
     ng_num number;
-    struct newsgroup *nextnewsgroup WALL(= 0);
+    struct newsgroup *nextnewsgroup;
     int found;
 
-    unread = unreadArticleCount(newsgroup);
+    
+    for (i = newsgroup->first; i <= newsgroup->last; i++) {
+	long indx = INDEX(i);
+	if (IS_UNREAD(articles[indx]) && !IS_UNAVAIL(articles[indx])) {
+	    unread++;
+	}
+    }
 
     found = 0;
-    for (number = newsgroup->newsrc + 1; number < MaxGroupNumber;
+    for (number = CurrentGroup->newsrc + 1; number < MaxGroupNumber;
 	 number++) {
 	nextnewsgroup = Newsrc[number];
 	/* find a group that is subscribed to and has unread articles */
-	if (IS_SUBSCRIBED(nextnewsgroup) &&
-	    ((next_unread = unreadArticleCount(nextnewsgroup)) > 0)) {
+	if (IS_SUBSCRIBED(nextnewsgroup) && (unreadArticleCount(nextnewsgroup) > 0)) {
 	    found = 1;
 	    break;
 	}
@@ -2333,23 +1577,21 @@ static char * buildQuestion(newsgroup, article)
 	    
     if (found) {
 	if (unread <= 0) {
-          (void) sprintf(dummy, QUEST_ART_NOUNREAD_NEXT_STRING,
-			 article, newsgroup->name,
-			 nextnewsgroup->name, next_unread,
-			 (next_unread == 1) ? "" : NOT_ONE_MSG);
+	    (void) sprintf(dummy, "Article %ld in %s (Next group: %s, with %d articles)",
+			   newsgroup->current, newsgroup->name,
+			   nextnewsgroup->name, unreadArticleCount(nextnewsgroup));
 	} else {
-          (void) sprintf(dummy, QUEST_ART_UNREAD_NEXT_STRING,
-			 article, newsgroup->name, unread,
-			 nextnewsgroup->name, next_unread,
-			 (next_unread == 1) ? "" : NOT_ONE_MSG);
+	    (void) sprintf(dummy, "Article %ld in %s (%ld remaining) (Next group: %s, with %d articles)",
+			   newsgroup->current, newsgroup->name, unread,
+			   nextnewsgroup->name, unreadArticleCount(nextnewsgroup));
 	}
     } else {
 	if (unread <= 0) {
-          (void) sprintf(dummy, QUEST_ART_NOUNREAD_NONEXT_STRING,
-			   article, newsgroup->name);
+	    (void) sprintf(dummy, "Article %ld in %s",
+			   newsgroup->current, newsgroup->name);
 	} else {
-          (void) sprintf(dummy, QUEST_ART_UNREAD_NONEXT_STRING,
-			   article, newsgroup->name, unread);
+	    (void) sprintf(dummy, "Article %ld in %s (%ld remaining)",
+			   newsgroup->current, newsgroup->name, unread);
 	}
     }
     return dummy;
@@ -2358,31 +1600,14 @@ static char * buildQuestion(newsgroup, article)
 
 static void handleXref _ARGUMENTS((struct newsgroup *, art_num));
 
-static void handleXref(cur_newsgroup, article)
-    struct newsgroup *cur_newsgroup;
+static void handleXref(newsgroup, article)
+    struct newsgroup *newsgroup;
     art_num article;
 {
-    char *string, *ptr, *num_ptr, *group, *gptr;
-    art_num number;
-    struct newsgroup *newsgroup;
-    struct article *this_art;
+    char *string, *ptr, *token, group[GROUP_NAME_SIZE], *gptr;
+    int count, number;
 
-    this_art = artStructGet(cur_newsgroup, article, False);
-
-    /* OK to put this here, despite xhdr() call below, because the
-       xhdr() call won't happen until we're done using this_art. */
-    ART_STRUCT_UNLOCK;
-
-    if (IS_XREFED(this_art))
-      return;
-
-    if (this_art->xref)
-      if (*this_art->xref)
-	string = XtNewString(this_art->xref);
-      else
-	string = NULL;
-    else
-      xhdr(cur_newsgroup, article, "xref", &string);
+    xhdr(newsgroup, article, "xref", &string);
 
     if (string == NIL(char)) {
 	/* no xrefs */
@@ -2399,19 +1624,16 @@ static void handleXref(cur_newsgroup, article)
 	FREE(string);
 	return;
     }
-    ptr++;
 
-    while ((group = strtok(ptr, ":"))) {
-	ptr = 0;
-
-	if (! (num_ptr = strtok(ptr, " ")))
-	    /* Something is confused.  Give up. */
-	    break;
-
-	if ((number = atol(num_ptr)) <= 0)
-	    /* Something is confused differently.  Give up. */
-	    break;
+    while ((token = strtok(ptr, " ")) != NIL(char)) {
+	ptr = NIL(char);
 	
+	count = sscanf(token, "%[^: ]:%d", group, &number);
+	if (count != 2) {
+	    /* bogus entry */
+	    continue;
+	}
+
 	if (!avl_lookup(NewsGroupTable, group, &gptr)) {
 	    /* bogus group */
 	    continue;
@@ -2421,36 +1643,23 @@ static void handleXref(cur_newsgroup, article)
 	
 	newsgroup = (struct newsgroup *) gptr;
 
-	if (IS_SUBSCRIBED(newsgroup)) {
-	  struct article *art;
+	if (IS_SUBSCRIBED(newsgroup) &&
+	    (number >= newsgroup->first) && (number <= newsgroup->last)) {
 
-	  if (number < newsgroup->first)
-	    continue;
-	  if (number > newsgroup->last) {
-	    if (app_resources.rescanOnEnter) {
-	      art_num first, last;
-	      int count;
+	    SETARTICLES(newsgroup);
 
-	      if (getgroup(newsgroup, &first, &last, &count, False) != NO_GROUP)
-		if ((number >= first) && (number <= last))
-		  articleArrayResync(newsgroup, first, last, count);
-		else
-		  continue;
-	      else
-		continue;
+	    SET_READ(newsgroup->articles[INDEX(number)]);
+
+#ifdef STUPIDMMU
+	    /* this is horribly inefficient
+	       should splice directly into nglist
+	       or use some other representation XXX */
+	    if (newsgroup != CurrentGroup) {
+	      updateNglist(newsgroup);
+	      CLEAR_ARTICLES(newsgroup);
 	    }
-	    else
-	      continue;
-	  }
+#endif
 
-	  artListSet(newsgroup);
-	  art = artStructGet(newsgroup, number, True);
-	  SET_XREFED(art);
-	  /* Don't mark read in the current newsgroup; that's the caller's
-	     responsibility. */
-	  if ((newsgroup != cur_newsgroup) || (article != number))
-	    SET_READ(art);
-	  artStructSet(newsgroup, &art);
 	}
     }
     FREE(string);
@@ -2464,220 +1673,151 @@ static void handleXref(cur_newsgroup, article)
  * returns: XRN_ERROR - article has been canceled
  *          XRN_OKAY  - article returned
  */
-int getArticle(newsgroup, article, file, question)
-    struct newsgroup *newsgroup;
-    art_num article; 
-    file_cache_file **file;
+int getArticle(filename, question)
+    char **filename;
     char **question;
 {
-    struct article *art = artStructGet(newsgroup, article, True);
-    file_cache_file *artfile;
-    int header = 0, rotation = 0, xlation = 0;
+    struct newsgroup *newsgroup = CurrentGroup;
+    struct article *articles = GETARTICLES(newsgroup);
+    long indx = CURRENT;
+    int header, rotation;
+    int	xlation = 0;
 
 #ifdef DEBUG
-    fprintf(stderr, "getArticle(%s, %d)\n", newsgroup->name, article);
+    fprintf(stderr, "getArticle(%s)\n", newsgroup->name);
 #endif
 
-    if (IS_UNFETCHED(art)) {
+    if (IS_UNFETCHED(articles[indx])) {
 	/* get the article and handle unavailable ones.... */
-	if (IS_ALL_HEADERS(art))
-	  header = FULL_HEADER;
-	if (IS_ROTATED(art))
-	  rotation = ROTATED;
+	header = (IS_ALL_HEADERS(articles[indx]) ?
+		  FULL_HEADER : NORMAL_HEADER);
+	rotation = (IS_ROTATED(articles[indx]) ?
+		    ROTATED : NOT_ROTATED);
 #ifdef XLATE
-	if (IS_XLATED(art))
-	  xlation = XLATED;
+	xlation = (IS_XLATED(articles[indx]) ?
+		   XLATED : NOT_XLATED);
 #endif
-	ART_STRUCT_UNLOCK;
-	artfile = getarticle(newsgroup, article, 0, header | rotation |
-			     xlation | PAGEBREAKS | BACKSPACES);
-	art = artStructGet(newsgroup, article, True);
-	if (artfile)
-	  art->file = artfile;
-	else {
-	    CLEAR_ALL(art);
-	    SET_UNAVAIL(art);
-	    artStructSet(newsgroup, &art);
+	if ((articles[indx].filename
+	     = getarticle(newsgroup, CurrentGroup->current,
+			  &articles[indx].position,
+			  header, rotation, xlation)) == NIL(char)) {
+	    SET_UNAVAIL(articles[indx]);
+	    mesgPane(XRN_SERIOUS, ART_NOT_AVAIL_MSG, newsgroup->first + indx);
 	    return XRN_ERROR;
 	}
-	SET_FETCHED(art);
+	SET_FETCHED(articles[indx]);
     } else {
 	/* verify that the file still exists */
-	if (!art->file || !*art->file ||
-	    (access(file_cache_file_name(FileCache, *art->file), R_OK) == -1)) {
+	if (access(articles[indx].filename, R_OK) == -1) {
 	    /* refetch the file */
-	    CLEAR_FILE(art);
-	    artStructSet(newsgroup, &art);
-	    return getArticle(newsgroup, article, file, question);
+	    SET_UNFETCHED(articles[indx]);
+	    return getArticle(filename, question);
 	}
-	file_cache_file_lock(FileCache, *art->file);
     }
     
-    *file = art->file;
-    if (IS_UNMARKED(art)) {
-	SET_READ(art);
+    *filename = articles[indx].filename;
+    if (!IS_MARKED(articles[indx])) {
+	SET_READ(articles[indx]);
     }
-    artStructSet(newsgroup, &art);
-    *question = buildQuestion(newsgroup, article);
-
-    handleXref(newsgroup, article);
-
+    *question = buildQuestion(newsgroup);
+    handleXref(newsgroup, newsgroup->current);
+    
     return XRN_OKAY;
 }
 
 
-static int toggleArtAttribute _ARGUMENTS((file_cache_file **, char **, int));
-
-static int toggleArtAttribute(file, question, attribute)
-    file_cache_file **file;
+int toggleHeaders(filename, question)
+    char **filename;
     char **question;
-    int attribute;
 {
     struct newsgroup *newsgroup = CurrentGroup;
-    struct article *art = artStructGet(newsgroup, newsgroup->current, True);
-    int ret;
+    struct article *articles = GETARTICLES(newsgroup);
 
-    switch (attribute) {
-    case ART_ALL_HEADERS:
-	if (IS_ALL_HEADERS(art))
-	    SET_STRIPPED_HEADERS(art);
-	else
-	    SET_ALL_HEADERS(art);
-	break;
-    case ART_ROTATED:
-	if (IS_ROTATED(art))
-	    SET_UNROTATED(art);
-	else
-	    SET_ROTATED(art);
-	break;
-#ifdef XLATE
-    case ART_XLATED:
-	if (IS_XLATED(art))
-	    SET_UNXLATED(art);
-	else
-	    SET_XLATED(art);
-	break;
-#endif
-    }
-
-    CLEAR_FILE(art);
-
-    artStructSet(newsgroup, &art);
-
-    ret = getArticle(newsgroup, newsgroup->current, file, question);
-    if (ret != XRN_OKAY) {
-	mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, newsgroup->current);
-    }
-    return ret;
+    if (IS_ALL_HEADERS(articles[CURRENT])) {
+	SET_STRIPPED_HEADERS(articles[CURRENT]);
+    } else {
+	SET_ALL_HEADERS(articles[CURRENT]);
+    }	
+    CLEAR_FILE(articles[CURRENT]);
+    return getArticle(filename, question);
 }
 
-int toggleHeaders(file, question)
-    file_cache_file **file;
+
+int toggleRotation(filename, question)
+    char **filename;
     char **question;
 {
-    return toggleArtAttribute(file, question, ART_ALL_HEADERS);
+    struct newsgroup *newsgroup = CurrentGroup;
+    struct article *articles = GETARTICLES(newsgroup);
+
+    if (IS_ROTATED(articles[CURRENT])) {
+	SET_UNROTATED(articles[CURRENT]);
+    } else {
+	SET_ROTATED(articles[CURRENT]);
+    }	
+    CLEAR_FILE(articles[CURRENT]);
+    return getArticle(filename, question);
 }
 
-int toggleRotation(file, question)
-    file_cache_file **file;
-    char **question;
-{
-    return toggleArtAttribute(file, question, ART_ROTATED);
-}
 
 #ifdef XLATE
-int toggleXlation(file, question)
-    file_cache_file **file;
-    char **question;
+int
+toggleXlation(filename, question)
+char **filename;
+char **question;
 {
-    return toggleArtAttribute(file, question, ART_XLATED);
+    struct newsgroup *newsgroup = CurrentGroup;
+    struct article *articles = GETARTICLES(newsgroup);
+
+    if (IS_XLATED(articles[CURRENT])) {
+	SET_UNXLATED(articles[CURRENT]);
+    } else {
+	SET_XLATED(articles[CURRENT]);
+    }	
+    CLEAR_FILE(articles[CURRENT]);
+    return getArticle(filename, question);
 }
 #endif /* XLATE */
+
+
+#ifdef XRN_PREFETCH
+
+typedef struct _workStruct_t
+{   long indx;
+    struct article * articles;
+    struct newsgroup * newsgroup;
+}_WorkStruct_t;
 
 static Boolean prefetchSetFetched _ARGUMENTS((XtPointer));
 
 static Boolean prefetchSetFetched(pClient)
     XtPointer pClient;
 {
-    struct newsgroup *newsgroup = PrefetchingGroup;
-    char msg[LABEL_SIZE];
-#ifdef DEBUG
-    int mesg_name = newMesgPaneName();
-#endif
+    register long indx = ((_WorkStruct_t *)pClient)->indx;
+    register struct article *articles = ((_WorkStruct_t *)pClient)->articles;
+    register struct newsgroup *newsgroup = ((_WorkStruct_t *)pClient)->newsgroup;
 
-    if (rescan_id && !FinishingPrefetch) {
-      (void) rescanWorkProc(0);
-      return False;
+    if (PrefetchInProgress == False) {
+	return True;
     }
-
-    InWorkProc++;
-
-    if (! newsgroup) {
-#ifdef DEBUG
-	fprintf(stderr, "prefetchSetFetched[%d] returning (not in prefetch)\n",
-		mesg_name);
-#endif
-	goto done;
-    }
-    if ((struct newsgroup *) pClient != newsgroup) {
-#ifdef DEBUG
-	fprintf(stderr, "prefetchSetFetched[%d] returning (wrong group)\n",
-		mesg_name);
-#endif
-	goto done;
-    }
-
-    if ((newsgroup->current < newsgroup->first) ||
-	(newsgroup->last < newsgroup->current)) {
-#ifdef DEBUG
-	fprintf(stderr, "prefetchSetFetched[%d] returning (current out of range)\n",
-		mesg_name);
-#endif
-	goto done;
-    }
-
-    artListSet(newsgroup);
-
-#ifdef DEBUG
-    fprintf(stderr, "prefetchSetFetched[%d] fetching %s\n", mesg_name,
-	    newsgroup->name);
-#endif
 
     /* if the current article is unfetched, fetch it */
-    if (FastServer || FinishingPrefetch) {
-	struct article *art = artStructGet(newsgroup, newsgroup->current,
-					   True);
-	if (IS_UNFETCHED(art)) {
-	    file_cache_file *artfile;
-
-	    /* if the article can be fetched, mark it so */
-	    ART_STRUCT_UNLOCK;
-	    artfile = getarticle(newsgroup, newsgroup->current, 0,
-				 PAGEBREAKS | BACKSPACES);
-	    art = artStructGet(newsgroup, newsgroup->current, True);
-
-	    if (artfile) {
-	      art->file = artfile;
-	      SET_FETCHED(art);
-	    }
+    if (IS_UNFETCHED(articles[indx])) {
+	/* if the article can be fetched, mark it so */
+	if ((articles[indx].filename =
+	     getarticle(newsgroup, newsgroup->current,
+			&articles[indx].position, NORMAL_HEADER, NOT_ROTATED,
+			NOT_XLATED)) != NIL(char)) {
+	    SET_FETCHED(articles[indx]);
 	}
-
-	artStructSet(newsgroup, &art);
     }
-
     PrefetchedGroup = newsgroup;
-    PrefetchingGroup = 0;
-    (void) sprintf(msg, PREFETCHING_MSG, newsgroup->name);
-    (void) strcat(msg, " ");
-    (void) strcat(msg, DONE_MSG);
-    INFO(msg);
-
 #ifdef DEBUG
-    fprintf(stderr, "prefetchSetFetched[%d] fetched %s\n", mesg_name,
-	    newsgroup->name);
+    fprintf(stderr, "prefetchSetFetched(%s)\n", newsgroup->name);
 #endif
-  done:
-    InWorkProc--;
+    XtFree(pClient);
+    PrefetchInProgress = False;
+
     return True;
 }
 
@@ -2687,67 +1827,24 @@ static Boolean prefetchGetArticles _ARGUMENTS((XtPointer));
 static Boolean prefetchGetArticles(pClient)
     XtPointer pClient;
 {
-    register struct newsgroup *newsgroup = PrefetchingGroup;
-#ifdef DEBUG
-    int mesg_name = newMesgPaneName();
-#endif
+    register struct newsgroup *newsgroup = (struct newsgroup *)pClient;
+    long indx = CURRENT;
+    register struct article *articles = GETARTICLES(newsgroup);
 
-    if (rescan_id && !FinishingPrefetch) {
-      (void) rescanWorkProc(0);
-      return False;
+    if (PrefetchInProgress == False) {
+	return True;
     }
 
-    InWorkProc++;
-
-    if (! newsgroup) {
-#ifdef DEBUG
-	fprintf(stderr,
-		"prefetchGetArticles[%d] returning (not in prefetch)\n",
-		mesg_name);
-#endif
-	goto done;
+    if (articles != NIL(struct article)) {
+	_WorkStruct_t *w = XtNew(_WorkStruct_t);
+	w->indx = indx;
+	w->articles = articles;
+	w->newsgroup = newsgroup;
+	PrefetchWorkId = XtAddWorkProc(prefetchSetFetched,(XtPointer)w);
+    } else {
+	PrefetchInProgress = False;
     }
-
-    if ((struct newsgroup *) pClient != newsgroup) {
-#ifdef DEBUG
-	fprintf(stderr, "prefetchGetArticles[%d] returning (wrong group)\n",
-		mesg_name);
-#endif
-	goto done;
-    }
-
-    artListSet(newsgroup);
-
-#ifdef DEBUG
-    fprintf(stderr, "prefetchGetArticles[%d] fetching %s\n", mesg_name,
-	    newsgroup->name);
-#endif
-
-    if ((newsgroup->current < newsgroup->first) ||
-	(! unreadArticleCount(newsgroup))) {
-	/* This will happen if setUpGroup couldn't find any unread
-           articles in the newsgroup, in which case newsgroup->current
-           will be 0, or if there are no unread articles in the group. */
-	cancelPrefetch();
-	prefetchNextGroup(newsgroup);
-#ifdef DEBUG
-	fprintf(stderr, "prefetchGetArticles[%d] fetching group after %s\n",
-		mesg_name, newsgroup->name);
-#endif
-	goto done;
-    }
-
-    prefetch_id = XtAppAddWorkProc(TopContext,
-				   prefetchSetFetched, newsgroup);
-    PrefetchingProc = prefetchSetFetched;
-
-#ifdef DEBUG
-    fprintf(stderr, "prefetchGetArticles[%d] continuing with %s\n", mesg_name,
-	    newsgroup->name);
-#endif
-  done:
-    InWorkProc--;
-    return True;    
+    return True;
 }
 
 
@@ -2756,159 +1853,101 @@ static Boolean prefetchSetupUnreadGroup _ARGUMENTS((XtPointer));
 static Boolean prefetchSetupUnreadGroup(pClient)
     XtPointer pClient;
 {
-    struct newsgroup *newsgroup = PrefetchingGroup;
-#ifdef DEBUG
-    int mesg_name = newMesgPaneName();
-#endif
-    Boolean ret;
+    static int setup_stage = 0;
 
-    if (rescan_id && !FinishingPrefetch) {
-      (void) rescanWorkProc(0);
-      return False;
+    if (PrefetchInProgress == False) {
+	return True;
     }
 
-    InWorkProc++;
-
-    if (! newsgroup) {
-#ifdef DEBUG
-	fprintf(stderr,
-		"prefetchSetupUnreadGroup[%d] returning (not in prefetch)\n",
-		mesg_name);
-#endif
-	ret = True;
-	goto done;
-    }
-
-    if ((struct newsgroup *) pClient != newsgroup) {
-#ifdef DEBUG
-	fprintf(stderr,
-		"prefetchSetupUnreadGroup[%d] returning (wrong newsgroup)\n",
-		mesg_name);
-#endif
-	ret = True;
-	goto done;
-    }
-
-    if (PrefetchStage <= PREFETCH_LAST_STAGE) {
-#ifdef DEBUG
-	fprintf(stderr,
-		"prefetchSetupUnreadGroup[%d] running stage %d on %s\n",
-		mesg_name, PrefetchStage, newsgroup->name);
-#endif
-	if (setUpGroupIncremental(newsgroup, &PrefetchStage,
-				  app_resources.rescanOnEnter,
-				  True, True, True,
-				  0, 0))
-	    PrefetchStage++;
-	ret = False;
-	goto done;
+    if (setup_stage++ < 5) {
+	busyCursor();
+	setUpGroup((struct newsgroup *)pClient, setup_stage);
+	unbusyCursor();
+	return False;
     }
     else {
-	if (! FinishingPrefetch)
-	    redrawNewsgroupTextWidget(newsgroup->name, False);
-	prefetch_id = XtAppAddWorkProc(TopContext,
-				       prefetchGetArticles, newsgroup);
-	PrefetchingProc = prefetchGetArticles;
-#ifdef DEBUG
-	fprintf(stderr, "prefetchSetupUnreadGroup[%d] continuing with %s\n",
-		mesg_name, newsgroup->name);
-#endif
-	ret = True;
-	goto done;
+	setup_stage = 0;
+	PrefetchWorkId = XtAddWorkProc(prefetchGetArticles,pClient);
+	return True;
     }
-  done:
-    InWorkProc--;
-    return ret;
 }
 
 
-static void prefetchNextGroup _ARGUMENTS((struct newsgroup *));
+static Boolean prefetchNextUnreadGroup _ARGUMENTS((XtPointer));
 
 /*ARGSUSED*/
-static void prefetchNextGroup(in_newsgroup)
-    struct newsgroup *in_newsgroup;
+static Boolean prefetchNextUnreadGroup(pClient)
+    XtPointer pClient;
 {
-    struct newsgroup *newsgroup WALL(= 0);
+    register struct newsgroup *newsgroup;
     register ng_num number;
-    char msg[LABEL_SIZE];
-#ifdef DEBUG
-    int mesg_name = newMesgPaneName();
-#endif
 
-#ifdef DEBUG
-    fprintf(stderr, "prefetchNextGroup[%d](%s)\n", mesg_name, in_newsgroup ?
-	    in_newsgroup->name : "NULL");
-#endif
+    if (! CurrentGroup) {
+	 return True;
+    }
 
-    if (app_resources.prefetchMax < 0)
-	/* Don't prefetch at all if prefetchMax is negative. */
-	goto done;
+    number = CurrentGroup->newsrc;
+
+    if (PrefetchInProgress == False) {
+	return True;
+    }
 
     /* find a group that is subscribed to and has unread articles */
-    for (number = (in_newsgroup ? in_newsgroup->newsrc + 1 : 0);
-	 number < MaxGroupNumber;
-	 number++) {
-	newsgroup = Newsrc[number];
+    while (++number < MaxGroupNumber)
+    {   newsgroup = Newsrc[number];
 	if (IS_SUBSCRIBED(newsgroup) && (unreadArticleCount(newsgroup) > 0))
-	    break;
+	{ break; }
     }
-    if (number < MaxGroupNumber) {
-	if ((PrefetchingGroup == newsgroup) ||
-	    (PrefetchedGroup == newsgroup))
-	    goto done;
-	cancelPrefetch();
-	if ((! app_resources.prefetchMax) ||
-	    (unreadArticleCount(newsgroup) <= app_resources.prefetchMax)) {
-	    PrefetchingGroup = newsgroup;
-	    PrefetchStage = PREFETCH_FIRST_STAGE;
-	    (void) sprintf(msg, PREFETCHING_MSG, newsgroup->name);
-#ifdef DEBUG
-	    fprintf(stderr, "prefetchNextGroup[%d] continuing with %s\n",
-		    mesg_name, newsgroup->name);
+    if (number != MaxGroupNumber
+#ifdef XRN_PREFETCH
+	&& unreadArticleCount(newsgroup) <= app_resources.prefetchMax
 #endif
-	    prefetch_id = XtAppAddWorkProc(TopContext,
-					   prefetchSetupUnreadGroup, newsgroup);
-	    PrefetchingProc = prefetchSetupUnreadGroup;
-	    maybeInfoNow(msg);
-	}
-	
+	)
+    {
+	PrefetchingGroup = newsgroup;
+	PrefetchWorkId = XtAddWorkProc(prefetchSetupUnreadGroup,
+	    (XtPointer)newsgroup);
     }
-    else if (PrefetchingGroup || PrefetchedGroup)
-	cancelPrefetch();
-
-  done:
-#ifdef DEBUG
-    fprintf(stderr, "prefetchNextGroup[%d](%s) done\n", mesg_name,
-	    in_newsgroup ? in_newsgroup->name : "NULL");
-#endif
-    return;
+    else
+    { PrefetchInProgress = False; }
+    return True;
 }
 
 
 /*
-  Prefetch the specified group, if it has unread articles.
-  */
-void prefetchGroup(group)
-    char *group;
+ * prefetch the next group
+ *
+ *   sequence of events:
+ *    - put the server into the next group
+ *    - get the first unread article
+ *    - mark that we are in a new group (but don't change CurrentGroup)
+ *
+ *    returns: void
+ */
+static void prefetchNextGroup _ARGUMENTS((XtPointer));
+
+static void prefetchNextGroup(pClient)
+    XtPointer pClient;
 {
-    struct newsgroup *newsgroup;
+    static XtPointer prefetchReference = 0;
 
-#ifdef DEBUG
-    fprintf(stderr, "prefetchGroup(%s)\n", group);
-#endif
-
-    if (! avl_lookup(NewsGroupTable, group, (char **)&newsgroup)) {
-#ifdef DEBUG
-	fprintf(stderr, "prefetchGroup(%s) done\n", group);
-#endif
+    if (prefetchReference == pClient) {
 	return;
     }
 
-    prefetchNextGroup(newsgroup->newsrc ? Newsrc[newsgroup->newsrc - 1] : 0);
+    prefetchReference = pClient;
 
-#ifdef DEBUG
-    fprintf(stderr, "prefetchGroup(%s) done\n", group);
-#endif
+    if (PrefetchInProgress) {
+	XtRemoveWorkProc(PrefetchWorkId);
+	releaseNewsgroupResources(PrefetchingGroup);
+	PrefetchInProgress = False;
+    }
+
+    if (PrefetchGroupMode != DO_NOT_XRN_PREFETCH_GROUP) {
+	PrefetchWorkId = XtAddWorkProc(prefetchNextUnreadGroup,NULL);
+	PrefetchingGroup = 0;
+	PrefetchInProgress = True;
+    }
     return;
 }
 
@@ -2923,159 +1962,96 @@ void prefetchGroup(group)
 void prefetchNextArticle()
 {
     struct newsgroup *newsgroup = CurrentGroup;
+    struct article *articles = GETARTICLES(newsgroup);
+    long indx;
 
 #ifdef DEBUG
     fprintf(stderr, "prefetchNextArticle(%s)\n", newsgroup->name);
 #endif
 
-    artListSet(newsgroup);
-    
     if (newsgroup->current == newsgroup->last) {
 #ifdef NO_IMMEDIATE_WORK_PROC_PREFETCH
 	/*
 	 * if this is the last article, prefetch the next group, and the
 	 * first article of the next group
 	 */
-	prefetchNextGroup(newsgroup);
+	prefetchNextGroup((XtPointer)newsgroup);
 #endif
 	return;
     }
 
-    if (FastServer) {
-	art_num artnum = newsgroup->current + 1;
-	struct article *art = artStructGet(newsgroup, artnum, True);
-	file_cache_file *artfile;
+    indx = INDEX(newsgroup->current + 1);
 
-	if (IS_UNFETCHED(art)) {
-	  ART_STRUCT_UNLOCK;
-	  artfile = getarticle(newsgroup, artnum, 0, PAGEBREAKS | BACKSPACES);
-	  art = artStructGet(newsgroup, artnum, True);
-
-	  if (artfile) {
-	    file_cache_file_unlock(FileCache, *artfile);
-	    art->file = artfile;
-	    SET_FETCHED(art);
-	    SET_STRIPPED_HEADERS(art);
-	    SET_UNROTATED(art);
-	    SET_UNXLATED(art);
-	  }
+    if (IS_UNFETCHED(articles[indx])) {
+	/*
+	 * XXX HP Global optimizer did the wrong thing when the
+	 * assignment and the if where in the same statement 
+	 */
+	articles[indx].filename = getarticle(newsgroup, newsgroup->current + 1,
+					     &articles[indx].position,
+					     NORMAL_HEADER, NOT_ROTATED,
+					     NOT_XLATED);
+	if (articles[indx].filename == NIL(char)) {
+	    return;
 	}
-
-	artStructSet(newsgroup, &art);
+	SET_FETCHED(articles[indx]);
+	SET_STRIPPED_HEADERS(articles[indx]);
+	SET_UNROTATED(articles[indx]);
+	return;
     }
+    return;
 }
 
+#endif /* XRN_PREFETCH */
 
 
-/*
- * mark the articles in a group that have been read
- *
- * returns: True on success, False on failure indicating that the
- * group should not be entered.
- *
- */
-Boolean updateArticleArray(
-			   _ANSIDECL(struct newsgroup *,	newsgroup),
-			   _ANSIDECL(Boolean,			do_unsubbed)
-			   )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(Boolean,			do_unsubbed)
+#ifdef STUPIDMMU
+void cornered(newsgroup)
+    struct newsgroup *newsgroup;
 {
     struct list *item;
-    struct article *art;
-    art_num artnum;
-#ifndef FIXED_C_NEWS_ACTIVE_FILE
-    int number;
-#endif
+    art_num art;
 
-#define CHECK_CACHED(label) \
-    if (newsgroup->from_cache) { \
-	art_num first, last; \
-	int number; \
-\
-	if (getgroup(newsgroup, &first, &last, &number, False)) { \
-	  return False; \
-	} \
-	else { \
-	    articleArrayResync(newsgroup, first, last, number); \
-	    newsgroup->from_cache = FALSE; \
-	    goto label; \
-	} \
+    if (!newsgroup->nglist) {
+      fprintf(stderr, "XRN error in `cornered': expecting nglist to be valid\n");
+      return;
     }
-
-    if (!(do_unsubbed || IS_SUBSCRIBED(newsgroup))) {
-	artListFree(newsgroup);
-	return True;
-    }
-
-empty_retry:
-    if ((newsgroup->last == 0) || EMPTY_GROUP(newsgroup)) {
-      CHECK_CACHED(empty_retry);
-	artListFree(newsgroup);
-	return True;
-    }
-
-    artListSet(newsgroup);
-
-    if (newsgroup->nglist == NIL(struct list)) {
-	return True;
-    }
-
-#ifndef FIXED_C_NEWS_ACTIVE_FILE
-#ifdef DEBUG
-    fprintf(stderr, "updateArticleArray(%s)\n", newsgroup->name);
-#endif
-
-    /* get the group range to fix c-news low number problem */
-    if ((XRNState & XRN_NEWS_UP) == XRN_NEWS_UP) {
-	(void) getgroup(newsgroup, &newsgroup->first, &newsgroup->last,
-			&number, True);
-	if ((newsgroup->first == 0 && newsgroup->last == 0) || number == 0) {
-	    lsDestroy(newsgroup->nglist);
-	    newsgroup->nglist = NIL(struct list);
-	    return True;
-	}
-    }
-#endif
 
     /* process the .newsrc line */
 
-retry:
     for (item = newsgroup->nglist; item != NIL(struct list); item = item->next) {
 	switch (item->type) {
-	case SINGLE:
+	    case SINGLE:
 	    if (item->contents.single > newsgroup->last) {
-		CHECK_CACHED(retry);
 		/* something really bad has happened, reset */
-		mesgPane(XRN_SERIOUS, 0, ART_NUMBERING_PROBLEM_MSG,
+		mesgPane(XRN_SERIOUS, ART_NUMBERING_PROBLEM_MSG,
 			 newsgroup->name);
-		artListFree(newsgroup);
-		artListSet(newsgroup);
+		for (art = newsgroup->first; art <= newsgroup->last; art++) {
+		    newsgroup->articles[INDEX(art)].status = ART_CLEAR;
+		}
 		lsDestroy(newsgroup->nglist);
 		newsgroup->nglist = NIL(struct list);
-		return True;
+		return;
 	    }
 	    if (item->contents.single >= newsgroup->first) {
-		struct article *art = artStructGet(newsgroup,
-						   item->contents.single,
-						   True);
-		art->status = ART_CLEAR_READ;
-		artStructSet(newsgroup, &art);
+		newsgroup->articles[INDEX(item->contents.single)].status = ART_CLEAR_READ;
 	    }
 	    break;
 
-	case RANGE:
+	    case RANGE:
 	    if ((item->contents.range.start > newsgroup->last) ||
 		(item->contents.range.end > newsgroup->last)) {
-		CHECK_CACHED(retry);
 		/* something really bad has happened, reset */
-		mesgPane(XRN_SERIOUS, 0, ART_NUMBERING_PROBLEM_MSG,
+		mesgPane(XRN_SERIOUS, ART_NUMBERING_PROBLEM_MSG,
 			 newsgroup->name);
-		artListFree(newsgroup);
-		artListSet(newsgroup);
+		if (newsgroup->articles) {
+		    for (art = newsgroup->first; art <= newsgroup->last; art++) {
+			newsgroup->articles[INDEX(art)].status = ART_CLEAR;
+		    }
+		}
 		lsDestroy(newsgroup->nglist);
 		newsgroup->nglist = NIL(struct list);
-		return True;
+		return;
 	    }
 	    if (item->contents.range.start < newsgroup->first) {
 		item->contents.range.start = newsgroup->first;
@@ -3084,21 +2060,127 @@ retry:
 	    if (item->contents.range.end < newsgroup->first) {
 		break;
 	    }
-	    for (artnum = item->contents.range.start;
-		 artnum <= item->contents.range.end; artnum++) {
-		art = artStructGet(newsgroup, artnum, True);
-		art->status = ART_CLEAR_READ;
-		artStructSet(newsgroup, &art);
+	    for (art = item->contents.range.start; art <= item->contents.range.end; art++) {
+		newsgroup->articles[INDEX(art)].status = ART_CLEAR_READ;
 	    }
 	}
     }
 
-#undef CHECK_CACHED
+    lsDestroy(newsgroup->nglist);
+    newsgroup->nglist = NIL(struct list);
+    
+}
+#endif
+
+
+/*
+ * mark the articles in a group that have been read
+ *
+ *   returns: void
+ *
+ */
+void updateArticleArray(newsgroup)
+    struct newsgroup *newsgroup;    /* newsgroup to update article array for   */
+{
+    struct list *item;
+    art_num art;
+#ifndef FIXED_C_NEWS_ACTIVE_FILE
+    int number;
+#endif
+
+    if (newsgroup->last == 0) {
+	return;
+    }
+
+    if (EMPTY_GROUP(newsgroup)) {
+	newsgroup->articles = NIL(struct article);
+	return;
+    }
+
+    if (newsgroup->nglist == NIL(struct list)) {
+	return;
+    }
+
+    if (!IS_SUBSCRIBED(newsgroup)) {
+	newsgroup->articles = NIL(struct article);
+	return;
+    }
+
+#ifdef STUPIDMMU
+    if (!newsgroup->articles) {
+	return;
+    }
+#endif
+
+#ifndef FIXED_C_NEWS_ACTIVE_FILE
+#ifdef DEBUG
+    fprintf(stderr, "updateArticleArray(%s)\n", newsgroup->name);
+#endif
+
+    /* get the group range to fix c-news low number problem */
+    if ((XRNState & XRN_NEWS_UP) == XRN_NEWS_UP) {
+	(void) getgroup(newsgroup, &newsgroup->first, &newsgroup->last, &number);
+	if ((newsgroup->first == 0 && newsgroup->last == 0) || number == 0) {
+	    lsDestroy(newsgroup->nglist);
+	    newsgroup->nglist = NIL(struct list);
+	    return;
+	}
+    }
+#endif
+
+    SETARTICLES(newsgroup);
+
+    /* process the .newsrc line */
+
+    for (item = newsgroup->nglist; item != NIL(struct list); item = item->next) {
+	switch (item->type) {
+	    case SINGLE:
+	    if (item->contents.single > newsgroup->last) {
+		/* something really bad has happened, reset */
+		mesgPane(XRN_SERIOUS, ART_NUMBERING_PROBLEM_MSG,
+			 newsgroup->name);
+		for (art = newsgroup->first; art <= newsgroup->last; art++) {
+		    newsgroup->articles[INDEX(art)].status = ART_CLEAR;
+		}
+		lsDestroy(newsgroup->nglist);
+		newsgroup->nglist = NIL(struct list);
+		return;
+	    }
+	    if (item->contents.single >= newsgroup->first) {
+		newsgroup->articles[INDEX(item->contents.single)].status = ART_CLEAR_READ;
+	    }
+	    break;
+
+	    case RANGE:
+	    if ((item->contents.range.start > newsgroup->last) ||
+		(item->contents.range.end > newsgroup->last)) {
+		/* something really bad has happened, reset */
+		mesgPane(XRN_SERIOUS, ART_NUMBERING_PROBLEM_MSG,
+			 newsgroup->name);
+		for (art = newsgroup->first; art <= newsgroup->last; art++) {
+		    newsgroup->articles[INDEX(art)].status = ART_CLEAR;
+		}
+		lsDestroy(newsgroup->nglist);
+		newsgroup->nglist = NIL(struct list);
+		return;
+	    }
+	    if (item->contents.range.start < newsgroup->first) {
+		item->contents.range.start = newsgroup->first;
+	    }
+	    
+	    if (item->contents.range.end < newsgroup->first) {
+		break;
+	    }
+	    for (art = item->contents.range.start; art <= item->contents.range.end; art++) {
+		newsgroup->articles[INDEX(art)].status = ART_CLEAR_READ;
+	    }
+	}
+    }
 
     lsDestroy(newsgroup->nglist);
     newsgroup->nglist = NIL(struct list);
     
-    return True;
+    return;
 }
 
 
@@ -3106,17 +2188,14 @@ retry:
  * mark an article as read
  */
 void markArticleAsRead(article)
-    art_num article;
+    long article;
 {
     struct newsgroup *newsgroup = CurrentGroup;
-    struct article *art;
 
-    artListSet(newsgroup);
-
-    art = artStructGet(newsgroup, article, True);
-    SET_READ(art);
-    SET_UNMARKED(art);
-    artStructSet(newsgroup, &art);
+    SETARTICLES(newsgroup);
+    SET_READ(newsgroup->articles[INDEX((art_num) article)]);
+    SET_UNMARKED(newsgroup->articles[INDEX((art_num) article)]);
+    return;
 }
 
 
@@ -3124,17 +2203,14 @@ void markArticleAsRead(article)
  * mark an article as unread
  */
 void markArticleAsUnread(article)
-    art_num article;
+    long article;
 {
     struct newsgroup *newsgroup = CurrentGroup;
-    struct article *art;
 
-    artListSet(newsgroup);
-
-    art = artStructGet(newsgroup, article, True);
-    SET_UNREAD(art);
-    SET_MARKED(art);
-    artStructSet(newsgroup, &art);
+    SETARTICLES(newsgroup);
+    SET_UNREAD(newsgroup->articles[INDEX((art_num) article)]);
+    SET_MARKED(newsgroup->articles[INDEX((art_num) article)]);
+    return;
 }
 
 
@@ -3168,42 +2244,45 @@ void markArticleAsUnread(article)
  */
 
 int addToNewsrcBeginning(newGroup, status)
-     char *newGroup;
-     int status;
+    char *newGroup;
+    int status;
 {
-  struct newsgroup *newsgroup;
-  ng_num i;
-
-  if (! verifyGroup(newGroup, &newsgroup, False)) {
-    mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_MSG, newGroup);
-    return BAD_GROUP;
-  }
+    char *ptr;
+    struct newsgroup *newsgroup;
+    ng_num i;
     
-  if (status == SUBSCRIBE) {
-    if (! subscribe_group(newsgroup))
-      return BAD_GROUP;
-  } else {
-    SET_UNSUB(newsgroup);
-  }
-  CLEAR_NOENTRY(newsgroup);
-  if (newsgroup->newsrc == NOT_IN_NEWSRC) {
-    for (i = MaxGroupNumber - 1; i != NOT_IN_NEWSRC; i--) {
-      Newsrc[i + 1] = Newsrc[i];
-      Newsrc[i + 1]->newsrc = i + 1;
+    if (!avl_lookup(NewsGroupTable, newGroup, &ptr)) {
+	mesgPane(XRN_SERIOUS, NO_SUCH_NG_MSG, newGroup);
+	return BAD_GROUP;
     }
+    
+    newsgroup = (struct newsgroup *) ptr;
 
-    INC_MAXGROUPNUMBER();
-  } else {
-    for (i = newsgroup->newsrc - 1; i != NOT_IN_NEWSRC; i--) {
-      Newsrc[i + 1] = Newsrc[i];
-      Newsrc[i + 1]->newsrc = i + 1;
+    CLEAR_NOENTRY(newsgroup);
+    if (status == SUBSCRIBE) {
+	SET_SUB(newsgroup);
+    } else {
+	SET_UNSUB(newsgroup);
     }
-  }
+    if (newsgroup->newsrc == NOT_IN_NEWSRC) {
+	for (i = MaxGroupNumber - 1; i >= 0; i--) {
+	    Newsrc[i + 1] = Newsrc[i];
+	    Newsrc[i + 1]->newsrc = i + 1;
+	}
     
-  newsgroup->newsrc = 0;
-  Newsrc[0] = newsgroup;
+	MaxGroupNumber++;
+	
+    } else {
+	for (i = newsgroup->newsrc - 1; i >= 0; i--) {
+	    Newsrc[i + 1] = Newsrc[i];
+	    Newsrc[i + 1]->newsrc = i + 1;
+	}
+    }
     
-  return GOOD_GROUP;
+    newsgroup->newsrc = 0;
+    Newsrc[0] = newsgroup;
+    
+    return GOOD_GROUP;
 }
 
 
@@ -3211,23 +2290,25 @@ int addToNewsrcEnd(newGroup, status)
     char *newGroup;
     int status;
 {
+    char *ptr;
     struct newsgroup *newsgroup;
     ng_num i;
-
-    if (! verifyGroup(newGroup, &newsgroup, False)) {
-      mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_MSG, newGroup);
-      return BAD_GROUP;
+    
+    if (!avl_lookup(NewsGroupTable, newGroup, &ptr)) {
+	mesgPane(XRN_SERIOUS, NO_SUCH_NG_MSG, newGroup);
+	return BAD_GROUP;
     }
     
-    if (status == SUBSCRIBE) {
-      if (! subscribe_group(newsgroup))
-	return BAD_GROUP;
-    } else {
-      SET_UNSUB(newsgroup);
-    }
+    newsgroup = (struct newsgroup *) ptr;
+
     CLEAR_NOENTRY(newsgroup);
+    if (status == SUBSCRIBE) {
+	SET_SUB(newsgroup);
+    } else {
+	SET_UNSUB(newsgroup);
+    }
     if (newsgroup->newsrc == NOT_IN_NEWSRC) {
-      INC_MAXGROUPNUMBER();
+	MaxGroupNumber++;
     } else {
 	for (i = newsgroup->newsrc + 1; i < MaxGroupNumber; i++) {
 	    Newsrc[i - 1] = Newsrc[i];
@@ -3247,49 +2328,33 @@ int addToNewsrcAfterGroup(newGroup, afterGroup, status)
     char *afterGroup;
     int status;
 {
+    char *ptr;
     struct newsgroup *newsgroup, *ng;
     ng_num newloc, i;
-
-    if (! verifyGroup(newGroup, &newsgroup, False)) {
-      mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_MSG, newGroup);
-      return BAD_GROUP;
+    
+    if (!avl_lookup(NewsGroupTable, newGroup, &ptr)) {
+	mesgPane(XRN_SERIOUS, NO_SUCH_NG_MSG, newGroup);
+	return BAD_GROUP;
     }
     
+    newsgroup = (struct newsgroup *) ptr;
+
+    CLEAR_NOENTRY(newsgroup);
     if (status == SUBSCRIBE) {
-      if (! subscribe_group(newsgroup))
-	return BAD_GROUP;
+	SET_SUB(newsgroup);
     } else {
 	SET_UNSUB(newsgroup);
     }
-    CLEAR_NOENTRY(newsgroup);
-
-    if (! avl_lookup(NewsGroupTable, afterGroup, (char **) &ng)) {
-      Boolean no_group = True;
-
-      if (! active_read) {
-	char *err_buf;
-
-	err_buf = XtMalloc(strlen(MAYBE_LIST_MSG)+strlen(afterGroup));
-	(void) sprintf(err_buf, MAYBE_LIST_MSG, afterGroup);
-
-	no_group =
-	  (ConfirmationBox(TopLevel, err_buf, "yes", "no", True) ==
-	   XRN_CB_ABORT) ||
-	  (! verifyGroup(afterGroup, &ng, False));
-	
-	XtFree(err_buf);
-      }
-
-      if (no_group) {
-	mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_MSG, afterGroup);
+    if (!avl_lookup(NewsGroupTable, afterGroup, &ptr)) {
+	mesgPane(XRN_SERIOUS, NO_SUCH_NG_MSG, afterGroup);
 	return BAD_GROUP;
-      }
     }
-
+    
+    ng = (struct newsgroup *) ptr;
     newloc = ng->newsrc;
 
     if (newloc == NOT_IN_NEWSRC) {
-	mesgPane(XRN_SERIOUS, 0, NOT_IN_NEWSRC_MSG, afterGroup);
+	mesgPane(XRN_SERIOUS, NOT_IN_NEWSRC_MSG, afterGroup);
 	return BAD_GROUP;
     }
 
@@ -3299,7 +2364,7 @@ int addToNewsrcAfterGroup(newGroup, afterGroup, status)
 	    Newsrc[i + 1]->newsrc = i + 1;
 	}
 
-	INC_MAXGROUPNUMBER();
+	MaxGroupNumber++;
 	newsgroup->newsrc = newloc + 1;
 	Newsrc[newloc + 1] = newsgroup;
 
@@ -3328,56 +2393,6 @@ int addToNewsrcAfterGroup(newGroup, afterGroup, status)
 }
 
 
-int ignoreGroup(group)
-char *group;
-{
-  struct newsgroup *newsgroup;
-
-  if (! verifyGroup(group, &newsgroup, False)) {
-    mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_MSG, group);
-    return BAD_GROUP;
-  }
-
-  if (newsgroup->newsrc != NOT_IN_NEWSRC)
-      return removeFromNewsrc(group);
-
-  SET_NOENTRY(newsgroup);
-  SET_UNSUB(newsgroup);
-
-  return GOOD_GROUP;
-}
-
-  
-int removeFromNewsrc(group)
-char *group;
-{
-  struct newsgroup *newsgroup;
-  int i;
-
-  if (! verifyGroup(group, &newsgroup, False)) {
-    mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_MSG, group);
-    return BAD_GROUP;
-  }
-
-  if (newsgroup->newsrc != NOT_IN_NEWSRC) {
-    MaxGroupNumber--;
-
-    for (i = newsgroup->newsrc; i < MaxGroupNumber; i++) {
-      Newsrc[i] = Newsrc[i + 1];
-      Newsrc[i]->newsrc = i;
-    }
-
-    newsgroup->newsrc = NOT_IN_NEWSRC;
-  }
-
-  SET_NOENTRY(newsgroup);
-  SET_UNSUB(newsgroup);
-  CLEAR_NEW(newsgroup);
-
-  return GOOD_GROUP;
-}
-
-  
 /*
  * build and return a string that shows the subscription status
  * of all newsgroups; assumes all groups have been subscribed or
@@ -3385,15 +2400,9 @@ char *group;
  *
  *   if sorted is non-zero, the list is sorted alphabetically, if
  *    zero, the list is returned as it exists in the newsrc file
- *
- * The specified regular expression limits the list to the newsgroups
- * whose names match it.  May return NULL if there's an error in the
- * regular expression; otherwise, will never return NULL.
  */
-char * getStatusString(line_width, sorted, regexp)
-    int line_width;
+char * getStatusString(sorted)
     int sorted;
-    char *regexp;
 {
     int i, count = 0, bytes = 0;
     char buffer[1024];
@@ -3401,84 +2410,21 @@ char * getStatusString(line_width, sorted, regexp)
     char *key, *value;
     char **ar;
     char *string;
-    static int status_width = 0;
-    int newsgroup_width;
-#ifdef POSIX_REGEX
-    regex_t reStruct;
-    int reRet;
-#else
-# ifdef SYSV_REGEX
-    char *reRet = 0;
-# else
-    char *reRet;
-# endif
-#endif
-
-    if (regexp) {
-      if (
-#ifdef POSIX_REGEX
-	  (reRet = regcomp(&reStruct, regexp, REG_NOSUB))
-#else
-# ifdef SYSV_REGEX
-	  ! (reRet = regcmp(regexp, NULL))
-# else
-	  (reRet = re_comp(regexp))
-# endif
-#endif
-	  ) {
-#ifdef SYSV_REGEX
-	mesgPane(XRN_SERIOUS, 0, UNKNOWN_REGEXP_ERROR_MSG, regexp);
-#else
-# ifdef POSIX_REGEX
-	regerror(reRet, &reStruct, error_buffer, sizeof(error_buffer));
-# endif
-	mesgPane(XRN_SERIOUS, 0, KNOWN_REGEXP_ERROR_MSG, regexp,
-# ifdef POSIX_REGEX
-		 error_buffer
-# else
-		 reRet
-# endif /* POSIX_REGEX */
-		 );
-#endif /* SYSV_REGEX */
-	return NULL;
-      }
-    }
-
-    if (! status_width)
-	status_width = MAX(utStrlen(IGNORED_MSG),
-			   MAX(utStrlen(SUBED_MSG), utStrlen(UNSUBED_MSG)));
-
-    newsgroup_width = line_width - status_width - 1
-	/* the 1 is for the space between the newsgroup name and status */;
 
     ar = ARRAYALLOC(char *, ActiveGroupsCount);
 
     if (sorted) {
 	gen = avl_init_gen(NewsGroupTable, AVL_FORWARD);
 	if (! gen) {
-          ehErrorExitXRN(ERROR_OUT_OF_MEM_MSG);
+	    ehErrorExitXRN("out of memory");
 	}
 
 	while (avl_gen(gen, &key, &value)) {
 	    struct newsgroup *newsgroup = (struct newsgroup *) value;
-
-	    if (regexp &&
-#ifdef POSIX_REGEX
-		regexec(&reStruct, newsgroup->name, 0, 0, 0)
-#else
-# ifdef SYSV_REGEX
-		! regex(reRet, newsgroup->name)
-# else
-		! re_exec(newsgroup->name)
-# endif
-#endif
-		)
-	      continue;
-
-	    (void) sprintf(buffer, "%*s %s",
-			   -newsgroup_width, newsgroup->name,
-			   (IS_NOENTRY(newsgroup) ? IGNORED_MSG :
-			    (IS_SUBSCRIBED(newsgroup) ? SUBED_MSG : UNSUBED_MSG)));
+	    
+	    (void) sprintf(buffer, "%-60s%s",
+			   newsgroup->name,
+			   (IS_SUBSCRIBED(newsgroup) ? "subscribed  " : "unsubscribed"));
 	    ar[count++] = XtNewString(buffer);
 	    bytes += strlen(buffer);
 	}
@@ -3488,54 +2434,12 @@ char * getStatusString(line_width, sorted, regexp)
 	for (i = 0; i < MaxGroupNumber; i++) {
 	    struct newsgroup *newsgroup = (struct newsgroup *) Newsrc[i];
 	    
-	    if (regexp &&
-#ifdef POSIX_REGEX
-		regexec(&reStruct, newsgroup->name, 0, 0, 0)
-#else
-# ifdef SYSV_REGEX
-		! regex(reRet, newsgroup->name)
-# else
-		! re_exec(newsgroup->name)
-# endif
-#endif
-		)
-	      continue;
-
-	    (void) sprintf(buffer, "%*s %s",
-			   -newsgroup_width, newsgroup->name,
-			   (IS_SUBSCRIBED(newsgroup) ? SUBED_MSG : UNSUBED_MSG));
+	    (void) sprintf(buffer, "%-60s%s",
+			   newsgroup->name,
+			   (IS_SUBSCRIBED(newsgroup) ? "subscribed  " : "unsubscribed"));
 	    ar[count++] = XtNewString(buffer);
 	    bytes += strlen(buffer);
 	}
-
-	gen = avl_init_gen(NewsGroupTable, AVL_FORWARD);
-	if (! gen)
-	    ehErrorExitXRN(ERROR_OUT_OF_MEM_MSG);
-	while (avl_gen(gen, &key, &value)) {
-	    struct newsgroup *newsgroup = (struct newsgroup *) value;
-
-	    if (regexp &&
-#ifdef POSIX_REGEX
-		regexec(&reStruct, newsgroup->name, 0, 0, 0)
-#else
-# ifdef SYSV_REGEX
-		! regex(reRet, newsgroup->name)
-# else
-		! re_exec(newsgroup->name)
-# endif
-#endif
-		)
-	      continue;
-
-	    if (IS_NOENTRY(newsgroup)) {
-		(void) sprintf(buffer, "%*s %s",
-			       -newsgroup_width, newsgroup->name,
-			       IGNORED_MSG);
-		ar[count++] = XtNewString(buffer);
-		bytes += strlen(buffer);
-	    }
-	}
-	avl_free_gen(gen);
     }	    
     
     string = arrayToString(ar, count, bytes);
@@ -3543,178 +2447,332 @@ char * getStatusString(line_width, sorted, regexp)
 	FREE(ar[i]);
     }
     FREE(ar);
-
-    if (regexp) {
-#ifdef POSIX_REGEX
-      regfree(&reStruct);
-#else
-# ifdef SYSV_REGEX
-      free(reRet);
-# endif
-#endif
-    }
-
+    
     return string;
 }
 
 
+/*
+ * build and return the subjects string
+ */
+static char * getUnSortedSubject _ARGUMENTS((int));
+
+static char * getUnSortedSubjects(mode)
+    int mode;
+{
+    struct newsgroup *newsgroup = CurrentGroup;
+    struct article *articles = GETARTICLES(newsgroup);
+    int subLength;
+    int lineLength = app_resources.indexLineLength;
+    art_num i;
+    char *start, *end;
+
+    if (EMPTY_GROUP(newsgroup)) {
+	return XtNewString("");
+    }
+
+    if ( lineLength < 50) lineLength = 50;
+    else if ( lineLength >= LINE_LENGTH) lineLength = LINE_LENGTH - 1;
+    if (app_resources.displayLineCount) {
+	subLength = lineLength - 1 - 6 - 1 - 20 - 1;
+    } else {
+	subLength = lineLength - 2 - 20 - 1;
+    }
+	
+
+    NextPreviousArticle = newsgroup->current - 1;
+
+    if ((newsgroup->last - newsgroup->current + 1) < 0) {
+	(void) sprintf(error_buffer, "Active File Error: last - current + 1 < 0 (%s)\n",
+			       newsgroup->name);
+	ehErrorExitXRN(error_buffer);
+    }
+	
+    start = ARRAYALLOC(char, ((newsgroup->last - newsgroup->current + 1) * lineLength + 1));
+    end = start;
+    *start = '\0';
+
+    for (i = newsgroup->current; i <= newsgroup->last; i++) {
+	long indx = INDEX(i);
+
+	/* canceled and empty articles will not have a subject entry */
+	if (articles[indx].subject != NIL(char)) {
+	    /* don't put articles in the string if already read ... */
+	    if ((mode == ALL) || (IS_UNREAD(articles[indx]) &&
+				  !IS_UNAVAIL(articles[indx]))) {
+		if (app_resources.displayLineCount) {
+		    (void) sprintf(end, "%*.*s %6.6s %-20.20s\n",
+				   -subLength,subLength,
+				   articles[indx].subject,
+				   articles[indx].lines,
+				   (articles[indx].author == NIL(char) ?
+				     "(none)" : articles[indx].author));
+		} else {
+		    (void) sprintf(end, "%*.*s  %-20.20s\n",
+				   -subLength,subLength,
+				   articles[indx].subject,
+				   (articles[indx].author == NIL(char) ?
+				     "(none)" : articles[indx].author));
+		}
+
+		/* mark articles if they have already been read */
+		if (IS_READ(articles[indx])) {
+		    *end = '+';
+		} else {
+		    if (IS_MARKED(articles[indx])) {
+			*end = 'u';
+		    } else {
+			*end = ' ';
+		    }
+		}
+		if (IS_SAVED(articles[indx])) {
+		    *(end + 1)  = 'S';
+		} else if(IS_PRINTED(articles[indx])) {
+		    *(end + 1)  = 'P';
+		} else {
+		    *(end + 1)  = ' ';
+		}
+
+		end += lineLength;
+		*end = '\0';
+	    }
+	} else {
+	    /* if you can't get the subject, mark the article as unavailable */
+	    SET_UNAVAIL(articles[indx]);
+	}
+    }
+
+    return start;
+}
+
+
+struct entry {
+    char *beginning;
+    char *end;
+    int left;
+    int size;
+    int startingArticle;
+};
+
+
+static void valfree _ARGUMENTS((void *));
+
+static void valfree(p)
+    void *p;
+{
+    struct entry *val = (struct entry *)p;
+    XtFree(val->beginning);
+    XtFree((char *) val);
+    return;
+}
+
+
+static int pteCompare _ARGUMENTS((void *, void *));
+
+static int pteCompare(a, b)
+    void *a, *b;
+{
+    struct entry **pa = (struct entry **) a;
+    struct entry **pb = (struct entry **) b;
+
+    return (*pa)->startingArticle - (*pb)->startingArticle;
+}
+
 
 /*
-  If art_num is greater than 0, format a single line in the subject
-  index, and return its length (including the final newline).  If
-  art_num is less than or equal to 0, just return what the length
-  would be if a subject line were formatted, and reset our idea of the
-  current width of the index window.  Beware that this should be
-  called with art_num <= 0 before starting any series of consecutive
-  calls to it.
-  */
-int subjectIndexLine(
-		     _ANSIDECL(int,			line_length),
-		     _ANSIDECL(char *,			out),
-		     _ANSIDECL(struct newsgroup *,	newsgroup),
-		     _ANSIDECL(art_num,			artNum),
-		     _ANSIDECL(Boolean,			threaded)
-		     )
-     _KNRDECL(int,			line_length)
-     _KNRDECL(char *,			out)
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artNum)
-     _KNRDECL(Boolean,			threaded)
+ * XXX AVL TREE is the wrong data structure here, hash table would be
+ * better.... no need for ordering based on subject string
+ */
+/*
+ * build and return the subjects string
+ */
+
+#define CHUNK (4 * lineLength)
+
+static char * getSortedSubjects _ARGUMENTS((int));
+
+static char * getSortedSubjects(mode)
+    int mode;
 {
-    static int lineLength, subLength, authorLength, lineWidth;
-    static int num_width;
-    struct article *art, *parent;
-    char *subject, *lines, *author;
-    int thread_depth, ret;
-    
-    if (artNum <= 0) {
-      num_width = utDigits(newsgroup->last);
-	lineLength = line_length;
-	lineLength = MIN(LINE_LENGTH - 1, lineLength); /* for the NULL */
-	subLength = lineLength -
-	  3 		/* spaces before and after article number */ -
-	  num_width 	/* width of article number */ -
-	  2		/* spaces after subject, or spaces before and
-			   after line count */ -
-	  1 /* newline */;
-	if (app_resources.displayLineCount) {
-	    lineWidth = 6;
-	    subLength -= lineWidth;
-	}
-	else {
-	    lineWidth = 0;
-	}
+    struct newsgroup *newsgroup = CurrentGroup;
+    struct article *articles = GETARTICLES(newsgroup);
+    int subLength;
+    int lineLength = app_resources.indexLineLength;
+    art_num i;
+    char *start, *end;
 
-	if (subLength < 0) {
-	    lineLength -= subLength;
-	    subLength = 0;
-	}
+    struct entry *pte;
+    struct entry **pteArray;
 
-	authorLength = 0.25 * subLength;
-	subLength -= authorLength;
+    avl_generator *gen;
+    char *key, *ptr;
+    avl_tree *tree;
+    char curSub[80];
+    int treeSize, sz;
 
-	return lineLength;
+    if (EMPTY_GROUP(newsgroup)) {
+	return XtNewString("");
     }
 
-    artListSet(newsgroup);
-    art = artStructGet(newsgroup, artNum, False);
-
+    if ( lineLength < 50) lineLength = 50;
+    else if ( lineLength >= LINE_LENGTH) lineLength = LINE_LENGTH - 1;
     if (app_resources.displayLineCount) {
-	lines = (art->lines && *art->lines) ? art->lines : "[?]";
+	subLength = lineLength - 1 - 6 - 1 - 20 - 1;
+    } else {
+	subLength = lineLength - 2 - 20 - 1;
     }
-    else {
-	lines = "";
+	
+    tree = avl_init_table(utSubjectCompare);
+    if (! tree) {
+	ehErrorExitXRN("out of memory");
     }
 
-    if (threaded) {
-      hash_table_object loop_table = 0;
+    NextPreviousArticle = newsgroup->current - 1;
 
-    recheck:
-      thread_depth = 0;
-      parent = art;
-      if (loop_table) {
-	ret = hash_table_insert(loop_table, (void *)artNum, (void *)1, 1);
-	assert(ret);
-      }
-      while (parent->parent) {
-	if (loop_table &&
-	    ! hash_table_insert(loop_table, (void *)parent->parent,
-				(void *)1, 1)) {
-	  hash_table_destroy(loop_table);
-	  break;
+    if ((newsgroup->last - newsgroup->current + 1) < 0) {
+	(void) sprintf(error_buffer, "Active File Error: last - current + 1 < 0 (%s)\n",
+			       newsgroup->name);
+	ehErrorExitXRN(error_buffer);
+    }
+	
+    /* 
+     * build the subject groups 
+     */
+    for (i = newsgroup->current; i <= newsgroup->last; i++) {
+	long indx = INDEX(i);
+
+	/* canceled and empty articles will not have a subject entry */
+	if (articles[indx].subject != NIL(char)) {
+	    char buffer[LINE_LENGTH];
+
+	    /* don't put articles in the string if already read ... */
+	    if ((mode == ALL) || (IS_UNREAD(articles[indx]) &&
+				  !IS_UNAVAIL(articles[indx]))) {
+		if (app_resources.displayLineCount) {
+		    (void) sprintf(buffer, "%*.*s %6.6s %-20.20s\n",
+				   -subLength,subLength,
+				   articles[indx].subject,
+				   articles[indx].lines,
+				   (articles[indx].author == NIL(char) ?
+				     "(none)" : articles[indx].author));
+		} else {
+		    (void) sprintf(buffer, "%*.*s  %-20.20s\n",
+				   -subLength,subLength,
+				   articles[indx].subject,
+				   (articles[indx].author == NIL(char) ?
+				     "(none)" : articles[indx].author));
+		}
+
+		(void) strncpy(curSub, getSubject(i), sizeof(curSub));
+		/* mark articles if they have already been read */
+		if (IS_READ(articles[indx])) {
+		    buffer[0] = '+';
+		} else {
+		    if (IS_MARKED(articles[indx])) {
+			buffer[0] = 'u';
+		    } else {
+			buffer[0] = ' ';
+		    }
+		}
+		if (IS_SAVED(articles[indx])) {
+		    buffer[1] = 'S';
+		} else if(IS_PRINTED(articles[indx])) {
+		    buffer[1] = 'P';
+		} else {
+		    buffer[1] = ' ';
+		}
+
+		if (avl_lookup(tree, curSub, &ptr)) {
+		    /* add to the end */
+		    pte = (struct entry *) ptr;
+		    if (lineLength >= pte->left) {
+			/* grow the string */
+			pte->size += CHUNK;
+			pte->left += CHUNK;
+			sz = pte->end - pte->beginning;
+			pte->beginning = XtRealloc(pte->beginning, pte->size);
+			pte->end = pte->beginning + sz;
+			*(pte->end) = '\0';
+		    }
+		    (void) strcpy(pte->end, buffer);
+		    pte->end += lineLength;
+		    pte->left -= lineLength;
+		    *(pte->end) = '\0';
+		} else {
+		    /* create new */
+		    pte = ALLOC(struct entry);
+		    pte->startingArticle = i;
+		    pte->beginning = ARRAYALLOC(char, CHUNK);
+		    (void) strcpy(pte->beginning, buffer);
+		    pte->size = CHUNK;
+		    pte->left = pte->size - lineLength;
+		    pte->end = pte->beginning + lineLength;
+		    *(pte->end) = '\0';
+		    if (avl_insert(tree, XtNewString(curSub), (char *) pte)
+			< 0) {
+			ehErrorExitXRN("out of memory");
+		    }
+		}
+	    }
+	} else {
+	    /* if you can't get the subject, mark the article as unavailable */
+	    SET_UNAVAIL(articles[indx]);
 	}
-	if (++thread_depth == subLength) {
-	  if (loop_table) {
-	    hash_table_destroy(loop_table);
-	    break;
-	  }
-	  else {
-	    /* Heavily nested threading could really be authentic, or
-	       it could be because of a loop in "References"
-	       dependencies.  To find out which it is, we create a
-	       hash table to keep track of which articles we've seen,
-	       and then redo the thread-depth check.
-
-	       We only create this hash table when we reach the
-	       boundary condition, rather than for every article,
-	       because creating the hash table and inserting the
-	       articles number into it is expensive (well, at least,
-	       more expensive than not doing it), and we want this
-	       code to be as fast as possible. */
-	    loop_table = hash_table_create(subLength + 1,
-					   hash_int_calc, hash_int_compare,
-					   hash_int_compare, 0, 0);
-	    goto recheck;
-	  }
-	}
-
-	ART_STRUCT_UNLOCK;
-	parent = artStructGet(newsgroup, parent->parent, False);
-      }
-    }
-    else {
-      thread_depth = 0;
     }
 
-    subject = art->subject;
+    i = 0;
+    treeSize = avl_count(tree);
+    pteArray = ARRAYALLOC(struct entry *, treeSize);
+    gen = avl_init_gen(tree, AVL_FORWARD);
+    if (! gen) {
+	ehErrorExitXRN("out of memory");
+    }
+    while (avl_gen(gen, &key, &ptr)) {
+	pteArray[i++] = (struct entry *) ptr;
+    }
+    avl_free_gen(gen);
 
-    author = art->author ? art->author : "(none)";
+    /* sort by article number */
+    qsort((char *) pteArray, treeSize, sizeof(struct pte *), pteCompare);
 
-    (void) sprintf(out, "  %*ld %*.*s%*.*s %*.*s %*.*s\n", num_width,
-		   artNum, thread_depth, thread_depth, "",
-		   -(subLength-thread_depth), subLength-thread_depth,
-		   subject, lineWidth,
-		   lineWidth, lines, -authorLength, authorLength,
-		   author);
-    if (IS_READ(art))
-	*out = READ_MARKER;
-    else if (IS_MARKED(art))
-	*out = UNREAD_MARKER;
-    if (IS_SAVED(art))
-	*(out + 1) = SAVED_MARKER;
-    else if (IS_PRINTED(art))
-	*(out + 1) = PRINTED_MARKER;
+    start = ARRAYALLOC(char, ((newsgroup->last - newsgroup->current + 1) * lineLength + 1));
+    end = start;
+    *start = '\0';
 
-    ART_STRUCT_UNLOCK;
-    return lineLength;
+    for (i = 0; i < treeSize; i++) {
+	(void) strcpy(end, pteArray[i]->beginning);
+	end += utStrlen(pteArray[i]->beginning);
+	*end = '\0';
+    }
+
+    avl_free_table(tree, XtFree, valfree);
+    FREE(pteArray);
+
+    return start;
 }
 
 
 
-char * getSubjects(
-		   _ANSIDECL(int,	line_length),
-		   _ANSIDECL(art_num,	artNum),
-		   _ANSIDECL(Boolean,	rethread)
-		   )
-     _KNRDECL(int,	line_length)
-     _KNRDECL(art_num,	artNum)
-     _KNRDECL(Boolean,	rethread)
+char * getSubjects(mode)
+    int mode;
 {
-  NextPreviousArticle = artNum - 1;
+    if (app_resources.sortedSubjects) {
+	return getSortedSubjects(mode);
+    } else {
+	return getUnSortedSubjects(mode);
+    }
+}
 
-  rethreadGroup(CurrentGroup, artNum, rethread);
 
-  return art_sort_doit(CurrentGroup, artNum, CurrentGroup->last, line_length);
+/*
+ * set the internal pointers to a particular article
+ */
+void gotoArticle(article)
+    long article;
+{
+    struct newsgroup *newsgroup = CurrentGroup;
+    newsgroup->current = (art_num) article;
+    return;
 }
 
 
@@ -3731,13 +2789,32 @@ int checkArticle(art)
 }    
 
 
-#define STRIPLEADINGSPACES   for (; *start && isspace((unsigned char)*start);\
-				    start++);
-#define STRIPENDINGSPACES  for (; (end >= start) && \
-			isspace((unsigned char)*end); *end-- = '\0');
+/*
+ * first and last are the same and there are no articles
+ *
+ * representation bug in the news system active file
+ *
+ */
+void bogusNewsgroup()
+{
+    struct newsgroup *newsgroup = CurrentGroup;
 
-char * subjectStrip(str)
+    if (newsgroup->articles != NIL(struct article)) {
+	SET_READ(newsgroup->articles[LAST]);
+	SET_UNAVAIL(newsgroup->articles[LAST]);
+    }
+
+    mesgPane(XRN_INFO, PROBABLY_EXPIRED_MSG, newsgroup->name);
+    return;
+}
+
+
+#define STRIPLEADINGSPACES   for (; *start == ' ' || *start == '\t'; start++);
+#define STRIPENDINGSPACES  for ( ; *end == ' ' || *end == '\t'; *end = '\0', end--);
+
+static char * strip(str, striprefs)
     char *str;
+    Boolean striprefs;
 {
     register char *start, *end, *ptr;
     static char work[BUFFER_SIZE];
@@ -3746,28 +2823,46 @@ char * subjectStrip(str)
     start = work;
     work[BUFFER_SIZE - 1] = '\0';
 
+    /* a tab separates the article number from the subject line */
+    start = index(start, '\t');
+    assert(start != NIL(char));
+    start++;
+
+    STRIPLEADINGSPACES;
+
     /*
      * strip leading '[rR][eE]: ' and 'Re^N: ' -
      * only if striprefs is TRUE (want to be able to kill follow-ups)
      */
-    while (! strncasecmp(start, "re: ", 4)) {
-      start += 4;
-      STRIPLEADINGSPACES;
-    }
+    if (striprefs) {
+	while (STREQN(start, "Re: ", 4) ||
+	       STREQN(start, "RE: ", 4) ||
+	       STREQN(start, "re: ", 4) ||
+	       STREQN(start, "Re: ", 4)) {
+	    start += 4;
+	
+	    /* strip leading spaces after '[rR]e: ' */
+	    STRIPLEADINGSPACES;
+	}
 
-    while (! strncasecmp(start, "re^", 3)) {
-      start += 3;
-      if ((ptr = index(start, ':')))
-	start = ptr + 1;
-      STRIPLEADINGSPACES;
+	while (STREQN(start, "Re^", 3)) {
+	    start += 3;
+	    ptr = index(start, ':');
+	    if (ptr != NIL(char)) {
+		start = ptr + 1;
+	    }
+	    STRIPLEADINGSPACES;
+	}
+	
+	for (end = start; (end = index(end, '(')) != NULL;)
+	  if (STREQN(end,"(was:",5)
+	      ||  STREQN(end,"(Was:",5)
+	      ||  STREQN(end,"(WAS:",5)) {
+	      *end = '\0';
+	      break;
+	  }
+	  else ++end;
     }
-
-    for (end = start + 1; (end = index(end, '(')); end++)
-      if (! strncasecmp(end, "(was", 4) &&
-	  ((end[4] == ':') || (end[4] == ' '))) {
-	*end = '\0';
-	break;
-      }
 
     end = index(start, '\0') - 1;
     STRIPENDINGSPACES;
@@ -3781,16 +2876,14 @@ char * subjectStrip(str)
  * leading '[rR]e: ' stripped, and trailing ' ([wW]as: ' stripped
  */
 char * getSubject(article)
-    art_num article;
+    long article;
 {
     struct newsgroup *newsgroup = CurrentGroup;
-    struct article *art;
+    art_num artnum = (art_num) article;
 
-    artListSet(newsgroup);
+    SETARTICLES(newsgroup);
 
-    art = artStructGet(newsgroup, article, False);
-    ART_STRUCT_UNLOCK;
-    return art->subject ? subjectStrip(art->subject) : 0;
+    return strip(newsgroup->articles[INDEX(artnum)].subject, TRUE);
 }
 
 
@@ -3798,51 +2891,17 @@ char * getSubject(article)
  * return the author of an article
  */
 char * getAuthor(article)
-    art_num article;
+    long article;
 {
     struct newsgroup *newsgroup = CurrentGroup;
-    struct article *art;
+    struct article *articles = GETARTICLES(newsgroup);
 
-    art = artStructGet(newsgroup, article, False);
-    ART_STRUCT_UNLOCK;
-    return art->author;
-}
-
-
-art_num getPrevNumber()
-{
-    struct newsgroup *newsgroup = CurrentGroup;
-    struct article *art;
-
-    /* search for the next available article in the reverse direction */
-    for ( ; NextPreviousArticle >= newsgroup->first; NextPreviousArticle--) {
-	art = artStructGet(newsgroup, NextPreviousArticle, False);
-	/* This is OK here because any time we call another function
-	   below, we're done with "art". */
-	ART_STRUCT_UNLOCK;
-
-	if (IS_UNAVAIL(art))
-	    continue;
-
-	if (! art->subject) {
-	  (void) fillUpArray(newsgroup,
-			     MAX(newsgroup->first, NextPreviousArticle - SUBJECTS),
-			     NextPreviousArticle, False, False);
-	  NextPreviousArticle++;
-	  continue;
-	}
-
-	if (art->subject) {
-	    return NextPreviousArticle--;
-	}
-    }
-
-    return 0;
+    return articles[INDEX((art_num) article)].author;
 }
 
 
 /*
- * get the previous subject index line (article number is NextPreviousArticle).
+ * get the previous subject (article number is NextPreviousArticle).
  * only called when going off the top of the subject string
  *
  *   returns a point to a static area
@@ -3850,23 +2909,84 @@ art_num getPrevNumber()
  *  NextPreviousArticle is set to current-1 on building the subject string.
  *  NextPreviousArticle is decremented by this routine.
  */
-char *getPrevSubject(line_length)
-     int line_length;
+char * getPrevSubject()
 {
-  static char buffer[BUFFER_SIZE];
-  struct newsgroup *newsgroup = CurrentGroup;
+    int subLength;
+    int lineLength = app_resources.indexLineLength;
+    struct newsgroup *newsgroup = CurrentGroup;
+    struct article *articles = GETARTICLES(newsgroup);
+    static char buffer[BUFFER_SIZE];
 
-  art_num art = getPrevNumber();
+    if ( lineLength < 50) lineLength = 50;
+    else if ( lineLength >= LINE_LENGTH) lineLength = LINE_LENGTH - 1;
+    if (app_resources.displayLineCount) {
+	subLength = lineLength - 1 - 6 - 1 - 20 - 1;
+    } else {
+	subLength = lineLength - 2 - 20 - 1;
+    }
 
-  if (art) {
-    (void) subjectIndexLine(line_length, buffer, newsgroup, art, False);
-    return buffer;
-  }
+#ifdef DEBUG
+    fprintf(stderr, "getPrevSubject(%s)\n", newsgroup->name);
+#endif
 
-  return 0;
+    /* search for the next available article in the reverse direction */
+    for ( ; NextPreviousArticle >= newsgroup->first; NextPreviousArticle--) {
+	long indx = INDEX(NextPreviousArticle);
+	
+#ifdef notdef
+	(void) sprintf(error_buffer, "searching article %ld", NextPreviousArticle);
+	infoNow(error_buffer);
+#endif
+
+	/* get the subject (and author) if it does not already exist */
+	if (articles[indx].subject == NIL(char)) {
+
+	    /* get the subject and a few more */
+	    getsubjectlist(newsgroup,
+			   MAX(newsgroup->first, NextPreviousArticle - SUBJECTS),
+			   NextPreviousArticle, False);
+	}
+
+	if (articles[indx].author == NIL(char)) {
+	    getauthorlist(newsgroup,
+			  MAX(newsgroup->first, NextPreviousArticle - SUBJECTS),
+			   NextPreviousArticle, False);
+
+	}
+
+	if (articles[indx].lines == NIL(char)) {
+	    getlineslist(newsgroup,
+			 MAX(newsgroup->first, NextPreviousArticle - SUBJECTS),
+			 NextPreviousArticle, False);
+	}
+
+	if (articles[indx].subject) {
+	    if (app_resources.displayLineCount) {
+		(void) sprintf(buffer, "%*.*s %6.6s %-20.20s",
+			       -subLength,subLength,
+			       articles[indx].subject,
+			       articles[indx].lines,
+			       (articles[indx].author == NIL(char) ?
+				 "(none)" : articles[indx].author));
+	    } else {
+		(void) sprintf(buffer, "%*.*s  %-24.24s",
+			       -subLength,subLength,
+			       articles[indx].subject,
+			       (articles[indx].author == NIL(char) ?
+				 "(none)" : articles[indx].author));
+	    }
+
+            NextPreviousArticle--;
+	    return buffer;
+	}
+	/* continue on */
+    }
+
+    NextPreviousArticle--;
+    return NIL(char);
 }
 
-			    
+
 static art_num justInCase;   /* old NextPreviousArticle, just in case the search fails */
 
 /* the front-end is about to do an article search, save the starting point */
@@ -3885,33 +3005,19 @@ void failedSearch()
 }
 
 
-int fillUpArray(
-		_ANSIDECL(struct newsgroup *,	newsgroup),
-		_ANSIDECL(art_num,		art),
-		_ANSIDECL(art_num,		last),
-		_ANSIDECL(Boolean,		check_abort),
-		_ANSIDECL(Boolean,		kill_files)
-		)
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			art)
-     _KNRDECL(art_num,			last)
-     _KNRDECL(Boolean,			check_abort)
-     _KNRDECL(Boolean,			kill_files)
+void fillUpArray(art)
+    art_num art;
 {
-    int i;
+    struct newsgroup *newsgroup = CurrentGroup;
 
-    if (! last)
-      last = newsgroup->last;
+#ifdef DEBUG
+    fprintf(stderr, "fillUpArray(%s)\n", CurrentGroup->name);
+#endif
 
-    for (i = PREFETCH_START_HEADERS_STAGE; i <= PREFETCH_LAST_HEADERS_STAGE; ) {
-      if (fetchHeadersIncremental(newsgroup, &i, art, last,
-				  False, kill_files))
-	i++;
-      if (check_abort && abortP())
-	return ABORT;
-    }
-
-    return(! ABORT);
+    getsubjectlist(newsgroup, art, newsgroup->last, False);
+    getauthorlist(newsgroup, art, newsgroup->last, False);
+    getlineslist(newsgroup, art, newsgroup->last, False);
+    return;
 }
 
 
@@ -3957,6 +3063,113 @@ char * getinfofromfile(file)
 }
 
 
+static Boolean articleIsAvailable _ARGUMENTS((struct newsgroup *, art_num));
+
+static Boolean articleIsAvailable(newsgroup, i)
+    struct newsgroup *newsgroup;
+    art_num i;
+{
+    struct article *art = GETARTICLES(newsgroup);
+    char *keep_subject;
+    Boolean ret;
+
+    if (! art) {
+	return False;
+    }
+
+    art = &art[INDEX(i)];
+
+    /* Determine if the article actually exists by */
+    /* retrieving its Subject.		       */
+    keep_subject = art->subject;
+    art->subject = 0;
+    getsubjectlist(newsgroup, i, i, False);
+    if (art->subject) {
+	XtFree(art->subject);
+	ret = True;
+    }
+    else {
+	SET_UNAVAIL(*art);
+	ret = False;
+    }
+
+    art->subject = keep_subject;
+
+    return ret;
+}
+
+
+/*
+ * Two arguments:
+ *
+ * newsgroup		The newsgroup we're working in.
+ * unread_only		True if we should only enter the newsgroup if
+ * 			there are unread articles in it.
+ *
+ * Verifies that there is at least one article available in the
+ * newsgroup.  If unread_only is false, then it will mark the last
+ * available article unread if there are no unread articles.
+ *
+ * Return value:
+ *
+ * If unread_only is true, returns GOOD_GROUP if there's at least
+ * one available unread article, XRN_NOUNREAD if there are no unread
+ * articles, or XRN_NOMORE if there are no articles at all.
+ *
+ * If unread_only is false, returns GOOD_GROUP if there was at least one
+ * available unread article to start out with, XRN_NOUNREAD if there's
+ * an available article but it had to be marked unread inside
+ * findUnreadArticle, or XRN_NOMORE if there are no articles at all.
+ * 
+ * NOTE CAREFULLY: This means that if unread_only is false,
+ * XRN_NOUNREAD is not an error return value -- it's informational.
+ */
+
+static int findUnreadArticle _ARGUMENTS((struct newsgroup *,
+				         /* Boolean */ int));
+
+static int findUnreadArticle(newsgroup, unread_only)
+    struct newsgroup *newsgroup;
+    Boolean unread_only;
+{
+    art_num i;
+    struct article *artarray = GETARTICLES(newsgroup), *art;
+
+    if (! artarray) {
+	return False;
+    }
+
+    /*
+     * First, check if there is an unread article that is available.
+     */
+    
+    for (i = newsgroup->last, art = &artarray[INDEX(newsgroup->last)];
+	 i >= newsgroup->first; i--, art--) {
+	 if (! IS_UNAVAIL(*art) && IS_UNREAD(*art) &&
+	     articleIsAvailable(newsgroup, i)) {
+	     return GOOD_GROUP;
+	 }
+     }
+
+    /*
+     * That didn't work, so check if there's an article that we can
+     * mark unread (or not, if unread_only is True).
+     */
+
+    for (i = newsgroup->last, art = &artarray[INDEX(newsgroup->last)];
+	 i >= newsgroup->first; i--, art--) {
+	 if (! IS_UNAVAIL(*art) && articleIsAvailable(newsgroup, i)) {
+	     if (! unread_only) {
+		 SET_UNREAD(*art);
+		 newsgroup->current = i;
+	     }
+	     return XRN_NOUNREAD;
+	 }
+     }
+
+    return XRN_NOMORE;
+}
+
 /*
  * enterNewsgroup
  *
@@ -3972,13 +3185,14 @@ char * getinfofromfile(file)
  *			group to the indicated newsgroup.
  * ENTER_UNREAD		If true, only enter the newsgroup if there are
  * 			unread articles articles in it.  If false,
- * 			then enter the newsgroup if any article, read
- *			or not, is available.
+ * 			then try to find the last available article,
+ * 			mark it unread, and enter the group.
  * ENTER_UNSUBBED	If true, then we're allowed to switch to an
  * 			unsubscribed newsgroup.
- * ENTER_SUBSCRIBE	If true, then subscribe to the newsgroup if
- *			it's unsubscribed, and add it to the end of
- *			the .newsrc if it isn't already in it.
+ * ENTER_JUMPING	If true, then we're jumping to this newsgroup
+ * 			so we should disable prefetching, and if the
+ * 			newsgroup is unsubscribed, then it should be
+ * 			subscribed.
  * ENTER_REGEXP		If the group specified can't be found in the
  * 			table, try to do a regular expression match to
  * 			find it.
@@ -4006,50 +3220,43 @@ char * getinfofromfile(file)
  * error condition; otherwise, this return value is informational
  * rather than an error condition, because the newsgroup was still
  * entered even though there were no unread articles -- the last read
- * article is now current and should be displayed).
+ * article was marked unread).
  */
 int enterNewsgroup(name, flags)
     char *name;
     int flags;
 {
-    int ret = GOOD_GROUP;
     struct newsgroup *newsgroup;
-    Boolean unsubbed = False;
+    int ret = GOOD_GROUP;
+
+#ifdef XRN_PREFETCH
+    if (flags & ENTER_SETUP) {
+	if (flags & ENTER_JUMPING) {
+	    PrefetchGroupMode = DO_NOT_XRN_PREFETCH_GROUP;
+	}
+	else {
+	    PrefetchGroupMode = OKAY_TO_XRN_PREFETCH_GROUP;
+	}
+    }
+#endif
 
     if (!avl_lookup(NewsGroupTable, name, (char **) &newsgroup)) {
-      newsgroup = 0;
-      if (flags & ENTER_REGEXP)
-	newsgroup = findNewsGroupMatch(name);
-      if (! (newsgroup || active_read)) {
-	char *err_buf;
-
-	err_buf = XtMalloc(strlen(MAYBE_LIST_MSG)+strlen(name));
-	(void) sprintf(err_buf, MAYBE_LIST_MSG, name);
-	if ((ConfirmationBox(TopLevel, err_buf, "yes", "no", True)
-	     == XRN_CB_ABORT) || (! verifyGroup(name, &newsgroup, False))) {
-	  XtFree(err_buf);
-	  return BAD_GROUP;
+	if (flags & ENTER_REGEXP) {
+	    if (! (newsgroup = findNewsGroupMatch(name))) {
+		return BAD_GROUP;
+	    }
 	}
-      }
-      if (! newsgroup)
-	return BAD_GROUP;
+	else {
+	    return BAD_GROUP;
+	}
     }
 
     if (! IS_SUBSCRIBED(newsgroup)) {
 	if (flags & ENTER_UNSUBBED) {
-	    if (! updateArticleArray(newsgroup, flags & ENTER_SETUP)) {
-	      return BAD_GROUP;
+	    if (flags & ENTER_JUMPING) {
+		SET_SUB(newsgroup);
+		updateArticleArray(newsgroup);
 	    }
-	    if (flags & ENTER_SUBSCRIBE) {
-		if (IS_NOENTRY(newsgroup)) {
-		    if (addToNewsrcEnd(name, SUBSCRIBE) != GOOD_GROUP)
-			return BAD_GROUP;
-		}
-		else {
-		    SET_SUB(newsgroup);
-		}
-	    }
-	    unsubbed = True;
 	}
 	else {
 	    return XRN_UNSUBBED;
@@ -4057,246 +3264,41 @@ int enterNewsgroup(name, flags)
     }
 
     if (flags & ENTER_SETUP) {
-	if (app_resources.rescanOnEnter || unsubbed)
-	    setUpGroup(newsgroup, True, False, flags & ENTER_UNREAD,
-		       False);
-
 	if (EMPTY_GROUP(newsgroup)) {
 	    return XRN_NOMORE;
 	}
 
-	do {
-	    setUpGroup(newsgroup, False, True, flags & ENTER_UNREAD,
-		       True);
-	/*
-	  We need to do setCurrentArticle again here, even though
-	  setUpGroup() does it, because if the group is already
-	  prefetched, and *then* the first unread article in it is
-	  marked read while reading another group, setUpGroup() won't
-	  reset the first unread article (because it doesn't do
-	  anything if the group is already prefetched).
-	  */
-	} while (setCurrentArticle(newsgroup, flags & ENTER_UNREAD,
-				   True, 0, 0));
-
-	/*
-	  Need to check if the group is empty again, because
-	  setUpGroup and/or setCurrentArticle may have discovered that
-	  in fact, there aren't any articles at all available in the
-	  group (e.g., our cached information about the group is
-	  incorrect).
-	  */
-	if (EMPTY_GROUP(newsgroup)) {
-	  return XRN_NOMORE;
+#define doFindUnread() \
+	ret = findUnreadArticle(newsgroup, \
+				(flags & ENTER_UNREAD) ? True : False); \
+	if (ret == XRN_NOMORE) { \
+	    return ret; \
+	} \
+	else if (ret == XRN_NOUNREAD) { \
+	    if (flags & ENTER_UNREAD) { \
+		return ret; \
+	    } \
+	} \
+	else if (ret != GOOD_GROUP) { \
+	    mesgPane(XRN_SERIOUS, UNKNOWN_FIND_UNRD_RESPONSE_MSG, ret, \
+		     "enterNewsgroup"); \
+	    return ret; \
 	}
 
-	if (newsgroup->current > newsgroup->last)
-	  if (flags & ENTER_UNREAD)
-	    ret = XRN_NOUNREAD;
-	  else
-	    /*
-	      In an ideal world, this case would never happen, because
-	      a group's first and last article numbers as returned by
-	      the server would tell EMPTY_GROUP that the group is
-	      empty.  Unfortunately, some news servers don't return
-	      useful first and last article number information, e.g.,
-	      they'll return a range indicating that there are
-	      articles in the group when in fact there are not.  So
-	      we need to be careful to detect that and deal with it
-	      appropriately.
-	    */
-	    ret = XRN_NOMORE;
-	else {
-	    struct article *art =
-		artStructGet(newsgroup, newsgroup->current, False);
-	    if (IS_READ(art))
-		ret = XRN_NOUNREAD;
-	    else
-		ret = GOOD_GROUP;
-	    ART_STRUCT_UNLOCK;
-	}
+	doFindUnread();
 
-	if ((ret == XRN_NOUNREAD) && (flags & ENTER_UNREAD))
-	  return ret;
+	setUpGroup(newsgroup, 0);
 
-	groupSnapshotSave(newsgroup);
+	/*
+	 * We may no longer have any unread articles, because KILL
+	 * file processing may be killed them all.
+	 */
+	doFindUnread();
+
+#undef doFindUnread
     }
 
     CurrentGroup = newsgroup;
 
     return ret;
-}
-
-void exitNewsgroup()
-{
-  CurrentGroup = 0;
-}
-
-
-#ifdef POSIX_REGEX
-regex_t *
-#else
-char **
-#endif
-parseRegexpList(list, list_name, count)
-    char *list, *list_name;
-    int *count;
-{
-    char *p, *q, *r;
-    int n;
-#ifdef POSIX_REGEX
-    regex_t *l;
-    int reRet;
-#else
-    char **l;
-#endif
-
-    if (! list) {
-	return 0;
-    }
-
-    /* Count the number of elements in the list, if there are no regexp errors */
-    for (p = q = XtNewString(list), n = 0; strtok(p, ", \t\n"); p = 0) n++;
-
-    FREE(q);
-
-    if (! n) {
-	return 0;
-    }
-
-#ifdef POSIX_REGEX
-    l = ARRAYALLOC(regex_t, n);
-#else
-    l = ARRAYALLOC(char *, n);
-#endif
-
-    /* Now build the list */
-    for ((p = r = XtNewString(list)), n = 0; (q = strtok(p, ", \t\n")); p = 0) {
-#ifdef POSIX_REGEX
-	if ((reRet = regcomp(&l[n], q, REG_NOSUB))) {
-	    regerror(reRet, &l[n], error_buffer,
-		     sizeof(error_buffer));
-	    mesgPane(XRN_SERIOUS, 0, KNOWN_LIST_REGEXP_ERROR_MSG,
-		     list_name, q, error_buffer);
-	    continue;
-	}
-#else
-# ifdef SYSV_REGEX
-	if (! (l[n] = regcmp(q, 0))) {
-	    mesgPane(XRN_SERIOUS, 0, UNKNOWN_LIST_REGEXP_ERROR_MSG, list_name, q);
-	    continue;
-	}
-# else
-	l[n] = q;
-	if ((q = re_comp(l[n]))) {
-	    mesgPane(XRN_SERIOUS, 0, KNOWN_LIST_REGEXP_ERROR_MSG, list_name, l[n], q);
-	    continue;
-	}
-# endif
-#endif
-	n++;
-    }
-
-#if defined(POSIX_REGEX) || defined(SYSV_REGEX)
-    FREE(r);
-#endif
-
-    if (! n) {
-	FREE(r);
-	FREE(l);
-	return 0;
-    }
-
-    *count = n;
-
-    return l;
-}
-
-/*
-  Returns -2 if the article doesn't exist, -1 if it exists but is not
-  in the specified  newsgroup (or is not in the currently available
-  range in the newsgroup), 0 if the article has no xref header or the
-  NNTP server doesn't support xhdr by message ID, or the article
-  number of the article.
-  */
-art_num getArticleNumberFromIdXref(
-			       _ANSIDECL(struct newsgroup *,	newsgroup),
-			       _ANSIDECL(char *,		id)
-			       )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(char *,			id)
-{
-  char *xref, *ptr;
-  int len;
-  art_num artNum;
-  long error_code;
-  
-  /* First, the easy way, using Xref */
-  xref = xhdr_id(newsgroup, id, "xref", &error_code);
-  if (xref) {
-    for (ptr = strstr(xref, newsgroup->name); ptr;
-	 ptr = strstr(ptr + 1, newsgroup->name)) {
-      if (((ptr == xref) || isspace(ptr[-1])) &&
-	  (len = strlen(newsgroup->name)) && ptr[len] == ':') {
-	artNum = atol(&ptr[len+1]);
-	XtFree(xref);
-	if ((artNum > newsgroup->last) || (artNum < newsgroup->first))
-	  return -1;
-	else
-	  return artNum;
-      }
-    }
-    XtFree(xref);
-    return -1;
-  }
-
-  if (error_code == ERR_NOART)
-    return -2;
-
-  return 0;
-}
-
-char *getFirstReference(references)
-     char *references;
-{
-  static char *ref_buf = NULL;
-  static int buf_size = 0;
-  char *lbrace, *rbrace;
-
-  if (! (references && *references))
-    return NULL;
-
-  if (! (lbrace = strchr(references, '<')))
-    return NULL;
-
-  if (! (rbrace = strchr(lbrace, '>')))
-    return NULL;
-
-  rbrace++;
-
-  if (rbrace - lbrace + 1 > buf_size) {
-    buf_size = rbrace - lbrace + 1;
-    ref_buf = XtRealloc(ref_buf, buf_size);
-  }
-
-  strncpy(ref_buf, lbrace, rbrace - lbrace);
-  ref_buf[rbrace - lbrace] = '\0';
-
-  return ref_buf;
-}
-
-/*
-  Set the "last" field for the specified newsgroup structure, updating
-  other data structures as appropriate to take into account the new
-  setting for the field.
-*/
-
-void newsgroupSetLast(newsgroup, new_last)
-     struct newsgroup *newsgroup;
-     art_num new_last;
-{
-  art_num old_last = newsgroup->last;
-
-  newsgroup->last = new_last;
-  artListExtend(newsgroup, old_last);
 }

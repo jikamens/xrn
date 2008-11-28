@@ -1,14 +1,8 @@
 #ifndef BUTDEFS_H
 #define BUTDEFS_H
 
-#include <X11/Intrinsic.h>
-#include <X11/StringDefs.h>
-#include "utils.h"
-#include "xrn.h"
-#include "xmisc.h"
-
 /*
- * $Id: butdefs.h,v 1.8 1995-05-14 22:27:12 jik Exp $
+ * $Header: /d/src/cvsroot/xrn/butdefs.h,v 1.3 1994-10-10 18:46:30 jik Exp $
  */
 
 /*
@@ -41,65 +35,104 @@
  *
  */
 
+#undef lint
+#ifdef lint
+#define BUTTON(nm,lbl)
+#else
+#ifdef MOTIF
+#define BUTTON_CALL_DATA_T XmPushButtonCallbackStruct*
+#define BUTTON_EVENT (call_data->event)
+#else
 #define BUTTON_CALL_DATA_T XtPointer
 #define BUTTON_EVENT ((XEvent*)NULL)
-
-#define BUTDECL(nm)\
-\
-extern void CONCAT(nm,Function) _ARGUMENTS((Widget, XEvent *, String *,\
-					    Cardinal *));\
-extern void CONCAT(nm,Core) _ARGUMENTS((Widget, XEvent *, String *, Cardinal *));\
-extern void CONCAT(nm,Action) _ARGUMENTS((Widget, XEvent *, String *, Cardinal *));\
-extern void CONCAT(nm,Button) _ARGUMENTS((Widget, XtPointer, BUTTON_CALL_DATA_T));\
-extern XtCallbackRec CONCAT(nm,Callbacks)[];\
-extern Arg CONCAT(nm,Args)[]
-
-#define _BUTTON(nm,lbl,in_expr,in_set,in_unset)\
-\
-void CONCAT(nm,Core)(widget, event, string, count)\
-    Widget widget;\
-    XEvent *event;\
-    String *string;\
-    Cardinal *count;\
-{\
-    if (in_expr) {\
-	return;\
-    }\
-    in_set;\
-    removeTimeOut();\
-    xrnBusyCursor();\
-    CONCAT(nm,Function)(widget, event, string, count);\
-    xrnUnbusyCursor();\
-    addTimeOut();\
-    in_unset;\
-    return;\
-}\
-\
-void CONCAT(nm,Action)(widget, event, string, count)\
-    Widget widget;\
-    XEvent *event;\
-    String *string;\
-    Cardinal *count;\
-{\
-    CONCAT(nm,Core)(widget, event, string, count);\
-    return;\
-}\
-\
-void CONCAT(nm,Button)(widget, client_data, call_data)\
-    Widget widget;\
-    XtPointer client_data;\
-    BUTTON_CALL_DATA_T call_data;\
-{\
-    CONCAT(nm,Core)(widget, BUTTON_EVENT, 0, 0);\
-    return;\
-}\
-\
-XtCallbackRec CONCAT(nm,Callbacks)[] = {\
-    {(XtCallbackProc) CONCAT(nm,Button), NULL},\
-    {NULL, NULL}\
+#endif
+#if defined(__STDC__) && !defined(UNIXCPP)
+#define BUTTON(nm,lbl)				\
+static void nm##Function _ARGUMENTS((Widget,XEvent *, String *, Cardinal *));\
+static void nm##Core(Widget widget,XEvent *event,String *string,Cardinal *count)\
+{						\
+    if (inCommand) {				\
+	return;					\
+    }						\
+    inCommand = 1;				\
+    removeTimeOut();				\
+    busyCursor();				\
+    nm##Function(widget, event, string, count);	\
+    unbusyCursor();				\
+    addTimeOut();				\
+    inCommand = 0;				\
+    return;					\
+}						\
+/*ARGSUSED*/                                    \
+static void nm##Action(Widget widget, XEvent *event, String *string, Cardinal *count) \
+{						\
+    nm##Core(widget, event, string, count);	\
+    return;					\
+}						\
+/*ARGSUSED*/                                    \
+static void nm##Button(Widget widget, XtPointer client_data, BUTTON_CALL_DATA_T call_data)	\
+{						\
+    nm##Core(widget, BUTTON_EVENT, 0, 0);	\
+    return;					\
+}						\
+static XtCallbackRec nm##Callbacks[] = {	\
+    {(XtCallbackProc) nm##Button, NULL},	\
+    {NULL, NULL}				\
+};						\
+static Arg nm##Args[] = {			\
+    {XtNname, (XtArgVal) #nm},			\
+    {MyNcallback, (XtArgVal) nm##Callbacks}	\
 }
-
-#define BUTTON(nm,lbl) _BUTTON(nm,lbl,inCommand,inCommand = 1,inCommand = 0)
-#define SUBBUTTON(nm,lbl) _BUTTON(nm,lbl,inCommand && inSubCommand,inCommand++; inSubCommand = 1,inCommand--; inSubCommand = 0)
+#else
+#define BUTTON(nm,lbl)				\
+static void nm/**/Function _ARGUMENTS((Widget,XEvent *, String *, Cardinal *));\
+static void nm/**/Core(widget, event, string, count) \
+Widget widget;					\
+XEvent *event;					\
+String *string;					\
+Cardinal *count;				\
+{						\
+    if (inCommand) {				\
+	return;					\
+    }						\
+    inCommand = 1;				\
+    removeTimeOut();				\
+    busyCursor();				\
+    nm/**/Function(widget, event, string, count); \
+    unbusyCursor();				\
+    addTimeOut();				\
+    inCommand = 0;				\
+    return;					\
+}						\
+/*ARGSUSED*/					\
+static void nm/**/Action(widget, event, string, count) \
+Widget widget;					\
+XEvent *event;					\
+String *string;					\
+Cardinal *count;				\
+{						\
+    nm/**/Core(widget, event, string, count);	\
+    return;					\
+}						\
+/*ARGSUSED*/					\
+static void nm/**/Button(widget, client_data, call_data)	\
+Widget widget;					\
+XtPointer client_data;				\
+BUTTON_CALL_DATA_T call_data;			\
+{						\
+    nm/**/Core(widget, BUTTON_EVENT, 0, 0);	\
+    return;					\
+}						\
+static XtCallbackRec nm/**/Callbacks[] = {	\
+    {(XtCallbackProc) nm/**/Button, NULL},	\
+    {NULL, NULL}				\
+};						\
+static Arg nm/**/Args[] = {			\
+    {XtNname, (XtArgVal) "nm"},			\
+/*    {XtNlabel, (XtArgVal) "lbl"}, */		\
+    {MyNcallback, (XtArgVal) nm/**/Callbacks}	\
+}
+#endif
+#endif
 
 #endif /* BUTDEFS_H */
