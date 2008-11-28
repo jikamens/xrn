@@ -12,8 +12,6 @@ BUTDECL(allNext);
 BUTDECL(allPrev);
 BUTDECL(allScroll);
 BUTDECL(allScrollBack);
-BUTDECL(allSearch);
-BUTDECL(allLimit);
 BUTDECL(allFirst);
 BUTDECL(allLast);
 BUTDECL(allAfter);
