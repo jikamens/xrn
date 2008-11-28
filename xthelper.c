@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: xthelper.c,v 1.19 1997-04-07 02:07:46 jik Exp $";
+static char XRNrcsid[] = "$Id: xthelper.c,v 1.16 1995-10-04 20:36:23 jik Exp $";
 #endif
 
 /*
@@ -120,7 +120,7 @@ void xthHandleAllPendingEvents()
 	}
 	fprintf(stderr, "xthHandleAllPendingEvents: %s event\n", type);
 #endif
-	MyDispatchEvent(&ev);
+	XtDispatchEvent(&ev);
     }
     return;
 }
@@ -139,7 +139,7 @@ void xthHandlePendingExposeEvents()
 	    return;
 	default:
 	    XtAppNextEvent(TopContext, &ev);
-	    MyDispatchEvent(&ev);
+	    XtDispatchEvent(&ev);
 	}
     }
     return;
@@ -167,12 +167,9 @@ static void expose_handler(widget, closure, event, continue_to_dispatch)
     return;
 }
 
-void xthWaitForMapped(
-		      _ANSIDECL(Widget,		w),
-		      _ANSIDECL(Boolean,	expose_too)
-		      )
-     _KNRDECL(Widget,	w)
-     _KNRDECL(Boolean,	expose_too)
+void xthWaitForMapped(w, expose_too)
+    Widget w;
+    Boolean expose_too;
 {
     Boolean mapped = False, exposed = False;
     Status ret;
@@ -184,11 +181,9 @@ void xthWaitForMapped(
 #endif
 
     hints = XGetWMHints(XtDisplay(w), XtWindow(w));
-    if (hints) {
-      if (hints->initial_state != NormalState)
+    if (hints && (hints->initial_state != NormalState))
 	mapped = True;
-      XFree((void *) hints);
-    }
+    XFree((void *) hints);
     if (mapped && !expose_too)
 	return;
 
@@ -219,7 +214,7 @@ void xthWaitForMapped(
 	}
 	fprintf(stderr, "xthWaitForMapped: %s event\n", type);
 #endif
-	MyDispatchEvent(&ev);
+	XtDispatchEvent(&ev);
     }
 
   done:
