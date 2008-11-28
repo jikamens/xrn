@@ -8,7 +8,7 @@
 #include "xmisc.h"
 
 /*
- * $Id: butdefs.h,v 1.8 1995-05-14 22:27:12 jik Exp $
+ * $Id$
  */
 
 /*

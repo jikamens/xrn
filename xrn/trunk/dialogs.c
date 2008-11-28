@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: dialogs.c,v 1.23 1998-07-05 14:39:13 jik Exp $";
+static char XRNrcsid[] = "$Id$";
 /* Modified 2/20/92 dbrooks@osf.org to clean up dialog layout */
 #endif
 

@@ -2,7 +2,7 @@
 #define MODES_H
 
 /*
- * $Id: modes.h,v 1.4 1995-01-25 03:17:52 jik Exp $
+ * $Id$
  */
 
 /*

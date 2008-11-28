@@ -2,7 +2,7 @@
 #define CANCEL_H
 
 /*
- * $Id: cancel.h,v 1.5 1995-09-29 08:02:08 jik Exp $
+ * $Id$
  */
 
 /*
