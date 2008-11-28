@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: compose.c,v 1.134 2006-01-03 16:16:54 jik Exp $";
+static char XRNrcsid[] = "$Id: compose.c,v 1.126 1999-09-24 14:00:55 jik Exp $";
 #endif
 
 /*
@@ -30,8 +30,6 @@ static char XRNrcsid[] = "$Id: compose.c,v 1.134 2006-01-03 16:16:54 jik Exp $";
 /*
  * compose.c: routines for composing messages and articles
  */
-
-#include <stdio.h>
 
 #include "copyright.h"
 #include "config.h"
@@ -90,10 +88,17 @@ extern int fclose _ARGUMENTS((FILE *));
 #include "server.h"
 #include "mesg.h"
 #include "xrn.h"
+#include "patchlevel.h"
 #include "xmisc.h"
 #include "buttons.h"
 #include "butdefs.h"
 #include "mesg_strings.h"
+
+#ifdef INN
+#include <configdata.h>
+#include <clibrary.h>
+#include <libinn.h>
+#endif
 
 struct header {
     struct newsgroup *newsgroup;
@@ -118,7 +123,9 @@ struct header {
 #ifndef INEWS
     char *sender_host;
 #endif
+#ifndef INN
     char *path;
+#endif
     char *organization;
 
     char  *date; /* added to header structure....... */
@@ -265,13 +272,14 @@ char *getUser()
   host:
   * Contents of the HIDDENHOST environment variable, if it's set, or
   * Contents of the hiddenHost X resource, if it's set, or
+  * INN "fromhost" configuration value, if using INN and it's set, or
   * Contents of the file HIDDEN_FILE, if it's defined and non-empty, or
   * The string RETURN_HOST, if it's defined, or
   * Contents of real_host
   If the derived value for host doesn't have a period in it, the
   domain is determined (see below) and appended to it.
 
-  path:
+  path: (not used under INN)
   * Contents of the HIDDENPATH environment variable, if it's set, or
   * Contents of the file PATH_FILE, if it's defined and non-empty, or
   * Contents of real_host
@@ -279,6 +287,7 @@ char *getUser()
   host's domain: (only if host doesn't already have a period in it)
   * Contents of the "domainName" X resource, if it's set, or
   * Contents of the DOMAIN environment variable, if it's set, or
+  * INN "domain" configuration value, if using INN and it's set, or
   * Contents of the file DOMAIN_FILE, if it's defined and non-empty, or
   * The string DOMAIN_NAME, if it's defined, or
   * Error signalled and post/mail aborted
@@ -323,22 +332,18 @@ static int getHeader(article, Header)
 #ifndef INEWS
   char sender_host[HOST_NAME_SIZE];
 #endif
+#ifdef INN
+  char *inn_org;
+#else
   char path[HOST_NAME_SIZE];
+#endif
 
   (void) memset((char *)Header, 0, sizeof(*Header));
 
   Header->newsgroup = newsgroup;
 
   if (article > 0) {
-
-#define CHECK(field,name) \
-    if (art->field) \
-      Header->field = XtNewString(art->field); \
-    else { \
-      ART_STRUCT_UNLOCK; \
-      xhdr(newsgroup, article, name, &Header->field); \
-      art = artStructGet(newsgroup, article, False); \
-    }
+#define CHECK(field,name) if (art->field) Header->field = XtNewString(art->field); else xhdr(newsgroup, article, name, &Header->field);
 
     struct article *art = artStructGet(newsgroup, article, False);
 
@@ -348,9 +353,6 @@ static int getHeader(article, Header)
     CHECK(references, "references");
     CHECK(from, "from");
     CHECK(id, "message-id");
-
-    ART_STRUCT_UNLOCK;
-
     xhdr(newsgroup, article, "followup-to", &Header->followupTo);
     xhdr(newsgroup, article, "sender", &Header->sender);
     xhdr(newsgroup, article, "reply-to", &Header->replyTo);
@@ -400,8 +402,10 @@ static int getHeader(article, Header)
   host[0] = '\0';
   host[sizeof(host)-1] = '\0';
 
+#ifndef INN
   path[0] = '\0';
   path[sizeof(path)-1] = '\0';
+#endif
 
 #ifdef	UUCPNAME
   {
@@ -459,6 +463,15 @@ static int getHeader(article, Header)
   if ((! host[0]) && app_resources.hiddenHost && *app_resources.hiddenHost)
     (void) strncpy(host, app_resources.hiddenHost, sizeof(host)-1);
 
+#ifdef INN
+  if (! host[0]) {
+    /* always let values in inn.conf take precedence */
+    char *inn_fromhost = GetConfigValue("fromhost");
+    if (inn_fromhost)
+      (void) strncpy(host, inn_fromhost, sizeof(host)-1);
+  }
+#endif /* INN */
+
 #ifdef HIDDEN_FILE
   if (! host[0])
     if (ptr = getinfofromfile(HIDDEN_FILE))
@@ -473,6 +486,7 @@ static int getHeader(article, Header)
   if (! host[0])
     (void) strcpy(host, real_host);
 
+#ifndef INN
   if (! path[0])
     if ((ptr = getenv("HIDDENPATH")))
       (void) strncpy(path, ptr, sizeof(path)-1);
@@ -483,6 +497,7 @@ static int getHeader(article, Header)
 # endif
   if (! path[0])
     (void) strcpy(path, real_host);
+#endif /* ! INN */
     
   /* If the host name is not a full domain name, put in the domain */
   if (index (host, '.') == NIL(char)) {
@@ -490,7 +505,7 @@ static int getHeader(article, Header)
 
     if (! domain)
       domain = getenv("DOMAIN");
-#ifdef HAVE_CONFIGDATA_H
+#ifdef INN
     if (! domain)
       domain = GetFileConfigValue("domain");
 #endif
@@ -517,7 +532,9 @@ static int getHeader(article, Header)
 #ifndef INEWS
   Header->sender_host = XtNewString(sender_host);
 #endif
+#ifndef INN    
   Header->path = XtNewString(path);
+#endif /* INN */
 
   if (app_resources.organization != NIL(char)) {
     Header->organization = XtNewString(app_resources.organization);
@@ -527,6 +544,10 @@ static int getHeader(article, Header)
   } else if ((ptr = getenv ("NEWSORG")) != NIL(char)) {
 #endif
     Header->organization = XtNewString(ptr);
+#ifdef INN
+  } else if ((inn_org = GetConfigValue("organization"))) {
+    Header->organization = XtNewString(inn_org);
+#endif /* INN */    
 #ifdef ORG_FILE
   } else if ((ptr = getinfofromfile(ORG_FILE)) != NULL) {
     Header->organization = XtNewString(ptr);
@@ -790,7 +811,9 @@ static void freeHeader(Header)
 #ifndef INEWS
     FREE(Header->sender_host);
 #endif
+#ifndef INN	
     FREE(Header->path);
+#endif /* INN */	
     FREE(Header->organization);
     return;
 }
@@ -965,6 +988,7 @@ static void buildPath(Header, msg, msg_size, msg_total_size)
     int message_size = *msg_size;
     int message_total_size = *msg_total_size;
 
+#ifndef INN
 #if defined(INEWS) || defined(HIDE_PATH)
     CHECK_SIZE(sizeof("Path: \n") - 1 + strlen(Header->user));
     (void) sprintf(&message[strlen(message)], "Path: %s\n", Header->user);
@@ -974,6 +998,7 @@ static void buildPath(Header, msg, msg_size, msg_total_size)
     (void) sprintf(&message[strlen(message)], "Path: %s!%s\n",
 		   Header->path, Header->user);
 #endif /* INEWS or HIDE_PATH */
+#endif /* INN */
 
     *msg = message;
     *msg_size = message_size;
@@ -1276,10 +1301,18 @@ void compSendFunction(widget, event, string, count)
     char *ErrMessage;
     int mesg_name = newMesgPaneName();
 
+    /*
+     * I am loathe to use buffers that are 1024 bytes long for the old
+     * from line, new from line and sender line, since they are almost
+     * certainly going to be much shorter than this, but this seems to
+     * be the way things are done elsewhere in this file, so I'll
+     * stick with it.
+     */
     char *ptr, *ptr2;
     int mode, i, j, comma;
     unsigned long newsgroups_status WALL(= 0);
     int tries = 1, saved = 0;
+    int retry_editing = 0;
     int saved_dead = 0;
 
     TextDisableRedisplay(ComposeText);
@@ -1318,7 +1351,6 @@ void compSendFunction(widget, event, string, count)
 	}
 
  	/* Let's be more strict, since inews doesn't see empty headers.  */
-	buffer_size = 0;
  	returnField("Subject:", &buffer, &buffer_size, &buffer_total_size);
 	ptr = buffer + sizeof("Subject:") - 1;
 	while ((*ptr == ' ') || (*ptr == '\t') || (*ptr == '\n'))
@@ -1359,7 +1391,6 @@ void compSendFunction(widget, event, string, count)
 	    CLEANUP(); return;
 	}
 
-	buffer_size = 0;
 	returnField("From:", &buffer, &buffer_size, &buffer_total_size);
 
 	if (! *buffer) {
@@ -1489,7 +1520,6 @@ void compSendFunction(widget, event, string, count)
 	    CLEANUP(); return;
 	}
 
-	buffer_size = 0;
 	returnField("Newsgroups:", &buffer, &buffer_size, &buffer_total_size);
 
 	/* "buffer" now contains the original "Newsgroups" field. */
@@ -1585,7 +1615,7 @@ void compSendFunction(widget, event, string, count)
 	      sprintf(buf, CROSSPOST_CONFIRM_MSG, i) &&
 	      (ChoiceBox(TopLevel, buf, 2, POST_MSG, EDIT_MSG) == 2)) {
 	    if (app_resources.editorCommand)
-	      Call_Editor(True, True);
+	      Call_Editor(True, False);
 	    TextEnableRedisplay(ComposeText);
 	    CLEANUP(); XtFree(buf); return;
 	  }
@@ -1609,7 +1639,7 @@ void compSendFunction(widget, event, string, count)
 		  sprintf(buf, FOLLOWUP_FOLLOWUPTO_CONFIRM_MSG, i, j) &&
 		  (ChoiceBox(TopLevel, buf, 2, POST_MSG, EDIT_MSG) == 2)) {
 		if (app_resources.editorCommand)
-		  Call_Editor(True, True);
+		  Call_Editor(True, False);
 		TextEnableRedisplay(ComposeText);
 		CLEANUP(); XtFree(buf); return;
 	      }
@@ -1622,7 +1652,7 @@ void compSendFunction(widget, event, string, count)
 	      sprintf(buf, FOLLOWUP_CONFIRM_MSG, i);
 	      if (ChoiceBox(TopLevel, buf, 2, POST_MSG, EDIT_MSG) == 2) {
 		if (app_resources.editorCommand)
-		  Call_Editor(True, True);
+		  Call_Editor(True, False);
 		TextEnableRedisplay(ComposeText);
 		CLEANUP(); XtFree(buf); return;
 	      }
@@ -1639,12 +1669,18 @@ void compSendFunction(widget, event, string, count)
 	    CLEANUP(); return;
 	}
 
+#ifndef INN
+	/* The inews in INN adds the Path: header for us, and has its own
+	 * idea of policy.  We don't bother creating it, freeing it, or
+	 * anything else in compose.c that has to do with it
+	 */
 	if (fieldExists("Path:", 0) < 0) {
 	    buffer_size = 0;
 	    *buffer = '\0';
 	    buildPath(&Header, &buffer, &buffer_size, &buffer_total_size);
 	    addField(buffer);
 	}
+#endif /* INN */
 	
 /*	stripField("Message-ID:");  .............we need this !!! */
 	stripField("Relay-Version:");
@@ -1656,9 +1692,9 @@ void compSendFunction(widget, event, string, count)
 	buffer_size = 0;
 	CHECK_SIZE_EXTENDED(buffer, buffer_size, buffer_total_size,
 			    sizeof("X-newsreader: xrn \n") +
-			    sizeof(PACKAGE_VERSION) - 1); /* - 1 because we don't
+			    sizeof(XRN_VERSION) - 1); /* - 1 because we don't
 							 need both nulls */
-	(void) sprintf(buffer, "X-newsreader: xrn %s\n", PACKAGE_VERSION);
+	(void) sprintf(buffer, "X-newsreader: xrn %s\n", XRN_VERSION);
 	addField(buffer);
 #endif
     } else {
@@ -1670,8 +1706,8 @@ void compSendFunction(widget, event, string, count)
 	buffer_size = 0;
 	CHECK_SIZE_EXTENDED(buffer, buffer_size, buffer_total_size,
 			    sizeof("X-mailer: xrn \n") +
-			    sizeof(PACKAGE_VERSION) - 1);
-	(void) sprintf(buffer, "X-mailer: xrn %s\n", PACKAGE_VERSION);
+			    sizeof(XRN_VERSION) - 1);
+	(void) sprintf(buffer, "X-mailer: xrn %s\n", XRN_VERSION);
 	addField(buffer);
 #endif
     }
@@ -1708,19 +1744,6 @@ void compSendFunction(widget, event, string, count)
       return;
     }
 
-    /* Strip empty Followup-To fields, since some NNTP servers choke
-       on them. */
-    buffer_size = 0;
-    returnField("Followup-To:", &buffer, &buffer_size, &buffer_total_size);
-    ptr2 = buffer + sizeof("Followup-To:") - 1;
-    while (*ptr2 && isspace(*ptr2))
-      ptr2++;
-    if (! *ptr2) {
-      stripField("Followup-To:");
-      FREE(ptr);
-      ptr = TextGetString(ComposeText);
-    }
-
     if ((PostingMode == FOLLOWUP_REPLY) || (PostingMode == POST_MAIL)) {
 	tries = 2;
     }
@@ -1744,6 +1767,7 @@ void compSendFunction(widget, event, string, count)
 		saveDeadLetter(ptr);
 		saved_dead++;
 	    }
+	    retry_editing++;
 	    break;
 	
 	case POST_NOTALLOWED:
@@ -2198,30 +2222,24 @@ static int forkpid;
 
 extern int outchannel;
 
-static RETSIGTYPE catch_sigchld _ARGUMENTS((int));
+static int catch_sigchld _ARGUMENTS((int));
 
-static RETSIGTYPE catch_sigchld(signo)
+static int catch_sigchld(signo)
     int signo;
 {
 
     if (signo != SIGCHLD) {
 	/* whoops! */
-#ifdef SIGFUNC_RETURNS
 	return 1;
-#endif
     }
     if (forkpid != wait(0)) {
 	/* whoops! */
-#ifdef SIGFUNC_RETURNS
 	return 1;
-#endif
     }
     (void) signal(SIGCHLD, SIG_DFL);
     editing_status = Completed;
     write(outchannel,"1",1);
-#ifdef SIGFUNC_RETURNS
     return 1;
-#endif
 }
 
 
@@ -2352,7 +2370,7 @@ Call_Editor(
 	    return (-1);
 	}
 	else {
-	    signal(SIGCHLD, catch_sigchld);
+	    signal(SIGCHLD, (SIG_PF0) catch_sigchld);
 	}
 
    return (0);
@@ -2725,8 +2743,7 @@ static char *update_headers(Header, first_time, followup, reply)
 	  num_groups >= app_resources.warnings.followup.crossPost)
 	mesgPane(XRN_WARNING, 0, FOLLOWUP_MULTIPLE_NGS_MSG);
       if (app_resources.warnings.followup.followupTo &&
-	  *Header->followupTo && strcmp(Header->followupTo, Header->newsgroups) &&
-	  strcmp(Header->followupTo, "poster"))
+	  *Header->followupTo && strcmp(Header->followupTo, Header->newsgroups))
 	mesgPane(XRN_WARNING, 0, FOLLOWUP_FOLLOWUPTO_MSG);
     }
 
@@ -2839,7 +2856,6 @@ static void followup_or_reply(followup, reply)
 	return;
 
     art = artStructGet(newsgroup, current, False);
-    ART_STRUCT_UNLOCK;
     if (art->file)
       file_cache_file_copy(FileCache, *art->file, &Header.artFile);
 
@@ -2882,8 +2898,6 @@ static void followup_or_reply(followup, reply)
     message_size = strlen(message);
     message_total_size = message_size;
     
-    buildExtraFields(&message, &message_size, &message_total_size);
-
     CHECK_SIZE(1);
     (void) strcat(message, "\n");
 
@@ -2976,10 +2990,10 @@ void gripe()
     buildReplyTo(&message, &message_size, &message_total_size);
 
     CHECK_SIZE(sizeof("To: \nSubject: GRIPE about XRN \n") - 1 +
-	       sizeof(GRIPES) - 1 + sizeof(PACKAGE_VERSION) - 1);
+	       sizeof(GRIPES) - 1 + sizeof(XRN_VERSION) - 1);
     (void) sprintf(&message[strlen(message)],
 		   "To: %s\nSubject: GRIPE about XRN %s\n",
-		   GRIPES, PACKAGE_VERSION);
+		   GRIPES, XRN_VERSION);
 
     CHECK_SIZE(sizeof(bugTemplate) - 1 + 2);
     (void) strcat(message, "\n");
@@ -3015,7 +3029,6 @@ void forward()
 	return;
 
     art = artStructGet(newsgroup, current, False);
-    ART_STRUCT_UNLOCK;
     if (art->file)
       file_cache_file_copy(FileCache, *art->file, &Header.artFile);
 
@@ -3328,9 +3341,9 @@ void cancelArticle()
     (void) sprintf(&message[strlen(message)], "Control: cancel %s\n",
 		   CancelHeader.id);
 
-    CHECK_SIZE(sizeof("\nCancel message from XRN .\n") + sizeof(PACKAGE_VERSION) - 2);
+    CHECK_SIZE(sizeof("\nCancel message from XRN .\n") + sizeof(XRN_VERSION) - 2);
     (void) sprintf(&message[strlen(message)], "\nCancel message from XRN %s.\n",
-		   PACKAGE_VERSION);
+		   XRN_VERSION);
 
     switch (postArticle(message, XRN_NEWS,&ErrMessage)) {
     case POST_FAILED:

@@ -1,11 +1,9 @@
 
-$Id: TODO,v 1.218 2006-01-03 16:16:57 jik Exp $
+$Id: TODO,v 1.213 1999-08-26 02:06:46 jik Exp $
 
 The Ever growing list of things that should be done and things that would 
 be nice if they were done.... (and even worse, it's not up to date)
 
-- Since INN rejects postings with multiple CC headers, XRN should
-  merge them (and perhaps others as well).
 - The "artPost" composition pane should have a button to switch to
   "Post and mail".
 - It should be possible to wrap included text, paying attention to the
@@ -25,6 +23,7 @@ be nice if they were done.... (and even worse, it's not up to date)
   this is correct behavior; I suspect that like Newsgroup mode, they
   should put up a blank template and let the user specify the group to
   which to post.
+- Need to support INN 2.
 - Allow various header fields (configurable) in a displayed message to
   be in a different font, different color, different size, etc.
 - Add an option to hide identical Subject lines in the article
@@ -257,6 +256,9 @@ be nice if they were done.... (and even worse, it's not up to date)
   Weird.
 - Add X resource to optionally process Xref headers in articles being
   caught up in a newsgroup.
+- I connected to an INN server that I wasn't allowed to use.  Instead
+  of getting a useful message from XRN, I got "Unexpected EOF on NNTP
+  server socket -- server is probably malfunctioning".
 - Go through all of the X resources that are hard-coded as
   widget-creation arguments in the program and move as many of them as
   possible to the app-defaults file.
@@ -299,7 +301,9 @@ be nice if they were done.... (and even worse, it's not up to date)
   their resources for new buttons after every release.  Suggested by
   phigro@phigro.rnd.symix.com (Phil Gross).
 - Should XRN try to connect to a news server with host name "news" by
-  default if NNTPSERVER isn't set and SERVER_FILE doesn't exist?
+  default if NNTPSERVER isn't set and SERVER_FILE doesn't exist (and
+  the server name can't be determined from the INN configuration
+  file)?
 - Make DO_NOT_EAT_TYPE_AHEAD work.
 - Merge DXRN into this version of XRN.
 - Figure out how to make the KILL file stuff support case-insensitive
@@ -356,4 +360,3 @@ be nice if they were done.... (and even worse, it's not up to date)
 - Allow arbitrary articles/newsgroups to be selected when it makes
   sense to do so, rather than only allowing selection of contiguous
   ranges.
-- Mousewheel support.

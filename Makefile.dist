@@ -56,13 +56,11 @@ endif
 	mkdir $(SRCTMP)
 	$(TAR) --create --exclude Attic --exclude RCS --exclude '*~' \
 		--exclude '.#*' --exclude '*/.#*' --exclude TAGS \
-		--exclude '*.tgz' --exclude '*.patch' --exclude '*.patch.gz' \
-		--exclude '*.orig' \
+		--exclude '*.tgz' --exclude '*.patch' --exclude '*.orig' \
 		--exclude '*.rej' --exclude Makefile.dist \
 		--exclude .purify --exclude xrn-linux.lsm \
 		--exclude 'part*' --exclude shar --exclude .gdbinit \
 		--exclude gnksa-logos \
-		--exclude xrn.spec \
 		--verbose . | $(TAR) --directory=$(SRCTMP) --extract
 	tar --directory=$(dir $(SRCTMP)) --create --gzip \
 		--file=$(notdir $(SRCTMP)).tgz $(notdir $(SRCTMP))
