@@ -1,5 +1,7 @@
+
+
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: mesg.c,v 1.28 1998-01-28 21:18:29 jik Exp $";
+static char XRNrcsid[] = "$Id: mesg.c,v 1.21 1995-01-25 03:17:52 jik Exp $";
 #endif
 
 /*
@@ -58,12 +60,14 @@ static char XRNrcsid[] = "$Id: mesg.c,v 1.28 1998-01-28 21:18:29 jik Exp $";
 #endif
 #include "ngMode.h"
 #include "Text.h"
-#include "ButtonBox.h"
-#include "InfoLine.h"
-#include "InfoDialog.h"
-#include "mesg_strings.h"
 
 char error_buffer[2048];
+/* entire widget */
+static Widget MesgTopLevel = (Widget) 0;
+/* text window */
+static Widget MesgText = (Widget) 0;
+/* amount of text currently in the window */
+static long current_length = 0;
 static char *MesgString = 0;
 
 #ifndef XawFmt8Bit
@@ -77,6 +81,51 @@ static char *MesgString = 0;
  * then someone should be shot!
  */
 static char InfoString[512]; 
+
+BUTTON(mesgDismiss,dismiss);
+BUTTON(mesgClear,clear);
+
+/*ARGSUSED*/
+void mesgDismissFunction(widget, event, string, count)
+    Widget widget;
+    XEvent *event;
+    String *string;
+    Cardinal *count;
+{
+    XtPopdown(MesgTopLevel);
+    TextDestroy(MesgText);
+    XtDestroyWidget(MesgTopLevel);
+    MesgTopLevel = (Widget) 0;
+    MesgText = (Widget) 0;
+    current_length = 0;
+    return;
+}
+
+void mesgClearFunction(widget, event, string, count)
+    Widget widget;
+    XEvent *event;
+    String *string;
+    Cardinal *count;
+{
+    TextClear(MesgText);
+    current_length = 0;
+    return;
+}
+
+static void displayMesgString _ARGUMENTS((char *new_string));
+
+static void displayMesgString(new_string)
+    char *new_string;
+{
+    long newlen = strlen(new_string);
+
+    if (! MesgText)
+	return;
+
+    TextReplace(MesgText, new_string, newlen, current_length, current_length);
+    current_length += newlen;
+    TextSetInsertionPoint(MesgText, current_length);
+}
 
 
 int newMesgPaneName()
@@ -99,7 +148,7 @@ mesgPane(int type, int name, char *fmtString, ...)
 #else
 void
 mesgPane(type, name, fmtString, va_alist)
-int type, name;		/* XRN_INFO, XRN_WARNING, XRN_SERIOUS */
+int type, name;		/* XRN_INFO, XRN_SERIOUS */
 char *fmtString;
 va_dcl
 #endif /* XRN_USE_STDARG */
@@ -111,12 +160,20 @@ va_dcl
  */
 {
     va_list args;
+    Widget pane, buttonBox, label, button, clear_button;
+    Arg fontArgs[1];
+    Arg bargs[1];
     static int last_name = 0;
+    static Arg labelArgs[] = {
+	{XtNskipAdjust, (XtArgVal) True},
+    };
+    static Arg shellArgs[] = {
+	{XtNinput, (XtArgVal) True},
+    };
     time_t tm;
+    Dimension height;
     char *time_str;
     char addBuff[MESG_SIZE];
-    static Boolean intro_displayed = False;
-    char *separator = "\n--------\n";
 
     if (name && last_name && (name == last_name))
 	type |= XRN_APPEND;
@@ -130,7 +187,7 @@ va_dcl
 
     tm = time(0);
 
-    if (! (XRNState & XRN_X_UP)) {
+    if ((XRNState & XRN_X_UP) != XRN_X_UP) {
 	(void) fprintf(stderr, "%-24.24s: ", ctime(&tm));
 	(void) vfprintf(stderr, fmtString, args);
 	(void) fprintf(stderr, "\n");
@@ -147,15 +204,59 @@ va_dcl
     time_str += 11; /* Skip over the day and date */
     time_str[8] = '\0'; /* We only want the time, not the year and the newline */
 
-    InfoDialogCreate(TopLevel);
+    if (MesgTopLevel == (Widget) 0) {
+	static char *accel = "#override\n\
+			<Key>0xff0a: set() notify() unset()\n\
+			<Key>0xff0d: set() notify() unset()";
 
-    if (! (MesgLength() || MesgString)) {
+	MesgTopLevel = XtCreatePopupShell("Information", topLevelShellWidgetClass,
+					  TopLevel, shellArgs, XtNumber(shellArgs));
+
+	pane = XtVaCreateManagedWidget("pane", panedWidgetClass, MesgTopLevel,
+				       NULL);
+
+	label = XtCreateManagedWidget("label", labelWidgetClass, pane,
+				      labelArgs, XtNumber(labelArgs));
+
+	MesgText = TextCreate("text", True, pane);
+
+	buttonBox = XtCreateManagedWidget("box", boxWidgetClass, 
+					  pane, 0, 0);
+
+	button = XtCreateManagedWidget("dismiss", commandWidgetClass, buttonBox,
+			      mesgDismissArgs, XtNumber(mesgDismissArgs));
+
+	clear_button = XtCreateManagedWidget("clear", commandWidgetClass,
+					     buttonBox, mesgClearArgs,
+					     XtNumber(mesgClearArgs));
+
+	makeDefaultButton(button);
+
+	XtSetArg(bargs[0], XtNaccelerators, XtParseAcceleratorTable(accel));
+	XtSetValues(button, bargs, XtNumber(bargs));
+
+	XtRealizeWidget(MesgTopLevel);
+#ifndef ACCELERATORBUG
+	XtInstallAccelerators(MesgTopLevel, button);
+	XtInstallAccelerators(pane, button);
+	XtInstallAccelerators(MesgText, button);
+	XtInstallAccelerators(buttonBox, button);
+	XtInstallAccelerators(label, button);
+#endif
+
+	XtSetArg(fontArgs[0], XtNheight, &height);
+	XtGetValues(label, fontArgs, XtNumber(fontArgs));
+	XawPanedSetMinMax(label, (int) height, (int) height);
+	XawPanedAllowResize(MesgText, True);
+	
+	XDefineCursor(XtDisplay(MesgTopLevel), XtWindow(MesgTopLevel),
+		      XCreateFontCursor(XtDisplay(MesgTopLevel), XC_left_ptr));
+
+	XtPopup(MesgTopLevel, XtGrabNone);
+    }
+
+    if (! (current_length || MesgString)) {
 	(void) sprintf(addBuff, "%s: ", time_str);
-	if (! intro_displayed) {
-	  intro_displayed = True;
-	  (void) sprintf(&addBuff[strlen(addBuff)], "%s%s%s: ",
-			 MESG_PANE_DISMISS_MSG, separator, time_str);
-	}
     }
     else if (type & XRN_SAME_LINE) {
 	*addBuff = '\0';
@@ -164,7 +265,7 @@ va_dcl
 	(void) sprintf(addBuff, "\n%8s  ", "");
     }
     else {
-	(void) sprintf(addBuff, "%s%s: ", separator, time_str);
+	(void) sprintf(addBuff, "\n--------\n%s: ", time_str);
     }
 
     (void) vsprintf(&addBuff[strlen(addBuff)], fmtString, args);
@@ -180,28 +281,21 @@ va_dcl
  * If 'now' is true, then process as many X events as possible to
  * force the message to be displayed immediately.
  */
-void _info(
-	   _ANSIDECL(char *,	msg),
-	   _ANSIDECL(Boolean,	now)
-	   )
-     _KNRDECL(char *,	msg)
-     _KNRDECL(Boolean,	now)
+void _info(msg, now)
+    char *msg;
+    Boolean now;
 {
     static char label[LABEL_SIZE] = "";
-    static Widget info_widget = 0;
     static Boolean in_info = False;
 
     if (! in_info) {
 	in_info = True;
 
-	if (XRNState & XRN_X_UP) {
-	    if ((info_widget != TopInfoLine) || strcmp(msg, label)) {
+	if ((XRNState && XRN_X_UP) == XRN_X_UP) {
+	    if (strcmp(msg, label)) {
+		XtVaSetValues(TopInfoLine, XtNlabel, (XtArgVal) msg, 0);
 		(void)strncpy(label, msg, sizeof(label) - 1);
 		label[sizeof(label) - 1] = '\0';
-		info_widget = TopInfoLine;
-		if (! TopInfoLine)
-		    return;
-		InfoLineSet(TopInfoLine, msg);
 
 		if (now) {
 		    xthHandlePendingExposeEvents();
