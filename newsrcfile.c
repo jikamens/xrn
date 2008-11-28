@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.44 2006-01-03 16:38:55 jik Exp $";
+static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.35 1996-04-16 04:56:15 jik Exp $";
 #endif
 
 /*
@@ -33,7 +33,6 @@ static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.44 2006-01-03 16:38:55 jik Exp $
  *
  */
 
-#include <assert.h>
 #include "copyright.h"
 #include "config.h"
 #include "utils.h"
@@ -54,32 +53,26 @@ static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.44 2006-01-03 16:38:55 jik Exp $
 #include "varfile.h"
 #include "internals.h"
 #include "activecache.h"
-#include "killfile.h"
 
 #ifndef R_OK
 #define R_OK 4
 #endif
 
-static char *NewsrcFile;    /* newsrc file name         */
+char *NewsrcFile;    /* newsrc file name         */
 FILE *Newsrcfp;      /* newsrc file FILE pointer */
 char *optionsLine;   /* `options' line           */
 struct stat fbuf;
 struct newsgroup **Newsrc = 0;
 static ng_num Newsrc_size = 0;
 
-static void freeNewsrc _ARGUMENTS((void));
-
-ng_num checkNewsrcSize(
-		     _ANSIDECL(ng_num,	size)
-		     )
-     _KNRDECL(ng_num,	size)
+void checkNewsrcSize(size)
+ng_num size;
 {
   if (size > Newsrc_size) {
     Newsrc = (struct newsgroup **) XtRealloc((char *) Newsrc,
 					     sizeof(*Newsrc) * size);
     Newsrc_size = size;
   }
-  return size;
 }
 
 #define OKAY  1
@@ -142,38 +135,26 @@ static int copyNewsrcFile(old, save)
     return OKAY;
 }
 
-int isLongNewsrcFile()
-{
-  static Boolean is_long;
-
-  if (NewsrcFile)
-    return is_long;
-
-  NewsrcFile = findServerFile(app_resources.newsrcFile, False, &is_long);
-  return is_long;
-}
-
 /*
  * read, parse, and process the .newsrc file
  *
  *   returns: 0 for fatal error, non-zero for okay
  *
  */
-int readnewsrc()
+int readnewsrc(newsrcfile, savenewsrcfile)
+    char *newsrcfile;
+    char *savenewsrcfile;
 {
     struct stat buf;
     extern int yyparse _ARGUMENTS((void));
     extern int newsrc_mesg_name;
-    char *SaveNewsrcFile;
 
-    CHECKNEWSRCSIZE(ActiveGroupsCount);
+    checkNewsrcSize(ActiveGroupsCount);
 
     optionsLine = NIL(char);
 
-    /* Make sure NewsrcFile has been set. */
-    (void) isLongNewsrcFile();
-    if (! NewsrcFile) {
-      mesgPane(XRN_SERIOUS, 0, CANT_EXPAND_MSG, app_resources.newsrcFile);
+    if (! (NewsrcFile = findServerFile(newsrcfile, False))) {
+      mesgPane(XRN_SERIOUS, 0, CANT_EXPAND_MSG, newsrcfile);
       return FATAL;
     }
 
@@ -181,14 +162,12 @@ int readnewsrc()
 	if (errno != ENOENT) {
 	    mesgPane(XRN_SERIOUS, 0, CANT_READ_NEWSRC_MSG, NewsrcFile,
 		     errmsg(errno));
-	    XtFree(NewsrcFile);
 	    return FATAL;
 	}
 	mesgPane(XRN_INFO, 0, CREATING_NEWSRC_MSG, NewsrcFile);
 	if ((Newsrcfp = fopen(NewsrcFile, "w")) == NULL) {
 	    mesgPane(XRN_SERIOUS, 0, CANT_CREATE_NEWSRC_MSG, NewsrcFile,
 		     errmsg(errno));
-	    XtFree(NewsrcFile);
 	    return FATAL;
 	}
 	if (NEWUSER_GROUPS[0] == '/') {
@@ -199,7 +178,6 @@ int readnewsrc()
           if(! (NewRCfp = fopen(NEWUSER_GROUPS, "r"))) {
 	    mesgPane(XRN_SERIOUS, 0, CANT_READ_NEWSRC_MSG, 
 		     NEWUSER_GROUPS, errmsg(errno));
-	    XtFree(NewsrcFile);
 	    return FATAL;
           }
           while(fgets(tmpbuf, BUFSIZ-1, NewRCfp)) {
@@ -220,19 +198,16 @@ int readnewsrc()
     if (stat(NewsrcFile, &buf) == -1) {
 	mesgPane(XRN_SERIOUS, 0, CANT_STAT_NEWSRC_MSG, NewsrcFile,
 		 errmsg(errno));
-	XtFree(NewsrcFile);
 	return FATAL;
     }
     
     if (buf.st_size == 0) {
 	mesgPane(XRN_SERIOUS, 0, ZERO_LENGTH_NEWSRC_MSG, NewsrcFile);
-	XtFree(NewsrcFile);
 	return FATAL;
     }
 
     if ((Newsrcfp = fopen(NewsrcFile, "r")) == NULL) {
 	mesgPane(XRN_SERIOUS, 0, CANT_OPEN_NEWSRC_MSG, NewsrcFile, errmsg(errno));
-	XtFree(NewsrcFile);
 	return FATAL;
     }
 
@@ -240,24 +215,11 @@ int readnewsrc()
     if (yyparse() != 0) {
 	mesgPane(XRN_SERIOUS, 0, CANT_PARSE_NEWSRC_MSG, NewsrcFile,
 		 MaxGroupNumber +1);
-	XtFree(NewsrcFile);
 	return FATAL;
     }
 
-    if (! (SaveNewsrcFile = findServerFile(app_resources.saveNewsrcFile,
-					   isLongNewsrcFile(), NULL))) {
-      mesgPane(XRN_SERIOUS, 0, CANT_EXPAND_MSG, app_resources.saveNewsrcFile);
-      freeNewsrc();
-      XtFree(NewsrcFile);
-      return FATAL;
-    }
-
-    if (!copyNewsrcFile(NewsrcFile, SaveNewsrcFile)) {
-      freeNewsrc();
-      XtFree(NewsrcFile);
-      XtFree(SaveNewsrcFile);
-      return FATAL;
-    }
+    if (!copyNewsrcFile(NewsrcFile, savenewsrcfile))
+	 return FATAL;
 
     (void) fstat((int) fileno(Newsrcfp), &fbuf);
 
@@ -267,34 +229,9 @@ int readnewsrc()
 
     Newsrcfp = NIL(FILE);
 
-    XtFree(SaveNewsrcFile);
     return(OKAY);
 }
 
-static void freeNewsrc()
-{
-  ng_num i;
-
-  for (i = 0; i < MaxGroupNumber; i++) {
-    struct list *list, *next;
-
-    /* Don't free the name, since it's also stored in the AVL table
-       which will be freed separately. */
-    for (list = Newsrc[i]->nglist; list; list = next) {
-      next = list->next;
-      XtFree((char *)list);
-    }
-    /* There are no hash tables because we haven't threaded any groups
-       yet. */
-    /* There are no kill files because we haven't read any kill files
-       yet. */
-    artListFree(Newsrc[i]);
-  }
-  XtFree((char *)Newsrc);
-  Newsrc = 0;
-  MaxGroupNumber = 0;
-}
-  
 static int ngEntryFprintf _ARGUMENTS((FILE *, struct newsgroup *));
 
 static int ngEntryFprintf(newsrcfp, newsgroup)
@@ -368,12 +305,10 @@ int updatenewsrc()
     (void) stat(NewsrcFile, &currentStat);
 
     if (lastStat.st_mtime && (currentStat.st_mtime > lastStat.st_mtime)) {
-      (void) sprintf(error_buffer, ASK_FILE_MODIFIED_MSG, "Newsrc",
-		     NewsrcFile);
-      if (ConfirmationBox(TopLevel, error_buffer, 0, 0, False)
-	  == XRN_CB_ABORT) {
-	ehNoUpdateExitXRN();
-      }
+	if (ConfirmationBox(TopLevel, ASK_UPDATE_NEWSRC_MSG, 0, 0, False)
+	    == XRN_CB_ABORT) {
+	    ehNoUpdateExitXRN();
+	}
     }
 
     tempfile = utTempFile(NewsrcFile);
@@ -381,7 +316,6 @@ int updatenewsrc()
     if ((newsrcfp = fopen(tempfile, "w")) == NULL) {
 	mesgPane(XRN_SERIOUS, 0, CANT_OPEN_NEWSRC_TEMP_MSG, tempfile,
 		 errmsg(errno));
-	XtFree(tempfile);
 	return(FATAL);
     }
 
@@ -389,7 +323,6 @@ int updatenewsrc()
     if (cond) { \
       (void) fclose(newsrcfp); \
       (void) unlink(tempfile); \
-      XtFree(tempfile); \
       return(FATAL); \
     }
 
@@ -402,9 +335,6 @@ int updatenewsrc()
 
     for (indx = 0; indx < MaxGroupNumber; indx++) {
 	struct newsgroup *newsgroup = Newsrc[indx];
-
-	write_kill_file(newsgroup, KILL_LOCAL);
-	write_kill_file(newsgroup, KILL_GLOBAL);
 
 	FAILIF(fprintf(newsrcfp, "%s%c", newsgroup->name,
 		       (IS_SUBSCRIBED(newsgroup) ? ':' : '!')) == EOF);
@@ -424,9 +354,7 @@ int updatenewsrc()
 	    }
 	    continue;
 	}
-
-	ART_STRUCT_UNLOCK;
-
+	
 	if (newsgroup->last >= newsgroup->first) {
 	    struct article *art;
 	    Boolean comma = False;
@@ -442,7 +370,7 @@ int updatenewsrc()
 			    continue;
 			}
 		      do_output:
-			FAILIF(fputc(comma ? ',' : ' ', newsrcfp) == EOF);
+			FAILIF(putc(comma ? ',' : ' ', newsrcfp) == EOF);
 			if (last_first == last_last) {
 			  FAILIF(fprintf(newsrcfp, "%ld", last_first) == EOF);
 			}
@@ -466,7 +394,6 @@ int updatenewsrc()
 		else if (last_last)
 		    goto do_output;
 	    }
-	    ART_STRUCT_UNLOCK;
 	    if (last_last)
 		goto do_output;
 	} else {
@@ -486,8 +413,7 @@ int updatenewsrc()
 
     if (retval == EOF) {
       (void) unlink(tempfile);
-      XtFree(tempfile);
-      return(FATAL);
+	return(FATAL);
     }
 
 #ifdef ISC_TCP
@@ -499,7 +425,6 @@ int updatenewsrc()
 	mesgPane(XRN_SERIOUS, 0, ERROR_UNLINKING_NEWSRC_MSG, NewsrcFile,
 		 errmsg(errno));
 	(void) unlink(tempfile);
-	XtFree(tempfile);
 	return(FATAL);
     }
 #endif /* ISC_TCP */
@@ -508,11 +433,8 @@ int updatenewsrc()
 	mesgPane(XRN_SERIOUS, 0, ERROR_RENAMING_MSG, tempfile, NewsrcFile,
 		 errmsg(errno));
 	(void) unlink(tempfile);
-	XtFree(tempfile);
 	return(FATAL);
     }
-
-    XtFree(tempfile);
 
     (void) stat(NewsrcFile, &lastStat);
 
