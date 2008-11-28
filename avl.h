@@ -4,7 +4,7 @@
 #define AVL_H
 
 /*
- * $Id: avl.h,v 1.5 1994-11-23 01:44:52 jik Exp $
+ * $Header: /d/src/cvsroot/xrn/avl.h,v 1.4 1994-10-23 03:53:35 jik Exp $
  */
 
 /*
