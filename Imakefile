@@ -1,5 +1,5 @@
 /*
- * $Id: Imakefile,v 1.130 2002-05-13 04:22:35 jik Exp $
+ * $Id: Imakefile,v 1.116 1997-06-30 11:39:17 jik Exp $
  *
  * xrn - an X-based NNTP news reader
  *
@@ -32,11 +32,6 @@
 
 /*
  * If you want to compile the MOTIF version of XRN, define MOTIF here.
- *
- * *** NOTE WELL *** that the Motif version of XRN is not yet
- * completely implemented, it probably doesn't work properly, and it's
- * unsupported.  If you want to help finish it, please let me know.
- * Otherwise, you probably shouldn't try to compile it.
  */
 /* #define MOTIF */
 
@@ -55,11 +50,10 @@ APPDEFAULTS = XRn
 
 /*
  * What language do you want messages to be in?  Legal values are
- * "english", "german", and "french"; case is significant!
+ * "english" and "german"; case is significant!
  */
 LANGUAGE= english
 /* LANGUAGE= german */
-/* LANGUAGE= french */
 
 #ifdef BandAidCompiler
 #include BandAidCompiler
@@ -103,7 +97,7 @@ XRN_LOAD_FLAGS = -lucb -lm -lgen
 XRN_LOAD_FLAGS = -lgen
 #endif
 
-#if defined(BSD386Architecture) || defined(NetBSDArchitecture) || defined(OpenBSDArchitecture)
+#if defined(BSD386Architecture) || defined(NetBSDArchitecture)
 XRN_LOAD_FLAGS = -lcompat
 #endif
 
@@ -162,14 +156,33 @@ XRN_DEFINES = -DSOLARIS
  * You probably don't need to change anything in this block.
  */
 
-#if defined(XFree86Version) && (XFree86Version >= 4000) && \
-	(XFree86Version < 40200000)
-/* I know this bug was introduced in XFree86 4.0 and fixed in 4.2, but
-   I don't know if it's in any other X11 distributions besides
-   XFree86.
-   */
-REDISPLAY_DEFINES = -DXAW_REDISPLAY_BUG
-#endif
+#ifdef OV_CAMBRIDGE
+SITE_DEFINES	+= -DOV_CAMBRIDGE
+SITE_DEFINES	+= -DPOSIX_REGEX \
+		   -I/afs/gza.com/software/regex/src/regex-0.12
+IMAKE_DEFINES	+= -DOV_CAMBRIDGE
+REGEX_OBJS	=  /afs/gza.com/software/regex/build/regex-0.12/regex.o
+#ifdef LinuxArchitecture
+#define INN	   /usr/build/inn-1.4sec/libinn.a
+INNINC		+= -I/usr/build/inn-1.4sec/include
+LEX		=  flex
+CDEBUGFLAGS	+= -g3
+#else
+# ifdef SolarisArchitecture
+CC		=  gcc -fpcc-struct-return
+CCOPTIONS	=
+OPENWINHOME	=  /usr/openwin
+CONFIGDIR	=  $(OPENWINHOME)/lib/config
+# else
+#define INN /afs/gza.com/development/news/build/inn/libinn.a
+INNINC		+= -I/afs/gza.com/development/news/build/inn/include
+# endif /* ! SolarisArchitecture */
+#endif /* LinuxArchitecture */
+CDEBUGFLAGS	= -g -Wall -DGCC_WALL -pedantic
+ifdef PURIFY
+CC		= purify -ignore-signals=SIGPIPE gcc -fpcc-struct-return
+endif
+#endif /* OV_CAMBRIDGE */
 
 #ifdef FreeBSDArchitecture
 EXTRA_LIBRARIES	+= -lgnuregex
@@ -177,11 +190,11 @@ EXTRA_LIBRARIES	+= -lgnuregex
 
 #ifdef LINUX_DIST
 IMAKE_DEFINES	+= -DLINUX_DIST
-/* SITE_DEFINES	+= -I/b/build/regex-0.12 */
+SITE_DEFINES	+= -I/b/build/regex-0.12
 SITE_DEFINES	+= -DCONFIG_H_IS_OK -D_GNU_SOURCE
 LEX		=  flex
 CDEBUGFLAGS	+= -Wall -DGCC_WALL -g -pedantic
-/* REGEX_OBJS	= /b/build/regex-0.12/regex.o */
+REGEX_OBJS	= /b/build/regex-0.12/regex.o
 #endif
 
 #if defined(INN)
@@ -198,11 +211,6 @@ CLIENTOBJ = clientlib.o
  * You probably don't need to edit anything below this line.
  */
 
-#ifdef CHECKER
-CC := checkergcc -D__NO_MATH_INLINES -D__NO_STRING_INLINES -L/usr/local/lib/checker/i686-pc-linux-gnu
-IMAKE_DEFINES += -DCHECKER
-#endif
-
 #ifdef MOTIF
 GUI_DEFINES = -DMOTIF
 #endif
@@ -213,16 +221,15 @@ SIGNAL_DEFINES = -DVOID_SIGNAL
 
 LOCAL_LIBRARIES = $(X_LIBRARIES) $(XRN_LOAD_FLAGS) $(INN_LOAD_FLAGS)
 DEFINES = $(XRN_DEFINES) $(GUI_DEFINES) $(SIGNAL_DEFINES) $(INN_DEFINES) \
-        $(SITE_DEFINES) $(REDISPLAY_DEFINES) -DXRN_LANG_$(LANGUAGE) \
-	-DXRNAPPDIR=\"$(XAPPLOADDIR)\" \
-	-DXRN_APP_CLASS=\"$(APPDEFAULTS)\" -DXRN
+        $(SITE_DEFINES) -DXRN_LANG_$(LANGUAGE) \
+        -DXRN_APP_CLASS=\"$(APPDEFAULTS)\" -DXRN
 
 HDRS = mesg_strings.h
 SRCS = avl.c $(CLIENTSRC) compose.c cursor.c dialogs.c \
        refile.c mesg.c error_hnds.c newsrcfile.c resources.c    \
        internals.c save.c server.c utils.c xrn.c \
        xthelper.c rcyacc.c cancel.c vprintf.c tempnam.c strstr.c \
-       strtok.c mesg_strings.c XrnText.c ngMode.c artMode.c allMode.c \
+       strtok.c mesg_strings.c Text.c ngMode.c artMode.c allMode.c \
        addMode.c snapshot.c artstruct.c Buttons.c InfoLine.c ButtonBox.c \
        busyCursor.c varfile.c activecache.c sort.c getdate2.c hash.c \
        killfile.c InfoDialog.c Frame.c Xmisc.c file_cache.c
@@ -230,7 +237,7 @@ LOCAL_OBJS = avl.o $(CLIENTOBJ) compose.o cursor.o dialogs.o \
        refile.o mesg.o error_hnds.o newsrcfile.o resources.o    \
        internals.o save.o server.o utils.o xrn.o \
        xthelper.o rcyacc.o cancel.o vprintf.o tempnam.o strstr.o \
-       strtok.o mesg_strings.o XrnText.o ngMode.o artMode.o allMode.o \
+       strtok.o mesg_strings.o Text.o ngMode.o artMode.o allMode.o \
        addMode.o snapshot.o artstruct.o Buttons.o InfoLine.o ButtonBox.o \
        busyCursor.o varfile.o activecache.o sort.o getdate2.o hash.o \
        killfile.o InfoDialog.o Frame.o Xmisc.o file_cache.o
@@ -355,4 +362,4 @@ getdate2.c: getdate.c
 	mv $@.tmp $@
 
 clean::
-	$(RM) getdate.c getdate2.c.tmp getdate2.c rclex.c rcyacc.c
+	$(RM) getdate.c getdate2.c.tmp rclex.c rcyacc.c
