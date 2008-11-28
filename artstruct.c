@@ -5,9 +5,6 @@
 #include "config.h"
 #include "news.h"
 #include "artstruct.h"
-#include "file_cache.h"
-
-int art_struct_locked = 0;
 
 static Boolean artsame _ARGUMENTS((struct article *, struct article *));
 static void freeartstruct _ARGUMENTS((struct article *));
@@ -54,121 +51,6 @@ void artListSet(newsgroup)
     newsgroup->ref_art = newsgroup->articles;
 }
 
-/*
-  Extend a group's article structure, if it exists, from the old last
-  article number to the new one.
-*/
-void artListExtend(newsgroup, old_last)
-     struct newsgroup *newsgroup;
-     art_num old_last;
-{
-  struct article copy, *new, *ptr;
-
-  assert(! art_struct_locked);
-
-  if (! newsgroup->articles)
-    return;
-
-  if (old_last >= newsgroup->last)
-    return;
-
-  CLEAR_ALL_NO_FREE(&copy);
-
-  for (ptr = newsgroup->articles; ptr->next; ptr = ptr->next)
-    /* empty */;
-
-  if (artsame(&copy, ptr)) {
-#ifdef DEBUG
-    fprintf(stderr,
-	    "artListExtend: extending blank article structure from %d to %d\n",
-	    old_last, newsgroup->last);
-#endif
-    return;
-  }
-
-#ifdef DEBUG
-  fprintf(stderr, "artListExtend: creating new article structure for %d to %d\n",
-	  old_last, newsgroup->last);
-#endif
-
-  new = (struct article *) XtCalloc(1, sizeof(struct article));
-  CLEAR_ALL_NO_FREE(new);
-  new->first = old_last + 1;
-  new->previous = ptr;
-  new->next = 0;
-
-  ptr->next = new;
-}
-
-
-int artStructNumChildren(art)
-     struct article *art;
-{
-  int i;
-  art_num *ptr;
-
-  if (! art->children)
-    return 0;
-
-  for (ptr = art->children, i = 0; *ptr; ptr++)
-    i++;
-
-  return i;
-}
-
-void artStructAddChild(art, child)
-     struct article *art;
-     art_num child;
-{
-  int i = artStructNumChildren(art);
-
-  art->children = (art_num *) XtRealloc((char *) art->children,
-					(i + 2) * sizeof(*art->children));
-
-  art->children[i++] = child;
-  art->children[i] = 0;
-}
-
-void artStructRemoveChild(art, child)
-     struct article *art;
-     art_num child;
-{
-  art_num *ptr, *ptr2;
-
-  if (! art->children)
-    return;
-
-  for (ptr = art->children; *ptr; ptr++) {
-    if (*ptr == child) {
-      for (ptr2 = ptr + 1; *ptr2; ptr++, ptr2++)
-	*ptr = *ptr2;
-      *ptr = 0;
-    }
-  }
-
-  return;
-}
-      
-  
-static art_num *copy_art_list _ARGUMENTS((struct article *));
-
-static art_num *copy_art_list(art)
-     struct article *art;
-{
-  int i;
-  art_num *new;
-
-  if (! art->children)
-    return 0;
-
-  i = artStructNumChildren(art);
-
-  new = (art_num *) XtCalloc(i + 1, sizeof(*new));
-
-  (void) memcpy((char *) new, (char *) art->children, (i + 1) * sizeof(*new));
-
-  return new;
-}
 
 /*
   Free an article structure.
@@ -209,21 +91,12 @@ void artListFree(newsgroup)
   If "writeable" is true, than the returned structure can be modified
   by the caller.  Otherwise, it shouldn't be.
   */
-struct article *artStructGet(
-			     _ANSIDECL(struct newsgroup *,	newsgroup),
-			     _ANSIDECL(art_num,			artnum),
-			     _ANSIDECL(Boolean,			writeable)
-			     )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artnum)
-     _KNRDECL(Boolean,			writeable)
+struct article *artStructGet(newsgroup, artnum, writeable)
+    struct newsgroup *newsgroup;
+    art_num artnum;
+    Boolean writeable;
 {
     struct article *reference = newsgroup->ref_art;
-
-    assert(! art_struct_locked);
-    ART_STRUCT_LOCK;
-
-    assert(artnum <= newsgroup->last);
 
     if (! reference)
 	reference = newsgroup->articles;
@@ -262,19 +135,8 @@ struct article *artStructGet(
 	COPY_FIELD(from);
 	COPY_FIELD(author);
 	COPY_FIELD(lines);
+	COPY_FIELD(filename);
 	COPY_FIELD(newsgroups);
-	COPY_FIELD(date);
-	COPY_FIELD(id);
-	COPY_FIELD(xref);
-	COPY_FIELD(approved);
-	COPY_FIELD(references);
-	new->file = reference->file;
-	new->base_file = reference->base_file;
-	/* Not copying the headers; they will be regenerated if
-	   they're needed. */
-	new->headers = 0;
-	new->parent = reference->parent;
-	new->children = copy_art_list(reference);
 	new->first = artnum + 1;
 	new->previous = reference;
 	if (reference->next)
@@ -294,17 +156,8 @@ struct article *artStructGet(
 	COPY_FIELD(from);
 	COPY_FIELD(author);
 	COPY_FIELD(lines);
+	COPY_FIELD(filename);
 	COPY_FIELD(newsgroups);
-	COPY_FIELD(date);
-	COPY_FIELD(id);
-	COPY_FIELD(xref);
-	COPY_FIELD(approved);
-	COPY_FIELD(references);
-	new->file = reference->file;
-	new->base_file = reference->base_file;
-	new->headers = 0;
-	new->parent = reference->parent;
-	new->children = copy_art_list(reference);
 	new->first = artnum;
 	new->previous = reference;
 	if (reference->next)
@@ -319,12 +172,6 @@ struct article *artStructGet(
     return reference;
 }
 
-
-#define CHECK(field, staying, going) \
-	if ((staying)->field != (going)->field) { \
-	    XtFree((char *)(going)->field); \
-	    (going)->field = (staying)->field; \
-	}
 
 /*
   Given an article structure which was previously returned by
@@ -341,57 +188,25 @@ void artStructSet(newsgroup, art)
     struct newsgroup *newsgroup;
     struct article **art;
 {
-    ART_STRUCT_UNLOCK;
-
     if (artsame(*art, (*art)->previous)) {
-      struct article *tmp = *art;
-
-      CHECK(subject, (*art)->previous, *art);
-      CHECK(from, (*art)->previous, *art);
-      CHECK(author, (*art)->previous, *art);
-      CHECK(lines, (*art)->previous, *art);
-      CHECK(newsgroups, (*art)->previous, *art);
-      CHECK(date, (*art)->previous, *art);
-      CHECK(children, (*art)->previous, *art);
-      /* "file" doesn't need checking because artsame() says it's the
-	 same in both structures. */
-      CHECK(id, (*art)->previous, *art);
-      CHECK(xref, (*art)->previous, *art);
-      CHECK(approved, (*art)->previous, *art);
-      CHECK(references, (*art)->previous, *art);
-
-      (*art)->previous->next = (*art)->next;
-      if ((*art)->next)
-	(*art)->next->previous = (*art)->previous;
-      *art = (*art)->previous;
-      XtFree((char *) tmp);
+	struct article *tmp = *art;
+	(*art)->previous->next = (*art)->next;
+	if ((*art)->next)
+	    (*art)->next->previous = (*art)->previous;
+	*art = (*art)->previous;
+	XtFree((char *) tmp);
     }
 
     if (artsame(*art, (*art)->next)) {
-      struct article *tmp = (*art)->next;
-
-      CHECK(subject, (*art)->next, *art);
-      CHECK(from, (*art)->next, *art);
-      CHECK(author, (*art)->next, *art);
-      CHECK(lines, (*art)->next, *art);
-      CHECK(newsgroups, (*art)->next, *art);
-      CHECK(date, (*art)->next, *art);
-      CHECK(children, (*art)->next, *art);
-      /* "file" doesn't need checking because artsame() says it's the
-	 same in both structures. */
-      CHECK(id, (*art)->next, *art);
-      CHECK(xref, (*art)->next, *art);
-      CHECK(approved, (*art)->next, *art);
-      CHECK(references, (*art)->next, *art);
-
-      (*art)->next->first = (*art)->first;
-      if ((*art)->previous)
-	(*art)->previous->next = tmp;
-      else
-	newsgroup->articles = tmp;
-      (*art)->next->previous = (*art)->previous;
-      XtFree((char *) *art);
-      *art = tmp;
+	struct article *tmp = (*art)->next;
+	(*art)->next->first = (*art)->first;
+	if ((*art)->previous)
+	    (*art)->previous->next = tmp;
+	else
+	    newsgroup->articles = tmp;
+	(*art)->next->previous = (*art)->previous;
+	XtFree((char *) *art);
+	*art = tmp;
     }
 
     newsgroup->ref_art = *art;
@@ -413,41 +228,28 @@ void artStructReplace(newsgroup, original, copy, artnum)
     struct article *copy;
     art_num artnum;
 {
-    ART_STRUCT_UNLOCK;
-
     if (! artsame(*original, copy)) {
 	*original = artStructGet(newsgroup, artnum, True);
 	(*original)->status = copy->status;
-	CHECK(subject, copy, *original);
-	CHECK(from, copy, *original);
-	CHECK(author, copy, *original);
-	CHECK(lines, copy, *original);
-	CHECK(newsgroups, copy, *original);
-	CHECK(date, copy, *original);
-	(*original)->parent = copy->parent;
-	CHECK(children, copy, *original);
-	if ((*original)->file != copy->file) {
+#define CHECK(field) \
+	if ((*original)->field != copy->field) { \
+	    XtFree((*original)->field); \
+	    (*original)->field = copy->field; \
+	}
+	CHECK(subject);
+	CHECK(from);
+	CHECK(author);
+	CHECK(lines);
+	CHECK(newsgroups);
+	if ((*original)->filename != copy->filename) {
 	    CLEAR_FILE(*original);
-	    CHECK(file, copy, *original);
+	    CHECK(filename);
 	}
-	if ((*original)->base_file != copy->base_file) {
-	    CLEAR_BASE_FILE(*original);
-	    CHECK(base_file, copy, *original);
-	}
-	if ((*original)->headers != copy->headers) {
-	  CLEAR_HEADERS(*original);
-	  (*original)->headers = copy->headers;
-	}
-	CHECK(headers, copy, *original);
-	CHECK(id, copy, *original);
-	CHECK(xref, copy, *original);
-	CHECK(approved, copy, *original);
-	CHECK(references, copy, *original);
+#undef CHECK
 	artStructSet(newsgroup, original);
     }
 }
 
-#undef CHECK
 
 /*
   Return the next article structure in an article list, as well as the
@@ -461,27 +263,23 @@ struct article *artStructNext(newsgroup, art, first, last)
     struct article *art;
     art_num *first, *last;
 {
-    assert(art_struct_locked);
-
     art = art->next;
     if (! art) {
 	newsgroup->ref_art = 0;
 	return 0;
     }
 
-    if (first) {
+    if (first)
 	if (art->first)
 	    *first = art->first;
 	else
-	  *first = newsgroup->first;
-    }
+	    *first = newsgroup->first;
 
-    if (last) {
+    if (last)
 	if (art->next)
 	    *last = art->next->first - 1;
 	else
-	  *last = newsgroup->last;
-    }
+	    *last = newsgroup->last;
 
     newsgroup->ref_art = art;
     return art;
@@ -497,27 +295,23 @@ struct article *artStructPrevious(newsgroup, art, first, last)
     struct article *art;
     art_num *first, *last;
 {
-    assert(art_struct_locked);
-
     art = art->previous;
     if (! art) {
 	newsgroup->ref_art = 0;
 	return 0;
     }
 
-    if (first) {
+    if (first)
 	if (art->first)
 	    *first = art->first;
 	else
-	  *first = newsgroup->first;
-    }
+	    *first = newsgroup->first;
 
-    if (last) {
+    if (last)
 	if (art->next)
 	    *last = art->next->first - 1;
 	else
-	  *last = newsgroup->last;
-    }
+	    *last = newsgroup->last;
 
     newsgroup->ref_art = art;
     return art;
@@ -535,24 +329,19 @@ struct article *artListFirst(newsgroup, first, last)
 {
     struct article *art = newsgroup->articles;
 
-    assert(! art_struct_locked);
-
     if (! art) {
 	newsgroup->ref_art = 0;
 	return 0;
     }
 
-    ART_STRUCT_LOCK;
-
     if (first)
 	*first = art->first;
 
-    if (last) {
+    if (last)
 	if (art->next)
 	    *last = art->next->first - 1;
 	else
-	  *last = newsgroup->last;
-    }
+	    *last = newsgroup->last;
 
     newsgroup->ref_art = art;
     return art;
@@ -569,24 +358,19 @@ struct article *artListLast(newsgroup, first, last)
 {
     struct article *art = newsgroup->articles;
 
-    assert(! art_struct_locked);
-
     if (! art) {
 	newsgroup->ref_art = 0;
 	return 0;
     }
 
-    ART_STRUCT_LOCK;
-
     while (art->next)
 	art = art->next;
 
-    if (first) {
+    if (first)
 	if (art->first)
 	    *first = art->first;
 	else
-	  *first = newsgroup->first;
-    }
+	    *first = newsgroup->first;
 
     if (last)
 	*last = newsgroup->last;
@@ -604,8 +388,6 @@ struct article *artListLast(newsgroup, first, last)
 static Boolean artsame(art1, art2)
     struct article *art1, *art2;
 {
-    int num_children;
-
     if (! (art1 && art2))
 	return False;
 
@@ -627,34 +409,11 @@ static Boolean artsame(art1, art2)
     ARTSTRCMP(from);
     ARTSTRCMP(author);
     ARTSTRCMP(lines);
+    ARTSTRCMP(filename);
     ARTSTRCMP(newsgroups);
-    ARTSTRCMP(date);
-    ARTSTRCMP(id);
-    ARTSTRCMP(xref);
-    ARTSTRCMP(approved);
-    ARTSTRCMP(references);
-
-    if (art1->file != art2->file)
-      return False;
-
-    if (art1->base_file != art2->base_file)
-      return False;
-
-    if (art1->headers != art2->headers)
-      return False;
-
-    if (art1->parent != art2->parent)
-      return False;
-
-    if ((art1->children != art2->children) ||
-	((num_children = artStructNumChildren(art1)) !=
-	 artStructNumChildren(art2)) ||
-	(art1->children &&
-	 memcmp((void *)art1->children, (void *)art2->children,
-		(num_children + 1) * sizeof(*art1->children))))
-      return False;
 
 #undef ARTSTRCMP
 
     return True;
 }
+
