@@ -2,10 +2,9 @@
 #define CURSOR_H
 
 #include "news.h"
-#include "file_cache.h"
 
 /*
- * $Id: cursor.h,v 1.15 1998-01-22 03:09:00 jik Exp $
+ * $Id: cursor.h,v 1.11 1996-06-07 09:41:36 jik Exp $
  */
 
 /*
@@ -38,7 +37,6 @@
  *           text window
  */
 
-#define JUMP -1
 #define BACK 0
 #define FORWARD 1
 
@@ -54,10 +52,11 @@ extern void currentGroup _ARGUMENTS((int,char *,char **,long));
 extern void currentMode _ARGUMENTS((char *,char **,int *,long));
 extern int markStringRead _ARGUMENTS((char *,long));
 extern void markAllString _ARGUMENTS((char *,long, char *));
-extern void markArticles _ARGUMENTS((char *, long, long, char));
+extern void markArticles _ARGUMENTS((char *, long, long,
+				     /* char */ int));
 extern void buildString _ARGUMENTS((char **,long,long,
     char *));
-extern int moveToArticle _ARGUMENTS((struct newsgroup *, long,
-				     file_cache_file **, char **));
+extern void findArticle _ARGUMENTS((char *,long,long *));
+extern int moveToArticle _ARGUMENTS((struct newsgroup *, long, char **, char **));
 
 #endif /* CURSOR_H */

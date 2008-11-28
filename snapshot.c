@@ -43,7 +43,6 @@ void groupSnapshotSave(newsgroup)
 	mask = 1 << bit;
 	if (IS_READ(art))
 	    statuses[byte] |= mask;
-	ART_STRUCT_UNLOCK;
     }
 }
 
@@ -74,7 +73,8 @@ void groupSnapshotRestore(newsgroup)
     int i, byte, bit, mask;
     struct article *art, copy;
 
-    assert(group && !strcmp(group, newsgroup->name) && (first == newsgroup->first) && (last == newsgroup->last));
+    assert(group && !strcmp(group, newsgroup->name) &&
+	   (first == newsgroup->first) && (last == newsgroup->last));
 
     for (i = first; i <= last; i++) {
 	art = artStructGet(newsgroup, i, False);

@@ -20,12 +20,7 @@ static int hash_debug		= 0;
 #endif
 
 #define SIZE_FACTOR		2.0
-/*
-  This is the preferred number of bits to shift left after each
-  character is XORed into the hash of a string.  However, it will be
-  changed in the hash function if it is a factor of the number of bits
-  in the table size.
-  */
+/* Must be an odd number! */
 #define CHAR_SIG_BITS		4
 
 #ifdef DEBUG
@@ -307,27 +302,13 @@ int hash_string_calc(size, size_bits, key)
      int size_bits;
      void *key;
 {
-  static int stashed_size = 0;
-  static int shift_bits;
-
   unsigned int hash = 0;
   unsigned char *ptr;
   int cur_pos = 0;
 
-  if (size != stashed_size) {
-    stashed_size = size;
-    for (shift_bits = CHAR_SIG_BITS; shift_bits < CHAR_SIG_BITS+8;
-	 shift_bits++) {
-      if (! (shift_bits % 8))
-	continue;
-      if (size_bits % (shift_bits % 8))
-	break;
-    }
-    shift_bits %= 8;
-  }
   for (ptr = (unsigned char *)key; *ptr; ptr++) {
     hash = hash ^ (*ptr << cur_pos);
-    cur_pos = (cur_pos + shift_bits) % size_bits;
+    cur_pos = (cur_pos + CHAR_SIG_BITS) % size_bits;
   }
 
   hash %= size;
