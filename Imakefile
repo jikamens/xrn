@@ -1,5 +1,5 @@
 /*
- * $Id: Imakefile,v 1.130 2002-05-13 04:22:35 jik Exp $
+ * $Header: /d/src/cvsroot/xrn/Imakefile,v 1.39 1994-10-25 11:12:16 jik Exp $
  *
  * xrn - an X-based NNTP news reader
  *
@@ -31,35 +31,15 @@
  */
 
 /*
- * If you want to compile the MOTIF version of XRN, define MOTIF here.
- *
- * *** NOTE WELL *** that the Motif version of XRN is not yet
- * completely implemented, it probably doesn't work properly, and it's
- * unsupported.  If you want to help finish it, please let me know.
- * Otherwise, you probably shouldn't try to compile it.
- */
-/* #define MOTIF */
-
-/*
- * If you want the program to be called something other than "xrn",
- * change PROGRAMS.  If you want the app-defaults class to be something
- * other than XRn, change APPDEFAULTS.
+ * Either uncomment the following, or use "-DUseMotif" to imake, or use
+ * "make Makefile IMAKE_DEFINES=-DUseMotif", to get a Makefile for the
+ * Motif version.
  */
 
-PROGRAMS = xrn
-#ifdef MOTIF
-APPDEFAULTS = XRn_Motif
-#else
-APPDEFAULTS = XRn
-#endif
+/* #define UseMotif */
 
-/*
- * What language do you want messages to be in?  Legal values are
- * "english", "german", and "french"; case is significant!
- */
-LANGUAGE= english
-/* LANGUAGE= german */
-/* LANGUAGE= french */
+/* Uncomment this to include editres support with Motif (X11R5 only). */
+/* #define UseEditres */
 
 #ifdef BandAidCompiler
 #include BandAidCompiler
@@ -71,22 +51,13 @@ LANGUAGE= english
  */
 /* #define INN /usr/local/lib/libinn.a */
 
-#ifdef INN
-/*
- * If you are using INN and the INN header files are not installed
- * where the compiler will find them, add a "-Idir" flag here to specify
- * where they are.
- */
-INNINC= 
-#endif
-
 /*
  * If you need to link against special libraries, put them in
  * XRN_LOAD_FLAGS.  What's here may or may not be right for your
  * system.  If in doubt, leave it alone and see what happens.
  */
 
-#if defined(XmacIIServer) || defined(SGIArchitecture)
+#if defined(XmacIIServer) || defined(hp9000s300) || defined(hp9000s800) || defined(SGIArchitecture)
 XRN_LOAD_FLAGS = -lPW
 #endif
 
@@ -103,34 +74,35 @@ XRN_LOAD_FLAGS = -lucb -lm -lgen
 XRN_LOAD_FLAGS = -lgen
 #endif
 
-#if defined(BSD386Architecture) || defined(NetBSDArchitecture) || defined(OpenBSDArchitecture)
+#ifdef BSD386Architecture
 XRN_LOAD_FLAGS = -lcompat
 #endif
 
-#ifdef SCO
-XRN_LOAD_FLAGS = -lintl
-#endif
-
-#if defined(MotoR4Architecture)
-XRN_LOAD_FLAGS = -lnsl -lsocket -lgen
-#endif
-
 /*
- * You probably won't need to change most of this.
+ * You probably won't need to change most of this.  However, you can
+ * change APPDEFAULTS if you want the class name to be something other
+ * than XRn (or XRnMotif for the Motif version).
  */
 
-#ifdef MOTIF
-# ifndef XMLIB
-   XMLIB = -lXm
-# endif
- # set this to whatever your system needs, might should put this above
- # in the O.S. sections
- XM_LIB_PATH = -L/usr/dt/lib
- X_LIBRARIES = $(XM_LIB_PATH) $(XMLIB) $(XAWLIB) $(XMULIB) $(XTOOLLIB) $(XLIB) $(XMEXTRA_LIBS)
- DEPLIBS = $(DEPXMLIB) $(DEPXAWLIB) $(DEPXTOOLLIB) $(DEPXLIB)
+#ifdef UseMotif
+XAWMOTIFC = xawmotif.c
+XAWMOTIFO = xawmotif.o
+#include <Motif.tmpl>
+#ifdef UseEditres
+LOCAL_LIBRARIES = $(XMULIB) XmClientLibs
+DEPLIBS = $(DEPXMULIB) XmClientDepLibs
+MOTIFDEFINES = -DMOTIF -DEDITRES
 #else
- X_LIBRARIES = XawClientLibs
- DEPLIBS = XawClientDepLibs
+LOCAL_LIBRARIES = XmClientLibs
+DEPLIBS = XmClientDepLibs
+MOTIFDEFINES = -DMOTIF
+#endif
+APPDEFAULTS = XRnMotif
+#else
+LOCAL_LIBRARIES = XawClientLibs
+DEPLIBS = XawClientDepLibs
+APPDEFAULTS = XRn
+MOTIFDEFINES = /*nothing*/
 #endif
 
 /*
@@ -138,21 +110,21 @@ XRN_LOAD_FLAGS = -lnsl -lsocket -lgen
  * them alone and see what happens.
  */
 
-#if defined(HPArchitecture)
-XRN_DEFINES = -D_HPUX_SOURCE
-#endif /* HPArchitecture */
-
 #if defined(aiws)
 XRN_DEFINES = -a -Nn3000 -Nd4000
 #else
-# if defined(HCRevision)
-XRN_DEFINES = -DUNIXCPP -DNOSTDHDRS
+# if defined(hp9000s300)
+XRN_DEFINES = -Wc,-Ns4000
 # else
-#  if defined(gould)
-XRN_DEFINES = -DNOVOID -DLONGINT -UINTSPRINTF
+#  if defined(HCRevision)
+XRN_DEFINES = -DUNIXCPP -DNOSTDHDRS
 #  else
-#   if defined(SolarisArchitecture)
+#   if defined(gould)
+XRN_DEFINES = -DNOVOID -DLONGINT -UINTSPRINTF
+#   else
+#    if defined(SolarisArchitecture)
 XRN_DEFINES = -DSOLARIS
+#    endif
 #   endif
 #  endif
 # endif
@@ -162,31 +134,21 @@ XRN_DEFINES = -DSOLARIS
  * You probably don't need to change anything in this block.
  */
 
-#if defined(XFree86Version) && (XFree86Version >= 4000) && \
-	(XFree86Version < 40200000)
-/* I know this bug was introduced in XFree86 4.0 and fixed in 4.2, but
-   I don't know if it's in any other X11 distributions besides
-   XFree86.
-   */
-REDISPLAY_DEFINES = -DXAW_REDISPLAY_BUG
+#ifdef OV_CAMBRIDGE
+SITE_DEFINES	+= -DOV_CAMBRIDGE
+IMAKE_DEFINES	+= -DOV_CAMBRIDGE
+#define INN /afs/gza.com/development/news/build/inn/libinn.a
+#ifdef UseMotif
+USRLIBDIR	=  /afs/gza.com/packages/motif1.2.2/usr/lib
+LOCAL_LDFLAGS	+= -L/afs/gza.com/packages/motif1.2.2/usr/lib
+ALLDEFINES	+= -I/afs/gza.com/packages/motif1.2.2/usr/include
+CC		=  gcc -fpcc-struct-return
 #endif
-
-#ifdef FreeBSDArchitecture
-EXTRA_LIBRARIES	+= -lgnuregex
-#endif
-
-#ifdef LINUX_DIST
-IMAKE_DEFINES	+= -DLINUX_DIST
-/* SITE_DEFINES	+= -I/b/build/regex-0.12 */
-SITE_DEFINES	+= -DCONFIG_H_IS_OK -D_GNU_SOURCE
-LEX		=  flex
-CDEBUGFLAGS	+= -Wall -DGCC_WALL -g -pedantic
-/* REGEX_OBJS	= /b/build/regex-0.12/regex.o */
 #endif
 
 #if defined(INN)
 INN_LOAD_FLAGS = INN
-INN_DEFINES = -DINN $(INNINC)
+INN_DEFINES = -DINN
 CLIENTSRC =
 CLIENTOBJ =
 #else
@@ -195,164 +157,120 @@ CLIENTOBJ = clientlib.o
 #endif
 
 /*
- * You probably don't need to edit anything below this line.
+ * If you want the program to be called something other than "xrn",
+ * change this.
  */
 
-#ifdef CHECKER
-CC := checkergcc -D__NO_MATH_INLINES -D__NO_STRING_INLINES -L/usr/local/lib/checker/i686-pc-linux-gnu
-IMAKE_DEFINES += -DCHECKER
-#endif
+PROGRAMS = xrn
 
-#ifdef MOTIF
-GUI_DEFINES = -DMOTIF
-#endif
+/*
+ * You probably don't need to edit anything below this line.
+ */
 
 #if HasVoidSignalReturn
 SIGNAL_DEFINES = -DVOID_SIGNAL
 #endif
 
-LOCAL_LIBRARIES = $(X_LIBRARIES) $(XRN_LOAD_FLAGS) $(INN_LOAD_FLAGS)
-DEFINES = $(XRN_DEFINES) $(GUI_DEFINES) $(SIGNAL_DEFINES) $(INN_DEFINES) \
-        $(SITE_DEFINES) $(REDISPLAY_DEFINES) -DXRN_LANG_$(LANGUAGE) \
-	-DXRNAPPDIR=\"$(XAPPLOADDIR)\" \
-	-DXRN_APP_CLASS=\"$(APPDEFAULTS)\" -DXRN
+EXTRA_LOAD_FLAGS = $(XRN_LOAD_FLAGS) $(INN_LOAD_FLAGS)
+DEFINES = $(XRN_DEFINES) $(SIGNAL_DEFINES) $(INN_DEFINES) $(SITE_DEFINES) \
+	$(MOTIFDEFINES)
 
 HDRS = mesg_strings.h
-SRCS = avl.c $(CLIENTSRC) compose.c cursor.c dialogs.c \
+SRCS = avl.c buttons.c $(CLIENTSRC) compose.c cursor.c dialogs.c \
        refile.c mesg.c error_hnds.c newsrcfile.c resources.c    \
-       internals.c save.c server.c utils.c xrn.c \
-       xthelper.c rcyacc.c cancel.c vprintf.c tempnam.c strstr.c \
-       strtok.c mesg_strings.c XrnText.c ngMode.c artMode.c allMode.c \
-       addMode.c snapshot.c artstruct.c Buttons.c InfoLine.c ButtonBox.c \
-       busyCursor.c varfile.c activecache.c sort.c getdate2.c hash.c \
-       killfile.c InfoDialog.c Frame.c Xmisc.c file_cache.c
-LOCAL_OBJS = avl.o $(CLIENTOBJ) compose.o cursor.o dialogs.o \
+       internals.c save.c server.c utils.c xmisc.c xrn.c $(XAWMOTIFC) \
+       xthelper.c y.tab.c cancel.c vprintf.c tempnam.c strstr.c \
+       strtok.c mesg_strings.c
+OBJS = avl.o buttons.o $(CLIENTOBJ) compose.o cursor.o dialogs.o \
        refile.o mesg.o error_hnds.o newsrcfile.o resources.o    \
-       internals.o save.o server.o utils.o xrn.o \
-       xthelper.o rcyacc.o cancel.o vprintf.o tempnam.o strstr.o \
-       strtok.o mesg_strings.o XrnText.o ngMode.o artMode.o allMode.o \
-       addMode.o snapshot.o artstruct.o Buttons.o InfoLine.o ButtonBox.o \
-       busyCursor.o varfile.o activecache.o sort.o getdate2.o hash.o \
-       killfile.o InfoDialog.o Frame.o Xmisc.o file_cache.o
-OBJS = $(LOCAL_OBJS) $(REGEX_OBJS)
+       internals.o save.o server.o utils.o xmisc.o xrn.o $(XAWMOTIFO) \
+       xthelper.o y.tab.o cancel.o vprintf.o tempnam.o strstr.o \
+       strtok.o mesg_strings.o
 
 all:: mesg_strings.h
 
-depend:: rclex.c rcyacc.c mesg_strings.h getdate2.c
+depend:: lex.yy.c y.tab.c mesg_strings.h
 
 ComplexProgramTarget($(PROGRAMS))
 InstallAppDefaults($(APPDEFAULTS))
 
-/*
- * This line is in two places, above and here, because some versions
- * of Make unfortunately have a bug which causes them to process
- * dependencies in reverse of the order they appear in the Makefile.
- * On those systems, if the "all:: mesg_strings.h" line below isn't
- * present, typing "xmkmf" followed by "make" won't work, because the
- * program will try to build the XRN object and $(PROGRAMS) before it
- * tries to build mesg_strings.h.  Doing "make depend" solves this
- * problem, but I don't want to require people to do "make depend" in
- * order to build the program, so I'm adding a second dependency on
- * mesg_strings.h, after the "all:: xrn" dependency generated by the
- * ComplexProgramTarget invocation above.
- */
-all:: mesg_strings.h
-
 #if HasSaberC == YES
-# saber_xrn:: rclex.c
-# osaber_xrn:: rclex.c
+# saber_xrn:: lex.yy.c
+# osaber_xrn:: lex.yy.c
 #endif
 
 /*
  * If you are using flex instead of lex (for example, Linux uses flex
  * by default instead of lex), you should NOT be giving flex the "-l"
- * argument.  If you see "flex -l rclex.l" or "lex -l rclex.l" when
+ * argument.  If you see "flex -l newsrc.l" or "lex -l newsrc.l" when
  * building, then you should probably add "LEX=flex" or "LEX=lex"
  * below.
  */
-rclex.c: rclex.l
+lex.yy.c: newsrc.l
+	$(LEX) newsrc.l
+y.tab.c: newsrc.y
+	$(YACC) newsrc.y
+y.tab.o: lex.yy.c avl.h news.h newsrcfile.h utils.h
 
-rcyacc.o: rclex.c avl.h news.h newsrcfile.h utils.h
+mesg_strings.h: mesg_strings.c
+	-rm -f mesg_strings.h.tmp
+	awk 'BEGIN {print "extern char *message_strings[];" } \
+	     /^\/\* < [^ >]* > / { printf("#define %s_MSG message_strings[%d]\n",\
+				          $$3, msg_num); next } \
+	     /",/ { msg_num++; next }' < mesg_strings.c > mesg_strings.h.tmp
+	-rm -f mesg_strings.h
+	mv mesg_strings.h.tmp mesg_strings.h
 
-mesg_strings.h: mesg_strings.c mesg_str.awk
-	-rm -f mesg_str.tmp
-	awk -f mesg_str.awk mesg_strings.c > mesg_str.tmp
-	@set -x; if cmp -s mesg_str.tmp mesg_strings.h; then \
-		rm -f mesg_str.tmp; \
+clean::
+	$(RM) y.tab.c lex.yy.c mesg_strings.h
+
+TAR_FILE =		xrn.tgz
+PATCH_FILE =		xrn.patch
+RCS_FILES = 		$(shell find . -name '*,v' -print)
+CHECKED_OUT_FILES =	$(shell rlog -R -L $(RCS_FILES))
+
+all-checked-in:
+	@if [ -n "$(CHECKED_OUT_FILES)" ]; then \
+		echo "Checked out files: $(CHECKED_OUT_FILES)"; \
+		exit 1; \
 	else \
-		rm -f mesg_strings.h; \
-		mv mesg_str.tmp mesg_strings.h; \
+		 exit 0; \
 	fi
 
-$(LOCAL_OBJS): config.h
+$(PATCH_FILE) patch: all-checked-in
+	rcsdiff -u -rLAST_REL -rCURRENT_REL $(RCS_FILES) > $(PATCH_FILE); \
+	if [ \( $$? -eq 0 \) -o \( $$? -eq 1 \) ]; then exit 0; else exit 1; fi
 
-clean::
-	$(RM) mesg_strings.h mesg_str.tmp
+$(TAR_FILE) tar: all-checked-in
+	gtar --create --exclude Attic --exclude RCS --exclude '*~' \
+		--exclude '.#*' --exclude TAGS --exclude $(TAR_FILE) \
+		--exclude $(PATCH_FILE) --exclude '*.orig' \
+		--exclude '*.rej' \
+		--verbose --file - . | gzip --best > $(TAR_FILE)
 
-xrn-man.c: xrn-man.sym config.h
-	$(RM) xrn-man.tmp xrn-man.c
-	awk 'BEGIN {printf("#include \"config.h\"\n");} {printf("#ifdef %s\nx%sx value %s value\n#else\nx%sx\n#endif\n",$$0,$$0,$$0,$$0);}' \
-		xrn-man.sym > xrn-man.tmp
-	mv xrn-man.tmp xrn-man.c
+#ifdef OV_CAMBRIDGE
+label: all-checked-in
+ifdef RCS_LABEL
+	rcs -NLAST_REL:CURRENT_REL -n$(RCS_LABEL): \
+		-NCURRENT_REL:$(RCS_LABEL) $(RCS_FILES) >/dev/null
+else
+	@echo "You must set RCS_LABEL!"; exit 1
+endif
 
-xrn-man.cpp: xrn-man.c
-	$(RM) -f xrn-man.tmp xrn-man.cpp
-	$(CC) -E $(CFLAGS) xrn-man.c > xrn-man.tmp
-	mv xrn-man.tmp xrn-man.cpp
+VERSION_FILES = XRn.ad XRnMotif.ad xrn.h xrn.man
 
-xrn-man.sed: xrn-man.cpp
-	$(RM) -f xrn-man.tmp xrn-man.sed
-	sed -e 's|^x\(.*\)x$$|/x\1_STARTx/,/x\1_ENDx/d|' \
-	    -e 's|^x\(.*\)x value [ 	]*"\(.*\)"[ 	]* value.*|s,x\1x,\2,|' \
-	    -e 's|^x\(.*\)x value [ 	]*\([^ 	].*[^ 	]\)[ 	]* value.*|s,x\1x,\2,|' \
-	    -e 's|^x\(.*\)x value [ 	]*\([^ 	]\)[ 	]* value.*|s,x\1x,\2,|' \
-	    -e 's|^x\(.*\)x.*||' \
-	    -e '/^#/d' \
-		xrn-man.cpp > xrn-man.tmp
-	echo '/^x.*_STARTx/d' >> xrn-man.tmp
-	echo '/^x.*_ENDx/d' >> xrn-man.tmp
-	mv xrn-man.tmp xrn-man.sed
-
-all:: $(PROGRAMS).man
-
-$(PROGRAMS).man:: xrn-man.src xrn-man.sed
-	$(RM) xrn-man.tmp $(PROGRAMS).man
-	sed -f xrn-man.sed xrn-man.src > xrn-man.tmp
-	mv xrn-man.tmp $(PROGRAMS).man
-
-clean::
-	$(RM) xrn-man.tmp xrn-man.c xrn-man.cpp xrn-man.sed $(PROGRAMS).man
-
-#ifdef MOTIF
-TKSED=	-e 's/MOTIF//' -e '/XAW/d' -e 's/notify()/Activate()/' \
-	-e 's/unset()/Disarm()/' -e 's/set()/Arm()/' \
-	-e 's/\([*.]\)label:/\1labelString:/' \
-	-e 's/no-op(RingBell/beep(/' \
-	-e 's/\.\([^.]*\)\.baseTranslations/*\1*translations/' \
-	-e 's/baseTranslations/translations/' \
-	-e 's/>Down/>osfDown/' -e 's/>Up/>osfUp/' \
-	-e 's/>Left/>osfLeft/' -e 's/>Right/>osfRight/'
-#else
-TKSED=	-e 's/XAW//' -e '/MOTIF/d'
+upversion:
+ifdef OLD_VERSION
+ifdef NEW_VERSION
+	co -l $(VERSION_FILES)
+	perl -pi -e 's/$(OLD_VERSION)/$(NEW_VERSION)/' $(VERSION_FILES)
+	ci -u -m'Update version number for $(NEW_VERSION).' $(VERSION_FILES)
+else
+	@echo "You must set NEW_VERSION!"; exit 1
+endif
+else
+	@echo "You must set OLD_VERSION!"; exit 1
+endif
 #endif
-TKSED2=	-e 's/XawSet()/set()/' -e 's/XawNotify()/notify()/' \
-	-e 's/XawUnSet()/unset()/'
 
-$(APPDEFAULTS).ad: XRn.src
-	-rm -f $(APPDEFAULTS).tmp $(APPDEFAULTS).ad
-	sed -e 's/LANG_$(LANGUAGE)//' -e '/LANG_/d' $(TKSED) $(TKSED2) \
-		-e 's/xAPP_CLASSx/$(APPDEFAULTS)/' \
-		XRn.src > $(APPDEFAULTS).tmp
-	mv $(APPDEFAULTS).tmp $(APPDEFAULTS).ad
-
-all:: $(APPDEFAULTS).ad
-
-clean::
-	$(RM) $(APPDEFAULTS).ad $(APPDEFAULTS).tmp
-
-getdate2.c: getdate.c
-	sed -e 's/yy/getdate_yy/g' getdate.c > $@.tmp
-	mv $@.tmp $@
-
-clean::
-	$(RM) getdate.c getdate2.c.tmp getdate2.c rclex.c rcyacc.c
+.PHONY: all-checked-in
