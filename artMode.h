@@ -21,7 +21,6 @@ BUTDECL(artCatchUp);
 BUTDECL(artFedUp);
 BUTDECL(artMarkRead);
 BUTDECL(artMarkUnread);
-BUTDECL(artSub);
 BUTDECL(artUnsub);
 BUTDECL(artScroll);
 BUTDECL(artScrollBack);

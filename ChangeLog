@@ -1,788 +1,1340 @@
-2002-05-15  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* internals.c: Fix a bug which might in rare cases temporarily
-	prevent (until the next rescan) XRN from entering a newsgroup that
-	had been unsubscribed when the user attempted to enter and
-	subscribe to it.
-
-	* internals.c: When attempting to enter and subscribe to an
-	unsubscribed newsgroup, don't mark the group subscribed until
-	we've confirmed that it is an OK group.
-
-	* mesg_strings.c, server.c: When authentication fails and the user
-	had been prompted for a password, offer the user the opportunity
-	to retry the authentication.
-
-	* mesg_strings.c: Change "Newsgroup `%s' does not exist." to
-	"Newsgroup `%s' does not exist or you can't access it." because
-	the problem may be that the group appears in the newsgroup list
-	but the user does not have permission to read it.
-
-	* server.c: If the user is prompted for an authentication
-	password, cache it so the user doesn't have to be prompted again
-	when reconnecting to the server.
-
-2002-05-14  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* server.c, server.h: We need to distinguish between ERR_ACCESS
-	when the user isn't allowed to enter a particular newsgroup and
-	ERR_ACCESS when the user hasn't authenticated successfully to the
-	server at all.
-
-	* allMode.c, internals.c, internals.h, ngMode.c: Notice when the
-	server refuses access to a newsgroup when the user attempts to
-	subscribe to it, and abort the subscribe operation.
-
-	* mesg_strings.c, server.c: When an attempt to enter a newsgroup
-	failed because the server denied access to the newsgroup, display
-	a message to that effect and continue, treating the newsgroup as a
-	bad group, rather than aborting the program.
-
-2002-05-13  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* artMode.c: Add some comments documenting what to do if one of
-	the XAW_REDISPLAY_BUG asserts fires off.
-
-	* Imakefile: Disable XAW_REDISPLAY_BUG for XFree86 4.2.0, in which
-	the bug appears to be fixed.
-
-2002-05-03  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Fri May 23 17:06:41 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
 	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-14.
+ 	8.03-beta-29.
 
-2002-05-03  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Fri May 23 17:04:51 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* error_hnds.c, internals.c, internals.h: If we need to retry an
-	operation, e.g., because the disk filled up, then instead of
-	cancelling the current prefetch completely while asking the user
-	whether to retry, suspend it instead, using a new function called
-	suspendPrefetch.  This way, we don't mess up the data that we were
-	able to collect before the operation we're retrying failed.
+	* xrn-man.src: Fix some conditional formatting so that conditional
+ 	text is (I hope) handled properly.
 
-	This fixes a crash that could occur if the disk filled up while
-	attempting to create the cache file whiel prefetching an article
-	for the next newsgroup we're about to read.
+	* server.c: Don't coredump if the server demands authentication
+ 	and the user doesn't have the authenticator and
+ 	authenticatorCommand resources set.
 
-	* server.c (get_base_article): Don't start retrieving an article
-	from the server until we've successfully opened the cache file for
-	that article.  Otherwise, we'll leave the server connection in an
-	inconsistent state.
+	* server.c, xrn-man.src: When either authenticator or
+ 	authenticatorCommand is unset and the server demands
+ 	authentication, default to user/pass authentication.
 
-2002-03-18  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Wed May 21 00:32:18 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* mesg_strings.c: Shorten the attribution lines used in followups
-	and replies.  In this day and age where virtually everyone is
-	using threaded News readers, the message ID in the attribution
-	line is superfluous.  Suggestion from Anton Ertl
-	<anton@a0.complang.tuwien.ac.at>.
+	* xrn.c: Delete an unnecessarily initializer which will break on
+ 	some old compilers.
 
-	* compose.c: Don't forget to build extra fields for followups and
-	replies when GENERATE_EXTRA_FIELDS is defined.  Bug report from
-	Anton Ertl <anton@a0.complang.tuwien.ac.at>.
-
-2002-01-15  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Tue May 13 22:09:56 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
 	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-13.
+ 	8.03-beta-28.
 
-	* internals.c (articleArrayResync): Fix a bug which was causing
-	XRN to have incorrect article counts for a newsgroup that has been
-	unsubscribed for a long time when you attempt to resubscribe to
-	it.  In particular, we need to update our idea of what the last
-	article in the newsgroup is *before* we use that information to
-	determine which articles to mark unavailable.
+Tue May 13 22:08:03 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-2001-10-19  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* internals.c, server.c: Fix this bug: XRN would get wedged when
+ 	the user tried to enter a group which no longer existed.  It's not
+ 	completely fixed, because it now prints "No articles in group"
+ 	after indicating that the group has been deleted, but that's
+ 	better before, since before it got wedged completely, and fixing
+ 	it completely is too difficult to do right now.
 
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-12.
+Tue May  6 20:02:22 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-2001-10-18  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+*	* server.h, server.c, internals.c: When trying to get an article's
+ 	parent, notice correctly when an article does not exist.  This
+ 	will speed up parent retrievals in some cases.
 
-	* internals.c: Fix two bugs unmasked by the bug fixes in the
-	previous release.  These bugs manifested themselves when
-	resubscribing to a newsgroup to which you had not been subscribed
-	for a while:
-
-	(articleArrayResync): Don't try to manipulate article numbers that
-	are greater than the last article in the newsgroup.
-
-	(prefetchSetFetched): Don't try to fetch if the current article
-	number is greater than the last article in the newsgroup.
-
-2001-10-14  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Fri May  2 16:15:32 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
 	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-11.
+ 	8.03-beta-27.
 
-2001-10-14  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Wed Apr 30 20:15:11 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* artstruct.c, artstruct.h, internals.c, internals.h, news.h: Fix
-	a couple of related bugs which could sometimes cause allocated
-	memory to be freed twice.  In particular:
+	* xrn-man.src, save.c, resources.c, resources.h: Changes submitted
+ 	by Volker Borchert <bt@teknon.de> to add a "formfeed" save option,
+ 	to save articles separated by formfeeds.
 
-	* Add an assertion at the beginning of artStructGet to prevent it
-	  from being called with an article number greater than the
-	  highest article number in the newsgroup, and modify one caller
-	  to artStructGet to fix the fact that it was, indeed, calling the
-	  function with a too-high article number.
+Fri Apr 11 16:08:01 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* Add a new function, artListExtend, which adds new articles onto
-	  the end of an article list by comparing the previous high
-	  article number for the newsgroup (passed in as an argument) with
-	  the current one (in the newsgroup structure).
+	* server.c, compose.c: Fix incorrect timestamp declarations --
+ 	"long" should be "time_t" on OSF/1 and HP-UX (and possibly others
+ 	as well, but these are the ones that complain about it).
 
-	* Add a new function, newsgroupSetLast, which uses artListExtend
-	  to upgrade the article list appropriately after setting the high
-	  article number in the newsgroup structure.
+Mon Apr  7 21:19:13 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* Use newsgroupSetLast when changing a newsgroup's high article
-	  number.
+	* artMode.c, internals.c (getArticleNumberFromIdXref,
+ 	artThreadParentFunction): Eliminate some unnecessary retrievals of
+ 	xref headers from the server.
 
-	* Add some debugging code which isn't activated by default.
+	* artMode.c (findArticle): Fix an array bounds read (reading past
+ 	the end of the subject list string when the article being searched
+ 	for isn't found).  This should fix occasional coredumps in the
+ 	"Goto parent" command.
 
-	* Add a WALL() initialization to eliminate a spurious compiler
-	  warning about a variable possibly being used before
-	  initialization.
+	* xrn.c, xrn.h: On X11R6 and above, MyDispatchEvent should be
+ 	macro which calls XtDispatchEvent.
 
-2001-10-08  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Mon Apr  7 02:09:11 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
 	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-10.
+ 	8.03-beta-26.
 
-2001-10-08  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Mon Apr  7 02:07:46 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* allMode.c, artMode.c, ngMode.c: Fix this bug: If you tried to
-	enter a newsgroup when it didn't have any articles in it,
-	subsequent rescans would fail to detect new articles in the
-	newsgroup until you entered and exited some other group.  This was
-	happening because after failing to enter a group because it had no
-	articles in it, xrn thought it was still in the group, and it
-	won't rescan a group that it's currently in.  This bug probably
-	only manifested when background rescans were enabled.
+	* ButtonBox.c, dialogs.c, error_hnds.c, xrn.c, xrn.h, xthelper.c:
+ 	Under X11R5, enulate the X11R6 XtLastEventProcessed routine by
+ 	stashing the current event before dispatching it.  This means
+ 	writing a wrapper around XtAppMainLoop, a wrapper around
+ 	XtDispatchEvent, and a replacement for XtLastEventProcessed.
 
-2001-09-24  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Mon Apr  7 00:46:33 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
 	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-9.
+ 	8.03-beta-25.
 
-2001-09-24  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Mon Apr  7 00:34:11 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* artMode.c, internals.c, server.c: Prevent XRN from complaining
-	to stderr and in the message window if the NNTP server doesn't
-	support XHDR by message ID.  Furthermore, fix a bug which was
-	preventing the "Goto parent" button from working in article mode
-	with servers that have this problem.
+*	* XRn.src, artMode.c, artMode.h, butexpl.h, internals.c,
+ 	internals.h, mesg_strings.c, server.c, server.h, xrn-man.src: Add
+ 	a new button, "Goto parent", which will search for the parent of
+ 	the current or selected article and go to it.
 
-2001-09-24  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Sun Apr  6 19:23:49 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-8.
+	* artMode.c: Fix the "Goto article" command so that if you don't
+ 	specify an article number in the dialog, it'll display "No article
+ 	number specified" rather than "Invalid article number".
 
-2001-09-24  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+*	* artMode.c, mesg_strings.c, xrn-man.src: Modify the "List old"
+ 	command in article mode so that the user can specify how far back
+ 	to list, rather than only being able to list all old articles in
+ 	the group, by holding down the Ctrl key when executing the
+ 	command.
 
-	* artMode.c (isPrevSubject): Fix an assertion failure when
-	attempting to use the "Subject prev" button in article mode
-	(reported by George Ross <gdmr@dcs.ed.ac.uk>).
+*	* XRn.src, artMode.c: Fix the way the "kill" buttons work in
+ 	article mode so that they will be correctly untoggled if you press
+ 	down on one of them and then move the mouse out of the button
+ 	before letting go of the mouse button.  Previously, if you pressed
+ 	down on one of the "kill" buttons, the moved the mouse out of its
+ 	window, then let go of the mouse button, the kill would be
+ 	executed anyway.
 
-2001-09-07  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+*	* artMode.c: When "Goto article" is executed and the specified
+ 	article is before the first displayed article, add just that
+ 	article to the subject list, rather than adding all articles
+ 	between the specified one and the first displayed one.  E.g., if
+ 	the first displayed article is 5030, and you ask to go to article
+ 	5025, then only article 5025, rather than articles 5025 through
+ 	5029, will be added to the subject list.
 
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-7.
+Fri Apr  4 22:19:25 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-2001-09-07  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* compose.c: Trim "References:" headers when posting followups.
+	That is, if the "References:" header in the followup will be
+	longer than 512 characters, then all whitespace in it is condensed
+	to a single space, and if that doesn't reduce the header to less
+	than 512 characters, message IDs after the first one are removed
+	one by one until the header is short enough.
 
-	* internals.c: Fix a bug which could cause incorrect threading
-	and/or XRN crashes when encountering an article containing an
-	invalid "References" header field.
+Sun Mar 30 18:45:46 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-2001-09-03  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* patchlevel.h, XRn.src: Put "(Motif)" in the version string for
+ 	the Motif version.
 
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-6.
+	* Buttons.c, Frame.c, Frame.h, Imakefile, InfoDialog.c,
+ 	InfoDialog.h, XRn.src, xrn.c, ButtonBox.c, Imakefile, InfoLine.c,
+ 	Text.c, addMode.c, allMode.c, artMode.c, config.h, mesg.c,
+ 	ngMode.c, resources.c, server.c, xrn.c, xrn.h, : Motif changes
+ 	from Kevin Brannen, with some minor changes by me.  MOTIF SUPPORT
+ 	IS VERY INCOMPLETE.
 
-2001-09-03  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* Xmisc.c, xmisc.c: Rename xmisc.c to Xmisc.c.
 
-	* artMode.c, artstruct.c, artstruct.h, compose.c, internals.c,
-	newsrcfile.c, save.c, server.c, snapshot.c, sort.c: A new
-	mechanism for protecting article structures has been introduced.
-	Previously, code that used article structures was allowed to
-	"check them out" read-only or read-write, and all such code was
-	expected to be careful not to call other functions which might
-	modify its article structure out from under it.  This allowed
-	subtle bugs in the code where such inappropriate modification was
-	taking place and was very difficult to detect.  Now, any time
-	someone fetches an article structure, no other structures can be
-	manipulated until the artstruct interface is "unlocked".  The
-	majority of these changes consist of all the calls necessary to
-	unlock the artstruct interface as soon as an article structure is
-	no longer needed.
+	* Buttons.c, buttons.c: Rename buttons.c to Buttons.c.
 
-	* server.c: Add a missing "#include <time.h>".
+	* Frame.c, Frame.h, InfoDialog.c, InfoDialog.h: New files.
 
-	(getarticle): Eliminate a possible sscanf buffer overrun.
+	* COMMON-PROBLMS: Key bindings won't work if not using X11R5 or
+ 	later.
 
-	* internals.c (checkLock): Eliminate a possible fscanf buffer
-	overrun.
+Wed Mar  5 12:22:29 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* compose.c (compSendFunction): Delete a way-obsolete comment.
+	* xrn-man.src, internals.c (handleXref): If rescanOnEnter is true
+ 	and an xref reference seems to refer to an article that has not
+ 	yet occurred in another newsgroup, resync the article numbers for
+ 	that newsgroup with the server.  Problem pointed out by Per
+ 	Hedeland <per@erix.ericsson.se>.
 
-	* CREDITS: Add Jan Schaumann <jschauma@netmeister.org>.
+Tue Mar  4 19:47:07 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* file_cache.c: Add a missing "#include <errno.h>".
+*	* news.h, internals.c: Only process the "Xref" header for a
+ 	particular article once, regardless of how many times it is
+ 	fetched from the server.
 
-	* Imakefile: Add support for checkergcc.
+	* buttons.c: Fix a K&R C function declaration error pointed out by
+ 	dyson@sunfish.physics.uiowa.edu (Richard Dyson).
 
-	* InfoDialog.c: After adding text to the information window,
-	position the cursor at the beginning of the last line in the
-	window rather than at the end of it.  That way, the information
-	window won't end up in a state where it's scrolled right and
-	there's no obvious way to get it back to the left margin.
+	* compose.c: When compiling with INN, need to include <clibrary.h>
+ 	before <libinn.h>.
 
-2001-03-11  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* xrn-man.src: Document the new Ctrl-o command to unsort the
+ 	article list.
 
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-5.
-
-	* server.c: There was an error (not enough room for a null at the
-	end of an allocated string) in the bug fix in revision 1.165 of
-	this file.
-
-2001-02-02  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-4.
-
-2001-01-12  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* server.c: Fix a bug which was causing the first characters of
-	some lines to be dropped (i.e., not displayed) after form feeds in
-	article bodies.
-
-	* refile.c, save.c, server.c: Use \f instead of \014.
-
-2000-12-19  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* server.c (linesFixFunction): Don't modify the buffer passed into
-	us.  Especially, don't try to lengthen it.  We were corrupting
-	other data by overwriting the end of the "numoflines" string being
-	passed in.  Also, there's no need to strip leading and trailing
-	whitespace here; that's already done elsewhere.
-
-2000-10-10  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* ngMode.c: Add some debugging code.  Delete some unnecessary,
-	ancient "race-condition handling" code.
-
-	* ngMode.c, xrn.c: Explicitly set the automatic rescan timeout
-	every time we enter newsgroup mode, rather than just when XRN
-	first starts up.  This ensures that the automatic rescan won't
-	sometimes stop working until the user clicks on a button (or types
-	a key sequence corresponding to a button).
-
-2000-10-05  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Tue Mar  4 02:33:48 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
 	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-3.
+ 	8.03-beta-24.
 
-2000-10-05  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Tue Mar  4 02:31:53 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* compose.c: Strip empty Followup-To fields out of postings before
-	posting them.  Alas, some NNTP servers don't do this for us and
-	then complain about the fact that the Followup-To field doesn't
-	contain any valid newsgroups.
+*	* XRn.src: Add a ctrl-o binding to resort the article list into
+ 	numerical order, i.e., to "unsort" the list.  Feature suggested by
+ 	per@erix.ericsson.se (Per Hedeland), who also submitted code to
+ 	implement it (which I modified slightly).
 
-2000-10-04  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+*	* artMode.c: Fix the following bug in the thread-killing code:
+ 	When "artKillThread" was executed on the first article in a
+ 	thread, a correct entry for the thread would be placed into the
+ 	KILL file, but none of the article's descendants would be killed
+ 	correctly in the current session.
+
+	* artMode.c: When the user selects "List old", correctly display
+ 	previously read articles whose numbers are higher than the current
+ 	first listed article.
+
+	* artMode.c (artResortFunction): Allow the type of sorting to be
+ 	used to be specified as an argument or arguments of this action
+ 	procedure, so that the user can create a key binding to
+ 	temporarily change article sorting.
+
+	* artMode.c: Make the "Resort" button inactive when the user has
+ 	not specified any sorting.
+
+	* sort.c (art_sort_parse_sortlist): Copy the input argument and
+ 	modify the copy rather than the original, so that the same sort
+ 	list can be parsed multiple times (i.e., if XRN wants to switch
+ 	sort lists after start-up).
+
+Mon Mar  3 15:20:31 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
+
+*	* internals.h, artMode.c, cursor.c, internals.c: Fix a bug pointed
+ 	out by per@erix.ericsson.se (Per Hedeland) which could
+ 	occasionally cause XRN to crash when trying to goto an article in
+	article mode which is not currently displayed.
+
+	* artMode.c, cursor.c, internals.c, internals.h: Get rid of
+ 	gotoArticle(), firstArticle() and currentArticle(), all of which
+ 	were simply dereferences of the CurrentGroup structure which can
+ 	be done in-line.
+
+Sun Mar  2 19:01:04 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
 	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-2.
+ 	8.03-beta-23.
 
-2000-10-04  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Sun Mar  2 18:55:14 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* internals.c, server.c, xrn-man.src: Notice dynamically when the
-	NNTP server isn't answering XHDR requests for some fields, and
-	automatically switch over to using HEAD.
+*	* XRn.src, artMode.c, artMode.h, butexpl.h, xrn-man.src: Add
+ 	thread and subthread killing functionality.
 
-	* artstruct.c, config.h, news.h, server.c: Fetch the article
-	header from the NNTP server using HEAD, or read the header from
-	the cached article file if it exists, and use that header to get
-	field values when retrieving information about an article to reply
-	to it.  The header is parsed and all the fields in it are cached,
-	so that it only needs to be retrieved (if HEAD is necessary) and
-	parsed once for all needed fields.  This is both a workaround for
-	the fact that some NNTP server don't return valid XHDR data for
-	all the fields we want, and a performance improvement because it
-	means that only one round trip to the server, rather than several
-	round trips, is required when responding to a message.  This also
-	means that the CANCEL_CHECK feature can now be enabled by default,
-	because it is no longer expensive (since whenever XRN is checking
-	if a use can cancel an article, the article is in the cache, so
-	the necessary information can be read out of the cache without
-	needing to talk to the server at all).
+*	* allMode.c, ngMode.c, artMode.c, addMode.c: Disable inactive
+ 	buttons.
 
-2000-08-20  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+*	* buttons.c, buttons.h, xrn-man.src: Inactive buttons (i.e.,
+ 	buttons whose functionality is not available, e.g., the "post"
+ 	buttons when the user is not allowed to post articles to the
+ 	server) are no longer displayed, even when they are listed in a
+ 	mode's button list.
+
+*	* XRn.src, xrn-man.src: Add "addIgnore", "addIgnoreRest", and
+ 	"allIgnore" to the default button lists.
+
+	* buttons.h: Add the new "active" field to the ButtonList
+ 	structure.
+
+	* addMode.c, allMode.c, ngMode.c, artMode.c, butexpl.h: Reindent
+ 	button lists, make some of the names of their explanation strings
+ 	shorter so that they'll fit properly, add a default setting of
+ 	"True" for the new "active" field of each button, make some
+ 	variable static that should have been in the first place, and
+ 	delete some unnecessary whitespace.
+
+	* server.c (getlist): Skip lines that contain only "(none)".
+
+	* compose.c: Rename the "messageId" field in the header structure
+ 	to "id" so it matches the field name in struct article.
+
+	* compose.c (getHeader): When fetching an article header when
+ 	replying to it, use the headers we've already fetched whenever
+ 	possible, to reduce round trips with the server.
+
+	* internals.c (handleXref): If the xref header for the article has
+ 	already been fetched from the server, then used the
+ 	already-fetched header rather than fetching it again.
+
+	* internals.c, server.c: When fetching optional header fields,
+ 	fill in an empty string for any field that doesn't actually occur
+ 	in the message.  This way, if we have to scan the article list
+ 	again later to fill in missing fields, we won't try to refetch
+ 	fields we've already tried to fetch.
+
+	* server.c (getlist), compose.c (getHeader): Reindent.  No actual
+ 	code changes.
+
+	* compose.c (getHeader): Delete a whole bunch of unnecessary curly
+ 	braces.
+
+	* server.c (getxreflist): The "Xref" header is *not* required.
+
+Thu Feb 27 11:55:23 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
+
+	* internals.c (handleXref): Fix the following bug: After an
+ 	article is marked unread in a newsgroup, if you visit the article,
+ 	it'll be marked read internally, even though the 'u' isn't changed
+ 	to a '+'.  Problem pointed out by per@erix.ericsson.se (Per
+ 	Hedeland).
+
+	* utils.c: When converting a date to local time, need to put a
+ 	comma after the day in the converted date, since RFC 822 requires
+ 	the comma.  Problem noted by David.Starks-Browning@EMBL-Heidelberg.de.
+
+Mon Feb 24 13:42:36 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
+
+	* compose.c: Update a comment: real_host, not host, is now used to
+ 	determine if a user can cancel an article.
+
+Fri Feb 14 16:32:59 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
 	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-1.
+ 	8.03-beta-22.
 
-2000-08-08  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+*	* XRn.src, artMode.c, artMode.h, butexpl.h, internals.c,
+ 	internals.h, news.h, sort.c, sort.h, xrn-man.src: Add a new
+ 	"Resort" command in article mode, to resort the article list.
 
-	* internals.c, killfile.c, killfile.h: Fix a nefarious bug
-	handling kill-file entries of type "t" or "T" which could cause
-	memory access violations (i.e., crashes).
+	* internals.c (killArticles): Remove some unnecessary code to
+ 	check if a newsgroup's list of fetched fields has changed; I don't
+ 	believe the code could ever be executed -- it's an artifact from
+ 	when kill files were being read inside this function.
 
-	* killfile.c (kill_update_last_used): Slight optimization when
-	dealing with recursive included kill files.
+Fri Jan 24 17:21:34 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* killfile.c: Add a little bit of debugging code.
+	* compose.c: Make the routines which decide whether a user is
+ 	entitled to cancel an article smarter.  First of all, they should
+ 	use the user's "real" user name and host name, rather than relying
+ 	on data that he could have changed in order to make it possible
+ 	for him to cancel others' articles.  Second, they should check the
+ 	"Sender" line in addition to the "From" line of the article being
+ 	cancelled.
 
-	* killfile.c (kill_file_iter): An optimization -- don't clear the
-	bits indicating which KILL files we've already seen when we're in
-	the middle of iterating through a kill file; instead, only do it
-	when we start iterating.  I believe this will speed up kill file
-	processing.
+*	* compose.c: Display an error message when the user attempts to
+ 	cancel a message he is not allowed to cancel.  Problem pointed out
+ 	by Clemmitt Sigler <siglercm@alphamb.phys.vt.edu>.
 
-2000-07-05  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Tue Jan 21 13:28:06 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* xrn.spec: Changes to conform to RedHat packaging conventions.
+	* mesg_strings.c: The format specifier for the option character in
+ 	KILL_ERROR_UNKNOWN_OPTION should be %c, not %s.  This fix should
+ 	prevent XRN from crashing when it encounters unknown kill-file
+ 	options.  Bug pointed out by Raphael.Quinet@eed.ericsson.se.
 
-2000-06-22  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Tue Jan 14 13:05:57 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* artMode.c: Slightly improve the performance of artKillSession by
-	not marking as read articles which have already been marked read.
+	* server.c: Do a little type cleanup to fix a K&R C problem
+ 	reported by dyson@sunfish.physics.uiowa.edu (Richard Dyson).
 
-	* Imakefile, XrnText.c, artMode.c: Introduce a workaround to an
-	Xaw bug in XFree86 4.0, along with several assert() calls in the
-	code to detect this bug so that I'll find out when it manifests on
-	other platforms besides XFree86.
+	* getdate.y: If XRN is defined, then treat the timezones named
+ 	"local" and "undefined" as GMT.  This is a gross workaround to
+ 	avoid the fact that there are misconfigured news readers which put
+ 	"LOCAL" or "UNDEFINED" in the time-zone field of the "Date:"
+ 	headers of their postings.
 
-2000-05-17  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* getdate.y: Enable a number of fractional timezones, which were
+ 	previously commented out because the code allegedly couldn't
+ 	handle them, by modifying the HOUR() macro to cast the timezone
+ 	value to time_t after, rather than before, multiplying it by 60.
+  	This will eliminate warnings about these timezones: "nft", "nst",
+ 	"it", "ist", "jt", "cast", "cadt".
 
-	* Imakefile, Text.c, XrnText.c: Rename Text.c to XrnText.c to
-	disambiguate it from the Text.c in Xaw, so that it is easier to
-	debug XRN.
+Sun Jan 12 23:28:36 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-2000-05-11  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-21.
 
-	* artMode.c: Newer versions of the Xaw Text widget won't scroll if
-	the end of the text is already displayed.  Therefore, our previous
-	method of figuring out if the article was finished when the user
-	tries to scroll no longer works.  Add an additional method --
-	retrieve the top displayed text position, then try to scroll, then
-	retrieve it again.  If it hasn't changed, assume that we're at the
-	end of the message and move on to the next one.
+Sun Jan 12 23:24:59 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-2000-05-01  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* server.c (get_data_from_server): Need to set ServerDown to false
+ 	before trying to read data.
 
-	* CREDITS, server.c: Allow error 503 messages to contain the
-	string "Time Out" too.  Fix from Kevin Cosgrove
-	<kevinc@dOink.COM>.
+Sun Jan 12 03:44:24 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-2000-04-30  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-20.
 
-	* server.c: Don't lose when a newsgroup returned by the LIST
-	command has a name starting with a period.
+Sun Jan 12 03:41:22 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-2000-03-13  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* Text.c, Text.h, activecache.c, activecache.h, artMode.c,
+ 	artstruct.c, artstruct.h, busyCursor.c, busyCursor.h, buttons.c,
+ 	buttons.h, compose.c, compose.h, cursor.c, cursor.h, dialogs.c,
+ 	dialogs.h, error_hnds.c, error_hnds.h, internals.c, internals.h,
+ 	killfile.c, mesg.c, mesg.h, newsrcfile.c, newsrcfile.h, ngMode.c,
+ 	ngMode.h, save.c, save.h, server.c, server.h, sort.c, sort.h,
+ 	utils.c, utils.h, xthelper.c, xthelper.h: For functions whose
+ 	parameter list contains one or more arguments with narrow types,
+ 	we need to have separate K&R and ANSI argument lists when defining
+ 	the functions, to avoid problems with the promoted types of
+ 	function arguments not matching the types in the function
+ 	declarations.
 
-	* server.c: Be a bit more lenient about figuring out when
-	something is a timeout response from the NNTP server, so that the
-	code will work with Microsoft Exchange NNTP servers.
+	* Imakefile: Define _GNU_SOURCE when compiling for the Linux
+ 	binary distribution of XRN.
 
-2000-03-09  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Thu Jan  9 23:07:59 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* COMMON-PROBLMS, compose.c, server.c, server.h: Work properly
-	with INN 2.2.2.
+	* hash.h: Add some code for when hash.[ch] are being used outside
+ 	of XRN.  This change has no effect on XRN.
 
-2000-01-14  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+*	* server.c (get_data_from_server, etc.): Limit the longest line
+ 	that can be read by get_data_from_server.  If we don't do this,
+ 	then if the INN server screws up and starts sending us garbage
+ 	with really long lines, or if someone posts an article with really
+ 	long lines in the body, we'll hog memory trying to read the long
+ 	lines in one chunk.
 
-	* server.c: Delete unused label.
+	The line limit right now is 8Kb.  Article header lines longer than
+ 	that will be truncated when they are read from the server.
+  	Article body lines longer than that should be handled properly,
+ 	i.e., without any truncation or extra newlines inserted into them.
 
-	* CREDITS: Add Ted Marston <ted@nowtsfree.freeserve.co.uk>.
+	* server.c (get_data_from_server): Now handles properly the case
+ 	when we read everything except the final '\n' from the server in
+ 	one call to get_server, and then read the final '\n' in the next
+ 	call after that.
 
-	* server.c: If a server (e.g., leafnode) sends a bogus response to
-	an XHDR message, then assume that it'll eventually send a ".\r\n"
-	terminator and look for it.
+	* server.c (getarticle): The code for stripping backspace
+ 	characters has been rewritten to be clearer and more efficient.
 
-	* file_cache.c: Fix a dereferencing error in a DEBUG message that
-	isn't usually compiled.
+	* server.c (getarticle): When displayLocalTime is True, only
+ 	"Date:" fields which actually occur in the header of the message
+ 	will be converted (previously, XRN would attempt to do date
+ 	conversion on any line in the message starting with "Date:", even
+ 	in the message body).
 
-1999-12-23  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* COMMON-PROBLMS: Document how to work around "nntp_port" errors
+ 	when linking against INN libraries.
 
-	* xrn.spec: New file.
+Thu Jan  9 02:15:18 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-1999-12-19  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-19.
 
-	* server.c (wrapText): Instead of assigning XtMalloc(0) to a
-	variable which will later be XtRealloc()ed, just make it null to
-	begin with, since XtRealloc accepts a null first argument.
+Thu Jan  9 02:13:20 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* clientlib.c: Add some braces to get rid of a compiler warning.
+*	* server.c: Rewrite various functions so that data lines sent by
+ 	the NNTP server are handled properly regardless of how long they
+ 	are.  Previously, lines longer than 1024 characters could cause
+ 	XRN to choke and die.  Such a line could happen, e.g., when
+ 	retrieving a list of "Followup-To" or "References" headers and one
+ 	such header is very long.  Problem pointed out by
+ 	mja@trudge.engr.sgi.com (Mike Abbott).
 
-1999-11-22  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* utils.c (tconvert): Allow the source and destination strings to
+ 	be the same string.
 
-	* Imakefile: Modifications to build the Linux distribution on
-	RedHat 6.1.
+Wed Jan  8 22:24:28 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* internals.c, server.c, artMode.c, allMode.c, artstruct.c,
-	Buttons.c: Add curly braces to eliminate compiler warnings.
+	* clientlib.c (get_server): Only replace \r\n with a null if the
+ 	full \r\n sequence is received.
 
-1999-11-11  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* utils.h: Patch from Michel Eyckmans (MCE) <eyckmans@imec.be> to
+ 	get rid of some warnings on HP-UX.
 
-	* xrn-man.src: hiddenHost will have the domain name appended to it
-	if it doesn't have a period in it.
+Wed Jan  8 14:50:27 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-1999-10-26  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-18.
 
-	* compose.c: Don't warn about a Followup-To line pointing at
-	another group if the Followup-To line has "poster" in it.  Fix for
-	a bug pointed out by Anton Ertl
+Wed Jan  8 14:43:29 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
+
+	* internals.c, news.h, rcyacc.y: Make the ng_num type unsigned,
+	to allow twice as many newsgroups to be counted in the same sized
+	type.  Believe it or not, there really are sites for which a
+	signed short isn't big enough to store the number of available
+	groups (i.e., sites which have more than 32,767 groups).  This
+	problem was pointed out by Anton Ertl
 	<anton@mips.complang.tuwien.ac.at>.
 
-1999-10-01  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* butexpl.h, mesg_strings.c: Updates to the German message
+ 	strings, from Thomas.Foks@hub.de.
 
-	* compose.c: When there is a non-fatal error in a message composed
-	in an external editor, e.g., a cross-posted message without a
-	Followup-To setting, and the user decides to re-edit the message
-	but then leaves the message as-is, XRN should not abort because
-	the message was unchanged in the second edit.  Problem reported by
-	Anton Ertl <anton@mips.complang.tuwien.ac.at>.
+Thu Jan  2 23:17:22 1997  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-1999-09-26  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* clientlib.c, clientlib.h, resources.c, resources.h, server.c,
+ 	xrn-man.src: Allow the port to use to connect to the NNTP server
+ 	to be specified in the nntpPort X resource.  Original idea from
+ 	"Kurt J. Lidl" <lidl@va.pubnix.com>.
 
-	* CREDITS: Add Jim Rees.
+Thu Nov 14 03:08:57 1996  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* Imakefile: OpenBSD needs -lcompat.  Fix from Jim Rees
-	<rees@umich.edu>.
+	* internals.c (finishPrefetch): Move a fprintf which is compiled
+ 	in when DEBUG is defined after the variable declarations, so that
+ 	the code will compile successfully with DEBUG.  Problem pointed
+ 	out by Michel Eyckmans (MCE) <mce@tornado.be>.
 
-1999-09-24  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
+	* utils.h: Use NeedFunctionPrototypes and NeedVarargsPrototypes,
+ 	if they exist, rather than using FUNCPROTO, _NO_PROTO, NOSTDHDRS
+ 	and __STDC__.  Fix from Rein Tollevik <reint@a.sn.no>.
 
-	Significant user-visible changes in XRN 9.02:
+	* internals.c: Another patch from Rein Tollevik <reint@a.sn.no> to
+ 	fix some minor problems with killing based on optionally fetched
+ 	fields.
 
+Wed Nov 13 12:55:21 1996  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	Enhancements:
+	* internals.c: Fix a bug in KILL-file handling when using System V
+ 	regexps.  Fix by Daniel Israel <daniel@neptune.ame.arizona.edu>.
 
-	* XRN 9.02 is believed to be Y2K-compliant.  The maintainer of XRN
-	knows of no Y2K-related problems in this release of XRN.  Previous
-	releases of XRN did, in fact, have Y2K-related problems.
+Tue Nov 12 02:45:54 1996  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
 
-	* XRN 9.02 is now really compliant with the Good Net-Keeping Seal
-	of Approval.  See <URL:http://www.xs4all.nl/~js/gnksa/> for
-	general information about the GNKSA, or
-	<URL:http://www.xs4all.nl/~js/gnksa/Evaluations/xrn-9.02beta4.txt>
-	for the GNKSA review of XRN.  Although the maintainer of XRN
-	thought that 9.01 was compliant (and so stated when 9.01 was
-	released), there were some actually some problems, which have been
-	fixed.  XRN has been awarded GNKSA seal number 14.  The following
-	user-visible changes were made to achieve GNKSA compliance in XRN
-	9.02:
+	* server.c: If active-file caching is enabled and a newsgroup in
+ 	the .newsrc file matches one of the "ignoredNewsgroups" patterns,
+ 	don't retrieve the full active file.  Problem reported by Michel
+ 	Eyckmans (MCE) <mce@tornado.be>.
 
-	** Additional checking of the syntax of "From" lines in outgoing
-	E-mail messages and newsgroup postings has been added.  Rather
-	than relying on sendmail to do syntax checking, there are now
-	internal checks of the format of "From" lines.  This is necessary
-	because sendmail will not catch all "From" line format errors.
+Sun Nov 10 16:27:12 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	** The default prefix for included text in followups and responses
-	has been changed from "|> " to ">".
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-17.
 
-	* KILL files can now search on the "Approved" header in addition
-	to the other headers which were previously supported (see the XRN
-	man page for a complete list of supported headers).
+Sun Nov 10 16:17:49 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* Two new kill-file commands have been added.  The 't' and 'T'
-	commands adds a kill-file entry for the killed article's
-	sub-thread or thread (respectively) to the group's kill file.
+*	* internals.c: Fix this bug: When you attempt to enter a newsgroup
+ 	which has an article that (according to your .newsrc) you've
+ 	already read, followed by a large number of unread articles which
+ 	have been expired on the server, XRN hangs for a while.  For
+ 	example, if your .newsrc file says "1-X" for the newsgroup, and
+ 	the first two articles in the group which actually exist are X and
+ 	X+1000, XRN would attempt to verify the existence of articles X+1
+ 	through X+999, one at a time, before getting to X+1000.  Reported
+ 	by "Mike O'Brien" <obrien@leonardo.net>.
 
-	* A new XRN X resource, "authenticateOnConnect", has been added.
-	When it is set to true, XRN will always authenticate to the News
-	server upon start-up, rather than waiting until the News server
-	asks for authentication.  This is necessary to support News
-	servers which aren't smart enough to ask the client for
-	authentication when they should or which allow partial access
-	without authentication and additional access with authentication.
+Thu Nov  7 21:17:53 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* The XRN tar distribution now unpacks in its own directory rather
-	than the current working directory.
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-16.
 
+Thu Nov  7 21:14:17 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	Bug fixes:
+	* killfile.c: Make sure that the prefetch fields required by the
+ 	global kill file are fetched properly the first time the global
+ 	kill file is read.  Fix by Rein Tollevik <reint@a.sn.no>.
 
-	* When entering a newsgroup with no unread articles with the "Goto
-	group" command, XRN would sometimes get confused and enter a
-	broken state, displaying article mode with no articles and
-	refusing to exit from it.  This has been fixed.
+	* internals.c: When displaying messages about killed articles,
+ 	don't coredump if the kill pattern was for a header field other
+ 	than "Subject".  Fix by Rein Tollevik <reint@a.sn.no>.
 
-	* Minor changes have been made to make XRN compile cleanly on
-	recent versions of Linux, FreeBSD, IRIX, Ultrix.
+	* internals.c, internals.h, news.h: Correctly fetch all optional
+ 	header fields, not just Newsgroups and Date.  Fix by Rein Tollevik
+ 	<reint@a.sn.no>.
 
-	* Minor changes have been made to make XRN compile cleanly when
-	linking against INN client libraries.
+*	* artstruct.c, internals.c, internals.h, killfile.c, killfile.h,
+ 	news.h, server.c, server.h, xrn-man.src: Support the "Xref" field
+ 	in kill files.  Submitted by Rein Tollevik <reint@a.sn.no>.
 
-	* Minor changes has been made to work around gcc and/or Xt bugs.
-		
-	* Some messages in the German XRN message table have been updated.
+Mon Oct 28 13:52:00 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-1998-05-25  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
+	* internals.c: When stripping "noise" (i.e., "Re:" prefixes and
+ 	"(was ...)" clauses indicating a former Subject) from a Subject
+ 	line, don't strip a "(was ...)" clause if it's the only thing on
+ 	the line.  In other words, if someone asks XRN to kill a Subject
+ 	which contains only "(was foo bar)", then the Subject that gets
+ 	put into the KILL file will remain "(was foo bar)" rather than
+ 	being turned into an empty Subject.
 
-	* Significant user-visible changes in XRN 9.01:
+Wed Oct 16 16:04:04 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	** Bug fixes:
+	* config.h: Don't define NO_MEMMOVE on Solaris.  Fix from
+	dyson@sunfish.physics.uiowa.edu (Richard L. Dyson).
 
-	* The amount of memory used when threading a newsgroup with many
-	unavailable articles has been greatly reduced.
+Wed Oct 16 01:24:44 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* Threading while prefetching a newsgroup (i.e., threading
-	newsgroup B in the background while reading newsgroup A) now works
-	properly; previously, a newsgroup would not be threaded until the
-	user actually went to read it.
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-15.
 
-	* Some minor improvements to newsgroup prefetching and fetching,
-	including some speed improvements, have been made.
+Wed Oct 16 01:22:50 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* When the "Date" header field of articles is being converted into
-	the local timezone, XRN will no longer delete the final newline
-	from the field and thus cause it to be concatenated to the next
-	line in the article header.
+*	* compose.c: Fix a bug reported by
+ 	<Brad_Appleton-GBDA001@email.mot.com>: When using an external
+ 	editor to compose a message, if the user aborts the message after
+ 	sending it, the message that gets saved in the dead.letter file is
+ 	an old version of the message instead of the version with the
+ 	user's most recent changes in it.
 
-	* A newsrc corruption problem caused by a bug in gcc 2.8.1 on
-	Solaris has been fixed by introducing a workaround.
+Mon Oct  7 00:39:56 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* The rot13 function will no longer rotate non-ASCII characters.
+*	* compose.c: Don't forget to insert a "Sender:" line in cancel
+ 	messages that need them.
 
-	* Some memory leaks and questionable memory references have been
-	fixed.
+Fri Oct  4 00:27:05 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
+	* killfile.c: Fix a bug which could cause a null-pointer
+ 	dereference when displaying an error about not being able to open
+ 	a top-level kill file.
 
-	** Enhancements:
+Wed Sep 18 17:41:23 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* XRN is now compliant with the "Good Net-Keeping Seal of
-	Approval" (<http://www.xs4all.nl/~js/gnksa/>).
+*	* artMode.c (do_field_kill): Return immediately if we're not in
+ 	article mode.  This fixes a coredump when the user clicks on one
+ 	of the KILL buttons right before XRN exits article mode.
 
-	* Automatic scrolling of the Subject list in Article mode now
-	notices what direction the cursor is moving and scrolls only in
-	that direction.
+Fri Sep  6 10:45:27 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* The German language support in XRN has been improved.
+	* xrn-man.src: Remove a newline which was confusing groff for some
+ 	reason.
 
-	* Some support for a French version of XRN has been added,
-	although it is incomplete (it will compile and run, but some
-	messages will be in English rather than French).
+	* Imakefile: On my Linux box, regex-0.12 is in /b/build now,
+ 	rather than in /usr/build.
 
-	* A CREDITS file, listing all of the people who have contributed
-	to XRN, has been added.
+Tue Aug 27 13:45:38 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* When composing a response to an article, the user can now switch
-	between posting it, mailing it, and both posting and mailing it.
+*	* compose.c, resources.c, resources.h, xrn-man.src: Add
+ 	saveSentMail and saveSentPostings resources, which can be used to
+ 	specify files in which sent messages and articles should be
+ 	automatically saved.
 
-	* "From" lines in outgoing postings are now checked for validity
-	before the messages are sent.
+Mon Aug 26 13:59:14 1996  Jonathan I. Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* XRN now detects and warns about attempts to post or mail
-	messages with no body.
+	* config.h, utils.h: Split BSD_BFUNCS into BSD_BFUNCS and
+ 	NO_MEMMOVE to fix a problem pointed out by Reg Clemens
+ 	<reg@dwf.com>.
 
-	* XRN now detects and warns about attempts to post messages
-	containing only included text.
+Fri Aug 23 14:58:06 1996  Jonathan I. Kamens  <jik@cam.ov.com>
 
-	* When a message is both posted and mailed, XRN now inserts a note
-	at the beginning of the mailed copy indicating that it is a
-	courtesy copy of a message that was also posted.
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-14.
 
+Fri Aug 23 14:55:23 1996  Jonathan I. Kamens  <jik@cam.ov.com>
 
-	** Changes in functionality:
+*	* allMode.c, artMode.c, ngMode.c: Automatically adjust the widths
+ 	of fields in All, Article and Newsgroup modes when the XRN window
+ 	is resized.  ssmith@gothamcity.jsc.nasa.gov (Stan Smith) sent the
+	patch for artMode.c, which I cleaned up a little and extended to
+	allMode.c and artMode.c.
 
-	* Instead of putting a long label on the Information window, it
-	now displays a message the first time it pops up, informing the
-	user that it can be left up or dismissed.
+Thu Aug  8 15:41:03 1996  Jonathan I. Kamens  <jik@cam.ov.com>
 
-	* When the NNTP server name is appended to the newsrc file name,
-	it is now also appended to the lock and save file names.  This
-	makes it easier to run multiple XRNs at the same time talking to
-	different NNTP servers.
+*	* config.h: IDENTIFY_VERSION_IN_MESSAGES is now enabled by
+ 	default.
 
-1998-01-14  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
+Wed Aug  7 16:52:31 1996  Jonathan I. Kamens  <jik@cam.ov.com>
 
-	*** Significant user-visible changes in XRN 9.00 (some changes are
-	not listed; consult the XRN man page for additional information
-	about these changes):
+	* internals.c: Fix this bug: "Xrn may get a segmentation fault due
+ 	to referencing an unitialized pointer if an user tries to add a
+ 	new group after an existing one, but types an unknown group name."
+  	Bug report and fix from Rein Tollevik <reint@a.sn.no>.
 
+Thu Aug  1 17:52:37 1996  Jonathan I. Kamens  <jik@cam.ov.com>
 
-	** Enhancements:
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-13.
 
-	* Article threading and sorting
+Wed Jul 31 18:02:29 1996  Jonathan I. Kamens  <jik@cam.ov.com>
 
-	The article subject list can be sorted by thread, in which case
-	indentation is used to show thread nesting (see "sortedSubjects"
-	in the man page).  A button/command has been added to find an
-	article's parent.  Articles can be killed by thread or subthread.
+	* server.c (start_server): Don't call handle_server_response() if
+ 	we didn't actually manage to connect to the server in
+ 	server_init().  Problem pointed out by tda10@cus.cam.ac.uk (Tim).
 
-	Also, the article subject list can now be sorted by date as well
-	as by subject.
+	* config.h: Make the default ORG_FILE (if it is uncommented)
+ 	/usr/local/news/organization, rather than
+ 	/usr/local/lib/news/organization, for consistency with the other
+ 	defaults here.  Problem pointed out by Skubiszewski Marcin
+ 	<Marcin.Skubiszewski@inria.fr>.
 
-	Article sorting by subject has been sped up significantly.
+Tue Jul 30 17:04:42 1996  Jonathan I. Kamens  <jik@cam.ov.com>
 
-	* Improved caching of fetched articles
+	* artMode.c (isPrevSubject): Fix a memory leak when a "Previous
+	subject" command is cancelled during searching.
 
-	Article files are now stored in a rotating article cache whose
-	size and number of files can be configured by the user (see
-	"cacheFilesMaxFiles" and "cacheFilesMaxSize" in the man page).
-	This means that XRN will exit newsgroups more quickly because it
-	doesn't have to remove all of a newsgroup's article files when
-	exiting a group.  It also means that articles won't be
-	unnecessarily fetched multiple times from the server (for example,
-	the current article no longer has to be refetched if you tell XRN
-	to save or print it).
+Mon Jul 29 17:06:02 1996  Jonathan I. Kamens  <jik@cam.ov.com>
 
-	* Improved authentication support
+	* utils.h: The qsort comparison function should have CONST in its
+ 	argument types on SunOS.
 
-	Username/password authentication, using the "AUTHINFO USER" and
-	"AUTHINFO PASS" NNTP commands, is now supported.  A new
-	compile-time config.h option, ALLOW_RESOURCE_PASSWORDS, controls
-	whether the user is allowed to encode passwords in X resources.
+	* utils.h: Add bcopy(), bzero(), fgetc(), strcasecmp(),
+ 	strncasecmp() declarations for SunOS.
 
-	* Improved-kill support
+*	* internals.c (checkThreading): When checking threading
+ 	immediately before entering a newsgroup, we were undoing any
+ 	thread relationships whose parents had been marked read (e.g.,
+ 	because they were read in another group or killed by a kill file),
+ 	but we weren't doing the same for relationships whose children had
+ 	been marked read.  This fixes that, which should solve the "failed
+ 	assertion" crashes in sort.c.
 
-	Kill-file entries can now compare against the "Newsgroups",
-	"Date", "Message-ID", "References", and "Xref" header fields in
-	addition to the "From" and "Subject" fields.  Furthermore, the 'h'
-	kill-file entry modifier can be used to compare against all of
-	those fields
+*	* artMode.c: Always compile the regular expression when starting a
+ 	subject search, even if we're continuing a previous search,
+ 	because other regular expressions may have been compiled in the
+ 	meantime, e.g., if a KILL file is being processed in the
+ 	background.  Without this fix, continued subject searches would
+ 	search using the wrong regular expression if KILL-file processing
+ 	occurred between when the search was initiated and when it was
+ 	continued.
 
-	Rather than having separate buttons for "session kill", "local
-	kill", and "global kill", there is only one kill button for each
-	field being killed, and different most buttons and/or modifier
-	keys are used when hitting the button to signify whether the kill
-	is for this session, the local kill file, or the global kill file.
+Mon Jul  8 13:03:27 1996  Jonathan I. Kamens  <jik@cam.ov.com>
 
-	Automatic expiration of old kill-file entries has been added.  See
-	"killTimeout" and "KILL FILE FORMAT" in the man page.
+	* getdate.y: Add the "mez" timezone.
 
-	A kill file can now include other kill files.
+Thu Jul  4 04:52:59 1996  Jonathan I. Kamens  <jik@cam.ov.com>
 
-	* Enhancements to Article mode
+	* xrn-man.src: Fix a typo (missing parenthesis) pointed out by
+ 	Michel Eyckmans (MCE) <eyckmans@imec.be>.
 
-	An error message is now displayed when the user attempts to cancel
-	a message he is not authorized to cancel.
+	* clientlib.c, utils.h: Move the BSD_BFUNCS defines (for systems
+ 	that don't have memcpy() et al) from clientlib.c, into utils.h,
+ 	where they can be used by other files, and add a define for
+ 	memmove() to them.
 
-	A new "resort" command has been added, to allow the user to resort
-	the article list.  Also, a button binding of ctrl-o was added to
-	"unsort" the article list, i.e., to arrange the list the articles
-	in numerical order.
+Wed Jul  3 14:52:07 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	The "List old" button in article mode has been modified to allow
-	the user to specify how far back to list, by holding down the ctrl
-	key when executing the command.
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-12.
 
-	A new "artSub" button, which isn't in the default button list but
-	which has a default key binding of '+', has been added.  This
-	command subscribes the user to the current group if he isn't
-	already subscribed (i.e., if he entered an unsubscribed group from
-	All mode).
+Tue Jul  2 16:56:40 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* Enhancements to All mode
+	* xrn-man.src: Fix up quoting: (1) Always use "..." instead of
+ 	``...'', `...' or '...' for quoting strings.  (2) Where "..." is a
+ 	problem because it appears inside a ".IP" tag, convert it into
+ 	".TP" so that the tag text can appear on its own line without
+ 	being enclosed in "...".  (3) Always use `.' (instead of "..." or
+ 	any of the other permutations mentioned above) for single quoted
+ 	characters.
 
-	A "Search" button and key binding ('/') has been added.
+	* xrn-man.src: Call them "kill files" instead of "KILL files".
 
-	A "Limit" button and corresponding 'l' binding has been added, to
-	allow the user to limit the list to only newsgroups matching a
-	specified regular expression.
+	* xrn-man.src: Use the \*(NS macro everywhere instead of using
+ 	".newsrc" explicitly.
 
-	* Enhancements to multiple modes
+	* xrn-man.src: Fix a few typos.
 
-	Newsgroup and subject list widths are now adjusted automatically
-	when the XRN window is resized.
+	* getdate.y: Add the "WST" Australian timezone.  It's probably not
+ 	an official ISO timezone, but we're aiming for a working program,
+ 	not a standards-conforming one :-).  "Be generous in what you
+ 	accept" and all that.  The lack of this timezone was pointed out
+ 	by Jean-Marc Lasgouttes <Jean-Marc.Lasgouttes@inria.fr>.
 
-	Outgoing messages and postings can now be saved automatically into
-	a folder.  See "saveSentMail" and "saveSentPostings" in the man
-	page.
+*	* killfile.c (parse_kill_entry): Fix a bug pointed out by Michel
+ 	Eyckmans (MCE) <eyckmans@imec.be>: Kill file expressions with
+ 	specified header fields might not work properly (depending on the
+ 	system architecture) because of a string logic error.
 
-	Buttons whose functionality is disabled (e.g., the "Post" button,
-	when the user is not allowed to post articles to the NNTP server)
-	are no longer displayed, even if they are listed in a button list.
+Fri Jun 28 08:02:32 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	A new "validNewsgroups" resource, complementing the old
-	"ignoreNewsgroups" resource, has been added.
+	* killfile.c: Don't rewrite kill files with no valid entries in
+ 	them.  Fix by Michel Eyckmans (MCE) <eyckmans@imec.be>.
 
-	XRN won't choke on NNTP servers which send multi-line responses
-	for individual articles to XHDR requests.  A server shouldn't do
-	that, but XRN tries to handle those that do.
+Thu Jun 27 18:34:22 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
+*	* internals.c, killfile.c, killfile.h, mesg_strings.c, rcyacc.y,
+ 	server.c, server.h, xrn-man.src: Support kill-file inclusion,
+ 	i.e., allow a kill file to specify "include name" to cause another
+ 	file to be read at that point and interpreted as kill-file
+ 	commands on the newsgroup being killed.  The initial patches with
+ 	this code were submitted by Michel Eyckmans (MCE)
+ 	<eyckmans@imec.be>, and then I worked with him to develop the code
+ 	a bit more and evolve it into its current form.
 
-	** Bug fixes:
+	* internals.c (parseRegexpList): Fix a memory leak found by Michel
+ 	Eyckmans (MCE) <eyckmans@imec.be> with the help of Purify.
 
-	* Don't falsly claim that there are no articles in a newsgroup.
+	* internals.c (articleArrayResync): Fix an uninitialized memory
+ 	reference found by Michel Eyckmans (MCE) <eyckmans@imec.be> with
+ 	the help of Purify.
 
-	* Don't hang forever when prefetching a newsgroup with lots of
-	unread but unavailable articles in it.
+	* XRn.src: Add the "Unsubscribe" button to the default All Mode
+ 	button list (I have no idea why it wasn't there already).
 
-	* Don't hang for a long time when the user attempts to visit a
-	newsgroup that no longer exists with many unread articles in its
-	active-file cache entry.
+Tue Jun 25 05:32:45 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* Don't do anything with the regular expressions of kill-file
-	entries which contain unknown commands.  Previously, such regular
-	expressions were compiled and compared against all unkilled
-	articles, even though it didn't know what to do about any articles
-	that matched.
+	* getdate.y: Support GMTh, GMThh, GMT[+-]h, GMT[+-]hh, GMT[+-]hhmm
+ 	formats for timezones.
 
-	* Include "Sender:" in cancel messages when necessary.
+	* killfile.c: When writing out KILL-file entries of unknown type,
+ 	don't put lots of extra spaces at the end of them.
 
-	* When an external editor is being used for message composition
-	and the user aborts the message, save the latest version of the
-	article, rather than an old version, in the dead.letter file.
+Mon Jun 24 16:47:33 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* Handle lines longer than 1024 characters sent by the NNTP
-	server.
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-11.
 
-	* Don't process individual articles' "Xref" headers multiple
-	times.
+Mon Jun 24 06:15:23 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* Don't claim that an article was canceled when in fact its cancel
-	message was mailed to a newsgroup moderator.
+	* getdate.y: Support the "CED" timezone.
 
-	* Inclusion of article text in a followup and reply will now
-	always work, even if the article was canceled or the user has
-	exited the newsgroup in which the original article is located.
+Tue Jun 18 11:48:38 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* Don't coredump when encountering newsgroups with really long
-	names.
+	* xrn-man.src: KILL-file support isn't as incomplete as it used to
+ 	be.
 
+	* Imakefile, utils.h: Reorganize how HP-UX #define's are handled
+ 	-- move them from utils.h into Imakefile so that things aren't
+ 	dependent on the order in which header files are included, and add
+ 	_INCLUDE_POSIX_SOURCE.
 
-	** Changes in functionality:
+	* killfile.c: A "->" should be "." when using old-style BSD
+ 	regular expressions.  Pointed out by Philippe Brieu
+ 	<philippe@pablo.physics.lsa.umich.edu>.
 
-	* To improve performance, NNTP_REREADS_ACTIVE_FILE is now defined
-	by default in config.h.  Sites running very old NNTP servers which
-	do not reread the active file each time the client sends a LIST
-	command should comment out this definition before compiling XRN.
+	* error_hnds.c: Remove the lock file and close down the NNTP
+ 	connection when exiting even if updating the newsrc files.
+  	Problem pointed out by Philippe Brieu
+ 	<philippe@pablo.physics.lsa.umich.edu>.
 
-	* When comparing a kill file entry against the author of an
-	article, the full contents of the article's "From" line are now
-	used.  Previously, only the portion of the "From" line that was
-	displayed in the Subject list was used.  This means, e.g., that
-	you can set the authorFullName resource to "True" and still kill
-	articles by user name, site name, etc.
+Mon Jun 17 18:36:18 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* Article mode is now more conservative about when the subject
-	list is regenerated and which subject lines are added to it.  For
-	example, when you attempt to go to an article that is not
-	currently displayed in the subject list, only that article, rather
-	than all articles after it, will be added to the list.
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-10.
 
-	* The IDENTIFY_VERSION_IN_MESSAGES compile-time configuration
-	option is now enabled by default.
+Mon Jun 17 18:30:56 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* New newsgroups no longer show up after automatic rescans.  In
-	order to discover new newsgroups, you have to execute the rescan
-	command explicitly.
+	* killfile.c (kill_file_iter): Fix an incorrect union reference
+ 	when using old-style BSD regexp routines.  Problem pointed out by
+ 	Philippe Brieu <philippe@pablo.physics.LSA.UMich.EDU>.
 
-	* When displayLocalTime is true and the user asks to see the full
-	article header, the article's actual "Date" field, rather than the
-	converted date, is now displayed.
+*	* killfile.c: Don't save KILL files that don't actually have any
+ 	entries in them.  Problem pointed out by Michel Eyckmans (MCE)
+ 	<eyckmans@imec.be>.
 
-	* Conversion of backspace characters, pagebreak characters, or the
-	"Date" field no longer takes place when an article is being saved
-	or piped.
+	* killfile.c: Need to include <errno.h>.  Pointed out by Paul
+ 	Menage <pbm1001@hermes.cam.ac.uk>.
+
+Mon Jun 17 05:58:08 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-09.
+
+Sun Jun 16 18:40:30 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* getdate.y: Use CONST instead of const.  Problem pointed out by
+ 	Odd Einar Aurbakken <oea@ifi.uio.no>.
+
+	* internals.c: Get rid of automatic aggregate initialization.
+  	Sigh.  I wish everyone would use gcc.  Problem pointed out by Odd
+ 	Einar Aurbakken <oea@ifi.uio.no>.
+
+	* sort.c: Remove a debugging printf() that I forgot to remove
+ 	earlier.
+
+*	* xrn-man.src: Add a note indicating that KILL-file information
+ 	isn't flushed from memory until the newsrc is updated.
+
+*	* artMode.c, internals.c, internals.h, killfile.c, killfile.h,
+ 	mesg_strings.c: Make sure that entries inserted into KILL files
+ 	aren't too long.  Notice when a line read from a KILL file is too
+ 	long, and discard it with an error (instead of core-dumping).
+
+*	* internals.c, killfile.c, killfile.h, resources.c, resources.h,
+ 	xrn-man.src: New feature: Users can specify using the "t"
+ 	KILL-file command option (by hand, or by using the new
+ 	"killTimeout" X resource) that KILL-file commands should be
+ 	expired after a period of time during which they don't match
+ 	anything.
+
+	* server.c: Initialize the new kill_file field of the newsgroup
+ 	structure.
+
+	* news.h: Added the kill file to the newsgroup structure.
+
+	* mesg_strings.c: Updated the KILL-file processing messages.
+
+	* newsrcfile.c: Need to write KILL files to disk when updating the
+ 	newsrc file.
+
+	* internals.c: Use the new KILL-file code in killfile.c.
+
+	* internals.c, internals.h: Move some code into killfile.c/h.
+
+	* internals.h: Declare globalKillFile().
+
+	* artMode.c, internals.c: : The killItem() routine in internals.c
+ 	has been replaced with the add_kill_entry() routing in killfile.c.
+
+	* activecache.c, newsrcfile.c, utils.c, varfile.c: The return
+ 	value of utTempFile() is now allocated storage and must therefore
+ 	be freed when it is no longer needed.
+
+	* Imakefile: Add killfile.c/o.
+
+	* killfile.h, killfile.c: New files.  Isolate most of the
+	KILL-file code in a separate file for modularity and easier
+	maintenance.
+
+	* internals.c, resources.h, resources.c, xrn-man.src: Allow the
+ 	name of the KILL file to use (instead of "KILL") to be specified
+ 	with the killFileName resource.
+
+Wed Jun 12 19:00:22 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* Makefile.dist: Put quotes around the version number on the
+ 	prereq line, because otherwise patch won't find it in the
+ 	patchlevel.h file.
+
+	* XRn.src: Missing a backslash in the default article-mode button
+ 	list.
+
+Tue Jun 11 12:28:27 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* ChangeLog: 8.03-beta-08.
+
+Tue Jun 11 12:28:11 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-08.
+
+Tue Jun 11 12:04:32 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+*	* XRn.src, artMode.c, artMode.h, butexpl.h, internals.h,
+ 	mesg_strings.c, xrn-man.src: Significant modifications to the kill
+ 	commands.  Now, instead of having separate buttons for session,
+ 	local and global killing, there's only one button per header
+ 	field; i.e., there's a "Subject kill" button and an "Author kill"
+ 	button.  To insert a kill pattern in the local kill file after
+ 	executing it on the currently listed articles, hold down the Shift
+ 	key while executing the kill command (i.e., typing "k" or Meta-k
+ 	or hitting the "Subject kill" or "Author kill" button).  To insert
+ 	into the global kill file, hold down Ctrl instead of Shift.  Also,
+	using the right mouse button on a kill button is equivalent to
+	Shift, and using the middle button is equivalent to Ctrl.
+
+	* artMode.c: Update findArticle() so that it always starts
+ 	searching at position 0 (since that's how it was being used before
+ 	anyway) and so that it has the option of returning an error
+ 	instead of exiting the program if it can't find the requested
+ 	article.
+
+*	* artMode.c: In the "Goto article" command, don't regenerate the
+ 	Subject listing unless the requested article isn't in the current
+ 	list of subjects.
+
+	* artMode.c, cursor.c, cursor.h, mesg_strings.c: Move the
+ 	findArticle() function, which is used only in article mode, from
+ 	cursor.c into artMode.c.
+
+	* artMode.c: Don't display an old article when switching to
+ 	article mode before putting up the next subject list.  Problem
+ 	pointed out by Philippe Brieu
+ 	<philippe@pablo.physics.lsa.umich.edu>.
+
+Mon Jun 10 17:43:10 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-07.
+
+Mon Jun 10 07:37:18 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* internals.c: I accidentally undid the change in the last
+ 	revision to make "From" KILL patterns match against the entire
+ 	"From" line rather than the trimmed version of it.  This fix puts
+ 	that change back.
+
+	* artMode.c, cursor.c, internals.c, internals.h: Fix a problem
+ 	which was preventing Newsgroups headers from being killed properly
+ 	sometimes.  Reported by Philippe Brieu
+ 	<philippe@pablo.physics.LSA.UMich.EDU>.
+
+	* artMode.c: Don't briefly display the last groups Subject list
+ 	when entering a new group.  Bug reported by Philippe Brieu
+ 	<philippe@pablo.physics.LSA.UMich.EDU>.
+
+	* hash.c: Improve the string hash function a little bit, by always
+ 	ensuring that the number of bits shifted left after each string is
+ 	added to the hash doesn't divide evenly into the number of bits in
+ 	the hash table size.
+
+Sun Jun  9 18:56:02 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-06.
+
+Sun Jun  9 18:49:39 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* Imakefile, config.h, utils.h: Patches from Michel Eyckmans (MCE)
+ 	<eyckmans@imec.be> to make regular-expression stuff work on HP-UX.
+
+	* xthelper.c: Don't try to free a hints in xthWaitForMapped()
+ 	unless it's non-null.
+
+	* server.c, server.h: Add routines to fetch the Message-ID and
+ 	References fields.
+
+	* news.h: Add the Message-ID and References fields to the article
+ 	structure.
+
+*	* news.h: Update the _CLEAR_* macros to fix an uninitialized
+ 	memory reference.  This may fix memory-corruption and/or
+	bad-pointer-dereferencing problems on some systems.
+
+*	* internals.c, xrn-man.src: Add killing of Message-ID and
+ 	References headers.
+
+	* internals.c: Clean up the killing code a bit.
+
+	* internals.c: Add prefetching of the Message-ID and References
+ 	fields.
+
+*	* internals.c, internals.h, mesg_strings.c, news.h, server.c,
+ 	sort.c, sort.h, xrn-man.src, probably some other files as well:
+ 	Add threading.
+
+	* artstruct.c: Handle the new "id", "references", "parent" and
+ 	"children" fields of the article structure.
+
+	* artstruct.c, artstruct.h: Add functions for manipulating lists
+ 	of children (for threading).
+
+	* internals.c, news.h, server.c: Use a bit mask to determine which
+ 	fields need to be fetched, instead of having a separate field in
+ 	the newsgroup structure for every field.
+
+	* internals.c (killArticles): Don't check if newsgroups is
+ 	non-null and then dereference author instead.  This fixes a
+ 	problem with "Newsgroups" KILLing not working, as well as a
+ 	possible null-pointer dereference, on systems that use BSD regexp
+ 	routines (i.e., not POSIX_REGEX or SYSV_REGEX).
+
+*	* sort.c: Use the hash table for subject sorting.  This should be
+ 	much faster than the previous method.
+
+	* Imakefile: Add the hash-table routines (hash.c/o).
+
+	* hash.c, hash.h: New files containing hash-table routines.
+
+Fri Jun  7 14:39:35 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-05.
+
+Fri Jun  7 14:21:48 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+*	* varfile.c: fprintf() returns EOF on error, not 0.  Error pointed
+ 	out by "Alec Wolman" <wolman@cs.washington.edu>.  Previously, the
+ 	cache file could be saved incorrectly when writing variables to
+ 	it.
+
+	* Imakefile: Don't use $< because some versions of Make don't
+ 	handle it properly.  Pointed out by Jens Schleusener
+ 	<Jens.Schleusener@dlr.de>.
+
+	* mesg_strings.c: Fix a typo pointed out by Jens Schleusener
+ 	<Jens.Schleusener@dlr.de>.
+
+	* mesg_strings.c, sort.c: Display errors about unparseable dates
+ 	in the message pane instead of printing them to stderr.
+
+	* internals.c: Update articleIsAvailable() so that it uses
+ 	fillUpArray() instead of gesubjectlist().  This is important to
+ 	ensure that all the headers besides Subject are fetched too (since
+ 	the code assumes in numerous places that if the subject is
+ 	non-null, all the headers have been fetched).
+
+	* internals.c: Rename the FETCH_STAGE symbols to HEADERS_STAGE
+ 	instead.
+
+	* internals.c: Isolate the code for fetching headers in its own
+ 	function, and use that from fillUpArray() instead of calling
+ 	setUpGroupIncremental(), to avoid problems with the prefetched
+ 	group getting reset when we don't want it to be.  This will
+ 	probably cause a minor performance improvement (well, more
+ 	accurately, it eliminates a performance drop introduced by the bug
+ 	that it fixes).
+
+	* server.c: Fix yet another bug in getlist().
+
+	* artMode.c, cursor.c, cursor.h, internals.c, internals.h: Add
+ 	newsgroup arguments to fillUpArray() and moveToArticle().
+
+	* internals.c, internals.h (getPrevNumber): New function, for
+ 	getting the number of the next available article before the
+ 	currently displayed ones, without also getting the subject index
+ 	line for it.  This function isn't being used yet, but it will be
+ 	soon, I think.
+
+	* internals.c (getPrevSubject): Modified to use getPrevNumber().
+
+	* Imakefile, newsrc.y, newsrc.l: Rename newsrc.y and newsrc.l to
+ 	rcyacc.y and rclex.l to avoid problems with some versions of Make.
+
+	* internals.c (setUpGroupIncremental): Fix an incorrect
+ 	PREFETCH_*_STAGE constant usage that wasn't actually causing any
+ 	trouble but was incorrect nevertheless.
+
+*	* internals.c (getSubjects): Forgot to set NextPreviousArticle,
+ 	which means that "P" in article mode wasn't working.
+
+Thu Jun  6 19:30:02 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* internals.c: Work around stupid "no automatic aggregate
+ 	initialization" compilers.
+
+	* utils.c: The error return for get_date() is -1, not 0.
+
+Thu Jun  6 18:32:39 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-04.
+
+Thu Jun  6 18:17:57 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* xrn-man.src: Document displayLineCount properly (previously, it
+ 	was only documented when REALLY_USE_LOCALTIME was defined, due to
+ 	a conditional in the wrong place).
+
+*	* config.h, resources.c, resources.h, server.c, utils.c, utils.h,
+ 	xrn-man.src, xrn-man.sym: There's no longer anything
+ 	platform-specific about the displayLocalTime option, so get rid of
+ 	the USE_LOCALTIME and REALLY_USE_LOCALTIME configuration options
+ 	and always compile in this feature.
+
+	* config.h: Get rid of NO_MKTIME, which isn't used anymore.
+
+	* utils.h: Add a qsort_arg_type typedef for use with sorting
+ 	functions.
+
+	* utils.c: Delete the crocky date parser and use the newly added
+ 	get_date() routine instead.
+
+	* Imakefile: Delete the rule for producing y.tab.c from newsrc.y;
+ 	we're now calling it newsrc.c instead of y.tab.c, and the rule for
+ 	building *.c from *.y should be built into Make.
+
+	* server.c, server.h (getdatelist): New function.
+
+*	* internals.c: Support killing of articles based on "Date" fields
+ 	in addition to "Subject", "From" and "Newsgroups".
+
+	* internals.c: Define constants for the various prefetch stages,
+ 	and use them instead of hard-coding stage numbers all over the
+ 	place.
+
+	* internals.c (setUpGroupIncremental): Add arguments to specify
+ 	the first and last article numbers to fetch; if they are zero,
+ 	they default to newsgroup->current and newsgroup->last as before.
+
+	* internals.c, server.c, server.h: Support fetching of Date fields.
+
+	* internals.c, utils.c, utils.h (digits): Move to utils.c and
+ 	rename it utDigits().
+
+	* internals.c, internals.h (subjectIndexLine): Make it available
+ 	to other files (i.e., undo its "static" and declare it in
+ 	internals.h).
+
+	* internals.c (getSortedSubjects, getUnSortedSubjects): Delete.
+
+ 	* internals.c (getSubjects): Use the art_sort_*() routines instead
+ 	of the delated get*SortedSubjects().
+
+	* internals.c, internals.h (strip): Rename to subjectStrip(), and
+ 	make it available to other files (i.e., undo its "static" and
+ 	declare it in internals.h).
+
+	* internals.c (getPrevSubject): Use fillUpArray() instead of
+ 	calling the get*list() functions explicitly.
+
+	* artMode.c, cursor.c, internals.c, internals.h (fillUpArray):
+ 	Take a last article number to fetch; if 0, default to
+ 	newsgroup->last as before.
+
+	* internals.c (fillUpArray): Use setUpGroupIncremental() instead
+ 	of calling get*list() functions directly.
+
+*	* Imakefile, artstruct.c, internals.c, mesg_strings.c, news.h,
+ 	resources.c, resources.h, server.h, xrn-man.src: Support sorting
+ 	of articles by date as well as by subject.
+
+	* getdate.h, getdate.y, sort.c, sort.h: New files, added as part
+	of the modifications to support article sorting by date.
+
+*	* server.c (getlist): Fix a coredump.  Reported by Jean-Marc
+ 	Lasgouttes <Jean-Marc.Lasgouttes@inria.fr>.
+
+	* internals.c (killArticles): There's no longer any need to call
+ 	strip() on the Subject line, since getlist() in server.c now
+ 	strips leading and trailing spaces so we don't have to do it here.
+
+	* server.c (strip): Use case-insensitive string comparison instead
+ 	of lots of case-sensitive string comparisons.  This is a (very
+ 	minor) performance improvement.
+
+	* server.c (strip): Strip former subject lines starting with "(was
+ 	" as well as with "(was:".
+
+	* server.c (getlist): Strip leading and trailing spaces from all
+ 	retrieved field values.
+
+	* internals.c (strip): Use isspace() when stripping leading and
+ 	trailing spaces, rather than hard-coding a notion of what a space
+ 	character is.
+
+Thu Jun  6 08:21:20 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-03.
+
+Thu Jun  6 08:19:09 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* internals.c, xrn-man.src: When the "h" option is used to search
+ 	a particular header field in a KILL file entry, the regular
+ 	expression is anchored at the beginning of the field.
+
+	* artMode.c, internals.h, internals.c: When inserting a Subject
+ 	kill into a KILL file, use the '/^Subject: .../h:j" format so that
+ 	only the Subject field will be subsequently matched against.  This
+ 	should result in faster KILL-file processing, since KILL-file
+ 	entries inserted by the program will only have to be matched
+ 	against one header field rather than two.
+
+	* server.c (getlist): Add an artStructSet() call so that the
+ 	article list is packed after every header line is retrieved.  This
+	should result in a slight improvement in memory usage.
+
+	* internals.c: Fix this bug: When we were fetching a newsgroup in
+ 	order to enter it and we discovered that there were no unread
+ 	articles in it, we ended up fetching all of the header information
+ 	for the next newsgroup twice.  This fix should result in a slight
+	improvement in performance.
+
+	* internals.c: Fix this bug: When we were fetching a newsgroup in
+ 	the foreground in order to enter it and we discovered that there
+ 	were no unread articles in it, we fetched the next newsgroup in
+ 	the foreground instead of doing it in the background.
+
+	* server.c (getlist): Fix a bug which was causing me to
+ 	dereference pointers to uninitialized data and in some cases not
+ 	fetch header fields that should have been fetched.
+
+Wed Jun  5 17:02:17 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-02.
+
+Wed Jun  5 15:00:07 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+ *	* artstruct.c, internals.c, news.h, server.c, server.h,
+ 	xrn-man.src: Support the "h" KILL-file option.  That is,
+ 	"/pattern/h:j" is now supported.  When "h" is specified, XRN
+ 	checks to see if the pattern starts with "^From:", "^Subject:" or
+ 	"^Newsgroups:", and if so, compares against just that field.  If
+ 	not, "h" causes comparison against all three of those fields.
+
+	Note that this is a significant change in functionality, because
+	previously, it was not possible to kill against the "Newsgroups:"
+	field.  However, also note that when a KILL file entry causes
+	checking against "Newsgroups:", the "Newsgroups:" lines for all
+	unread articles have to be fetched, which could mean a longer
+	delay when fetching the newsgroup.
+
+	All of this is documented in the man page.
+
+	* internals.c (killArticles): Don't call artStructReplace() when
+ 	nothing in the article structure was changed.  This should
+ 	slightly speed up KILL-file processing.
+
+	* artstruct.c, internals.c, news.h, server.c: Instead of embedding
+ 	a list of all the string fields in the article structure all over
+ 	the place in the code, isolate the knowledge about what all the
+ 	fields are in news.h.  No user-visible changes here, but it'll
+ 	help in future development.
+
+ *	* artstruct.c, internals.c, news.h, server.c: When comparing a
+ 	kill file entry against the author of an article, the full
+ 	contents of the article's "From" line are now used.  Previously,
+ 	only the portion of the "From" line that was displayed by XRN in
+ 	the Subject list was used.  This means, e.g., that you can set the
+ 	authorFullName resource to "True" and still kill articles by user
+ 	name, site name, etc.
+
+	* mesg_strings.c, xrn-man.src, internals.c: Move the code for
+ 	parsing kill file entries into a separate function.  In the
+ 	process, make the following user-visible changes in functionality:
+
+ *	Entries which contain a command other than 'j', 'm' or 's', are no
+ 	longer actually checked against articles.  That is, previously,
+ 	XRN would compare the regular expression of such an entry against
+ 	all unkilled articles, even though it didn't know what to do if
+ 	the expression matched.  Now, it'll simply report an error about
+ 	an unknown command and move on to the next entry.
+
+	* internals.c, server.c: Move the formatting of the Subject line
+ 	for inclusion in the Subject list from when the subjects are
+ 	fetched into when the Subject list is actually prepared, so that
+ 	what's in the article structure is the actual subject line rather
+ 	than some frobbed version of it.
+
+	This change shouldn't have any user-visible effects, but it's the
+ 	first stage in code clean-up which should make it easier to add
+ 	(a) improved KILL-file support and (b) threading.
+
+Thu May 30 18:38:08 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* mesg_strings.c, butexpl.h: German update from Thomas Foks
+ 	<foks@track.iatge.de>.
+
+	* internals.c: XRN should not claim that there are no articles at
+ 	all in a group when in fact there are articles, just not unread
+ 	ones.
+
+Thu May 30 04:39:48 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+ 	8.03-beta-01.
+
+Thu May 30 04:36:09 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* resources.c, server.c: Move the check for NNTPAUTH into
+ 	resources.c, rather than putting it in server.c.
+
+Wed May 29 18:39:14 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* config.h, mesg_strings.c, server.c, xrn-man.src, xrn-man.sym:
+ 	Support AUTHINFO USER/PASS authentication.  Note that there is a
+ 	new configuration option, ALLOW_RESOURCE_PASSWORDS, which
+ 	specifies whether the user's NNTP password should be accepted from
+ 	the X resources (as opposed to always prompting for it).
+
+	* dialogs.c, dialogs.h (PasswordBox): New function.
+
+Tue May 21 08:36:47 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* config.h: NNTP_REREADS_ACTIVE_FILE is now the default
+ 	(previously, it was undefined by default unless INN was defined).
+  	This means that XRN now assumes by default that the NNTP server to
+ 	which it's connected rereads the active file each time a LIST
+ 	command is executed.  This makes it unnecessary for XRN to close
+ 	and re-open the NNTP connection on every rescan, a procedure which
+ 	can cause significant delays.
+
+	Sites running very old NNTP servers which do not reread the active
+ 	file each time a LIST command is issued should comment out the
+ 	definition of NNTP_REREADS_ACTIVE_FILE before compiling XRN.
+
+Sun May 19 06:32:42 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* newsrc.y, internals.h, internals.c: Fix this bug: When
+ 	cacheActive is true and the user attempts to jump to a newsgroup
+ 	with many unread articles (e.g., a previously unsubscribed group)
+ 	which has been deleted, XRN will go into a *long* loop, trying to
+ 	retrieve each article from the server one at a time without
+ 	realizing that the group has been deleted. (reported by
+ 	Hugues.Leroy@irisa.fr)
+
+Fri May 17 09:15:32 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* internals.c: My fix in release 8.02 to prevent XRN from hanging
+ 	when prefetching a newsgroup with lots of unread but unavailable
+ 	articles in it was incorrect.  This change completes that fix (I
+ 	think).
+
+Mon May 13 19:02:56 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* README: Mention that XRN doesn't work anymore with X11R4.
 
 Thu May  9 17:48:38 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
@@ -1677,4 +2229,4 @@ Tue Nov  8 18:30:03 1994  Jonathan I. Kamens  <jik@cam.ov.com>
 	Always include article text when calling an external editor
 	command.  Fix from per@erix.ericsson.se (Per Hedeland).
 
-# $Id: ChangeLog,v 1.151 2002-05-15 14:13:29 jik Exp $
+# $Id: ChangeLog,v 1.111 1997-05-23 17:06:50 jik Exp $
