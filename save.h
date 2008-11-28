@@ -2,7 +2,7 @@
 #define SAVE_H
 
 /*
- * $Id: save.h,v 1.8 1997-01-12 03:41:22 jik Exp $
+ * $Id: save.h,v 1.6 1994-12-16 19:20:21 jik Exp $
  */
 
 /*
@@ -34,9 +34,10 @@
  * save.h: routines for saving articles and sending articles to processes
  */
 
-extern int saveArticleByNumber _ARGUMENTS((char *, art_num, Boolean));
+extern int saveCurrentArticle _ARGUMENTS((char *, /* Boolean */ int));
+extern int saveArticleByNumber _ARGUMENTS((char *,art_num));
 extern int saveArticle _ARGUMENTS((char *, struct newsgroup *, art_num,
-				   Boolean, Boolean));
+				   /* Boolean */ int));
 extern int createNewsDir _ARGUMENTS((void));
 
 #endif /* SAVEARTICLE_H */

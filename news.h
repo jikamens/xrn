@@ -2,7 +2,7 @@
 #define NEWS_H
 
 /*
- * $Id: news.h,v 1.35 2006-01-03 16:38:38 jik Exp $
+ * $Id: news.h,v 1.4 1994-12-08 23:02:32 jik Exp $
  */
 
 /*
@@ -35,335 +35,174 @@
  *
  */
 
+#ifndef AVL_H
 #include "avl.h"
-#include "hash.h"
-#include "file_cache.h"
-#include "xrn.h"
+#endif
 
 typedef long art_num;  /* easy way to pick out variables refering to articles */
-typedef unsigned int ng_num;   /* easy way to pick out newsgroup variables            */
-typedef unsigned char fetch_flag_t;
+typedef long ng_num;   /* easy way to pick out newsgroup variables            */
 
 extern avl_tree *NewsGroupTable;
 extern int ActiveGroupsCount;
 
 /* this is indexed via 'current - first' */
 struct article {
-    unsigned short status; /* ART_* */
+    unsigned long status;
+        /* ART_* */
     char *subject;        /* subject line                         */
-    char *from;		  /* full value of the "From" line	  */
     char *author;         /* author name                          */
     char *lines;          /* number of lines in the article       */
-    file_cache_file *base_file; /* the untranslated article file  */
-    file_cache_file *file; /* the displayed article file          */
-    char *newsgroups;	  /* newsgroups list (maybe)		  */
-    char *date;		  /* date (maybe)			  */
-    char *id;		  /* message ID (maybe)		       	  */
-    char *references;	  /* references (maybe)			  */
-    char *xref;		  /* xref (maybe)			  */
-    char *approved;	  /* Approved (maybe)			  */
-    art_num parent;	  /* parent article, for threading	  */
-    art_num *children;	  /* child articles, for threading	  */
-    avl_tree *headers;    /* parsed header, indexed by downcased field name */
-#ifdef ARTSTRUCT_C
-    /* These should only be touched in artstruct.c! */
-    art_num first;
-    struct article *previous, *next;
-#else
-    art_num dont_touch1;
-    struct article *dont_touch2, *dont_touch3;
-#endif
+    char *filename;       /* name of the article file             */
+    long position;        /* header/body seperation point (bytes) */
 };
 
 
 struct newsgroup {
     char *name;        /* name of the group                                 */
     ng_num newsrc;     /* index of this group into Newsrc                   */
-    unsigned char status; /* NG_* */
+    unsigned long status;
+        /* NG_* */
     art_num first;     /* first available article number                    */
     art_num last;      /* last article number                               */
     art_num current;   /* current article number                            */
+    art_num max_killed;/* the highest article KILL files were run on	    */
+    struct article *articles;
     struct list *nglist;  /* newsgroup entry for unsubscribed groups        */
-    unsigned char from_cache; /* is this entry from the active file cache?  */
-    fetch_flag_t fetch; /* what should we fetch?			    */
-    hash_table_object thread_table;
-    void *kill_file;
-#ifdef ARTSTRUCT_C
-    /* These should only be touched in artstruct.c! */
-    struct article *articles, *ref_art;
-#else
-    struct article *dont_touch1, *dont_touch2;
-#endif
 };
 
 
-#define ART_READ		(1<<0)
-#define ART_PRINTED		(1<<1)
-#define ART_FETCHED		(1<<2)
-#define ART_UNAVAIL		(1<<3)
-#define ART_ALL_HEADERS		(1<<4)
-#define ART_ROTATED		(1<<5)
-#define ART_SAVED		(1<<6)
-#define ART_MARKED		(1<<7)
-#define ART_XLATED		(1<<8)
-#define ART_KILLED		(1<<9)
-#define ART_LISTED		(1<<10)
-#define ART_MAYBE_LISTED	(1<<11)
-#define ART_XREFED		(1<<12)
+/* article has been read / is unread */
+#define ART_READ      0x0001
+#define ART_UNREAD    0x0002
+/* printed */
+#define ART_PRINTED   0x0004
+#define ART_UNPRINTED 0x0008
+/* article has been fetched / is unfetched */
+#define ART_FETCHED   0x0010
+#define ART_UNFETCHED 0x0020
+/* article is not available */
+#define ART_UNAVAIL   0x0040
 
-#define ART_CLEAR       (0)
-#define ART_CLEAR_READ  (ART_READ | ART_KILLED)
+/* headers */
+#define ART_ALL_HEADERS      0x0100
+#define ART_STRIPPED_HEADERS 0x0200
+
+/* rotation */
+#define ART_ROTATED   0x0400
+#define ART_UNROTATED 0x0800
+
+/* saved */
+#define ART_SAVED   0x4000
+#define ART_UNSAVED 0x8000
+
+/* marked */
+#define ART_MARKED   0x1000
+#define ART_UNMARKED 0x2000
+
+/* Translated */
+#define ART_XLATED	0x10000
+#define ART_UNXLATED	0x20000
+#define ART_CLEAR       (ART_UNREAD | ART_UNFETCHED | ART_STRIPPED_HEADERS | ART_UNROTATED | ART_UNMARKED | ART_UNXLATED)
+#define ART_CLEAR_READ  (ART_READ | ART_UNFETCHED | ART_STRIPPED_HEADERS | ART_UNROTATED | ART_UNMARKED | ART_UNXLATED)
 
 /* helper macros */
-#define IS_READ(art)       	(   (art)->status & ART_READ)
-#define IS_UNREAD(art)     	(! ((art)->status & ART_READ))
-#define IS_PRINTED(art)    	(   (art)->status & ART_PRINTED)
-#define IS_UNPRINTED(art)  	(! ((art)->status & ART_PRINTED))
-#define IS_FETCHED(art)    	(   (art)->status & ART_FETCHED)
-#define IS_UNFETCHED(art)  	(! ((art)->status & ART_FETCHED))
-#define IS_AVAIL(art)    	(! ((art)->status & ART_UNAVAIL))
-#define IS_UNAVAIL(art)    	(   (art)->status & ART_UNAVAIL)
-#define IS_ALL_HEADERS(art)	(   (art)->status & ART_ALL_HEADERS)
-#define IS_ROTATED(art)		(   (art)->status & ART_ROTATED)
-#define IS_SAVED(art)		(   (art)->status & ART_SAVED)
-#define IS_MARKED(art)		(   (art)->status & ART_MARKED)
-#define IS_UNMARKED(art)	(! ((art)->status & ART_MARKED))
-#define IS_XLATED(art)		(   (art)->status & ART_XLATED)
-#define IS_KILLED(art)		(   (art)->status & ART_KILLED)
-#define IS_LISTED(art)		(   (art)->status & ART_LISTED)
-#define IS_MAYBE_LISTED(art)	(   (art)->status & ART_MAYBE_LISTED)
-#define IS_XREFED(art)		(   (art)->status & ART_XREFED)
+#define IS_READ(art)       (((art).status & ART_READ) == ART_READ)
+#define IS_UNREAD(art)     (((art).status & ART_UNREAD) == ART_UNREAD)
+#define IS_PRINTED(art)    (((art).status & ART_PRINTED) == ART_PRINTED)
+#define IS_UNPRINTED(art)  (((art).status & ART_UNPRINTED) == ART_UNPRINTED)
+#define IS_FETCHED(art)    (((art).status & ART_FETCHED) == ART_FETCHED)
+#define IS_UNFETCHED(art)  (((art).status & ART_UNFETCHED) == ART_UNFETCHED)
+#define IS_UNAVAIL(art)    (((art).status & ART_UNAVAIL) == ART_UNAVAIL)
+#define IS_ALL_HEADERS(art) (((art).status & ART_ALL_HEADERS) == ART_ALL_HEADERS)
+#define IS_ROTATED(art)    (((art).status & ART_ROTATED) == ART_ROTATED)
+#define IS_SAVED(art)    (((art).status & ART_SAVED) == ART_SAVED)
+#define IS_MARKED(art)    (((art).status & ART_MARKED) == ART_MARKED)
+#define IS_XLATED(art)    (((art).status & ART_XLATED) == ART_XLATED)
   
-#define SET_READ(art)			((art)->status |= ART_READ)
-#define SET_UNREAD(art)			((art)->status &= ~ART_READ)
-#define SET_PRINTED(art)		((art)->status |= ART_PRINTED)
-#define SET_UNPRINTED(art)		((art)->status &= ~ART_PRINTED)
-#define SET_FETCHED(art)		((art)->status |= ART_FETCHED)
-#define SET_UNFETCHED(art)		((art)->status &= ~ART_FETCHED)
-#define SET_ALL_HEADERS(art)		((art)->status |= ART_ALL_HEADERS)
-#define SET_STRIPPED_HEADERS(art)	((art)->status &= ~ART_ALL_HEADERS)
-#define SET_ROTATED(art)		((art)->status |= ART_ROTATED)
-#define SET_UNROTATED(art)		((art)->status &= ~ART_ROTATED)
-#define SET_AVAIL(art)			((art)->status &= ~ART_UNAVAIL)
-#define SET_UNAVAIL(art)		((art)->status |= ART_UNAVAIL)
-#define SET_SAVED(art)			((art)->status |= ART_SAVED)
-#define SET_UNSAVED(art)		((art)->status &= ~ART_SAVED)
-#define SET_MARKED(art)			((art)->status |= ART_MARKED)
-#define SET_UNMARKED(art)		((art)->status &= ~ART_MARKED)
-#define SET_UNXLATED(art)		((art)->status &= ~ART_XLATED)
-#define SET_XLATED(art)			((art)->status |= ART_XLATED)
-#define SET_KILLED(art)			((art)->status |= ART_KILLED)
-#define SET_LISTED(art)			((art)->status |= ART_LISTED)
-#define SET_MAYBE_LISTED(art)		((art)->status |= ART_MAYBE_LISTED)
-#define SET_UNLISTED(art)		((art)->status &= ~(ART_LISTED|ART_MAYBE_LISTED))
-#define SET_XREFED(art)			((art)->status |= ART_XREFED)
+  
+#define SET_READ(art) ((art).status &= ~ART_UNREAD, (art).status |= ART_READ)
+#define SET_UNREAD(art) ((art).status &= ~ART_READ, (art).status |= ART_UNREAD)
+#define SET_PRINTED(art) ((art).status &= ~ART_PRINTED, (art).status |= ART_PRINTED)
+#define SET_UNPRINTED(art) ((art).status &= ~ART_UNPRINTED, (art).status |= ART_UNPRINTED)
+#define SET_FETCHED(art) ((art).status &= ~ART_UNFETCHED, (art).status |= ART_FETCHED)
+#define SET_UNFETCHED(art) ((art).status &= ~ART_FETCHED, (art).status |= ART_UNFETCHED)
+#define SET_STRIPPED_HEADERS(art) ((art).status &= ~ART_ALL_HEADERS, (art).status |= ART_STRIPPED_HEADERS)
+#define SET_ALL_HEADERS(art) ((art).status &= ~ART_STRIPPED_HEADERS, (art).status |= ART_ALL_HEADERS)
+#define SET_UNROTATED(art) ((art).status &= ~ART_ROTATED, (art).status |= ART_UNROTATED)
+#define SET_ROTATED(art) ((art).status &= ~ART_UNROTATED, (art).status |= ART_ROTATED)
+#define SET_UNAVAIL(art) ((art).status |= ART_UNAVAIL)
+#define SET_SAVED(art) ((art).status &= ~ART_UNSAVED, (art).status |= ART_SAVED)
+#define SET_MARKED(art) ((art).status &= ~ART_UNMARKED, (art).status |= ART_MARKED)
+#define SET_UNMARKED(art) ((art).status &= ~ART_MARKED, (art).status |= ART_UNMARKED)
+#define SET_UNXLATED(art) ((art).status &= ~ART_XLATED, (art).status |= ART_UNXLATED)
+#define SET_XLATED(art) ((art).status &= ~ART_UNXLATED, (art).status |= ART_XLATED)
 
-#define _CLEAR_ALL(art,free) \
-  _CLEAR_FILE((art),(free)); \
-  _CLEAR_BASE_FILE((art),(free)); \
-  _CLEAR_HEADERS((art),(free)); \
-  _CLEAR_SUBJECT((art),(free)); \
-  _CLEAR_FROM((art),(free)); \
-  _CLEAR_AUTHOR((art),(free)); \
-  _CLEAR_LINES((art),(free)); \
-  _CLEAR_NEWSGROUPS((art),(free)); \
-  _CLEAR_DATE((art),(free)); \
-  _CLEAR_ID((art),(free)); \
-  _CLEAR_REFS((art),(free)); \
-  _CLEAR_XREF((art),(free)); \
-  _CLEAR_PARENT((art),(free)); \
-  _CLEAR_CHILDREN((art),(free)); \
-  _CLEAR_APPROVED((art),(free))
+#define CLEAR_FILE(art) \
+  if ((art).filename != NIL(char)) { \
+      (void) unlink((art).filename); \
+      SET_UNFETCHED(art); \
+      FREE((art).filename); \
+      (art).filename = NIL(char); \
+  }	
 
-#ifdef DEBUG_NEWS_CLEARS
+#define CLEAR_SUBJECT(art) \
+  if ((art).subject != NIL(char)) { \
+      FREE((art).subject); \
+      (art).subject = NIL(char); \
+  }	
 
-static __inline__ void inline_CLEAR_FILE(struct article *art, int free)
-{
-  if ((free) && (art)->file)  {
-    fprintf(stderr, "inline_CLEAR_FILE(first=%d, file=0x%x)\n",
-#ifdef ARTSTRUCT_C
-	    art->first,
-#else
-	    art->dont_touch1,
-#endif
-	    art->file);
-    file_cache_file_release(FileCache, *(art)->file);
-    FREE((art)->file);
-  }
-  SET_UNFETCHED(art);
-  (art)->file = 0;
-}
+#define CLEAR_AUTHOR(art) \
+  if ((art).author != NIL(char)) { \
+      FREE((art).author); \
+      (art).author = NIL(char); \
+  }	
 
-#define _CLEAR_FILE(art,free) inline_CLEAR_FILE(art,free)
+#define CLEAR_LINES(art) \
+  if ((art).lines != NIL(char)) { \
+      FREE((art).lines); \
+      (art).lines = NIL(char); \
+  }	
 
-#else /* ! DEBUG_NEWS_CLEARS */
+/* newsgroup is subscribed/unsubscribed to */
+#define NG_SUB      0x0010
+#define NG_UNSUB    0x0020
+/* no entry in the .newsrc for this group */
+#define NG_NOENTRY  0x0040
+/* newsgroup can be posted to / can not be posted to / is moderated */
+#define NG_POSTABLE 0x1000
+#define NG_UNPOSTABLE 0x2000
+#define NG_MODERATED 0x4000
 
-#define _CLEAR_FILE(art,free) \
-  if ((free) && (art)->file)  { \
-    file_cache_file_release(FileCache, *(art)->file); \
-    FREE((art)->file); \
-  } \
-  SET_UNFETCHED(art); \
-  (art)->file = 0;
-
-#endif /* DEBUG_NEWS_CLEARS */
-
-#define _CLEAR_BASE_FILE(art,free) \
-  if ((free) && (art)->base_file)  { \
-    file_cache_file_release(FileCache, *(art)->base_file); \
-    FREE((art)->base_file); \
-  } \
-  (art)->base_file = 0;
-
-#define ART_HEADERS_BASE " base "
-
-#define _CLEAR_HEADERS(art,dofree) \
-  if ((dofree) && (art)->headers) { \
-    char *key = ART_HEADERS_BASE; \
-    char *base; \
-    if (avl_delete((art)->headers, &key, &base)) \
-      free(base); \
-    avl_free_table((art)->headers, 0, 0); \
-  } \
-  (art)->headers = 0;
-
-#define _CLEAR_SUBJECT(art,free) \
-  if ((free) && (art)->subject) { \
-    FREE((art)->subject); \
-  } \
-  (art)->subject = 0;
-
-#define _CLEAR_FROM(art,free) \
-  if ((free) && (art)->from) { \
-    FREE((art)->from); \
-  } \
-  (art)->from = 0;
-
-#define _CLEAR_AUTHOR(art,free) \
-  if ((free) && (art)->author) { \
-    FREE((art)->author); \
-  } \
-  (art)->author = 0;
-
-#define _CLEAR_LINES(art,free) \
-  if ((free) && (art)->lines) { \
-    FREE((art)->lines); \
-  } \
-  (art)->lines = 0;
-
-#define _CLEAR_NEWSGROUPS(art,free) \
-  if ((free) && (art)->newsgroups) { \
-    FREE((art)->newsgroups); \
-  } \
-  (art)->newsgroups = 0;
-
-#define _CLEAR_DATE(art,free) \
-  if ((free) && (art)->date) { \
-    FREE((art)->date); \
-  } \
-  (art)->date = 0;
-
-#define _CLEAR_ID(art,free) \
-  if ((free) && (art)->id) { \
-    FREE((art)->id); \
-  } \
-  (art)->id = 0;
-
-#define _CLEAR_REFS(art,free) \
-  if ((free) && (art)->references) { \
-    FREE((art)->references); \
-  } \
-  (art)->references = 0;
-
-#define _CLEAR_XREF(art,free) \
-  if ((free) && (art)->xref) { \
-    FREE((art)->xref); \
-  } \
-  (art)->xref = 0;
-
-#define _CLEAR_APPROVED(art,free) \
-  if ((free) && (art)->xref) { \
-    FREE((art)->approved); \
-  } \
-  (art)->approved = 0;
-
-#define _CLEAR_PARENT(art,free) \
-  (art)->parent = 0;
-
-#define _CLEAR_CHILDREN(art,free) \
-  if ((free) && (art)->children) { \
-    FREE((art)->children); \
-  } \
-  (art)->children = 0;
-
-#define CLEAR_ALL(art)		_CLEAR_ALL((art),1)
-#define CLEAR_ALL_NO_FREE(art)	_CLEAR_ALL((art),0)
-
-#define CLEAR_FILE(art)		_CLEAR_FILE((art),1)
-#define CLEAR_BASE_FILE(art)	_CLEAR_BASE_FILE((art),1)
-#define CLEAR_HEADERS(art)	_CLEAR_HEADERS((art),1)
-#define CLEAR_SUBJECT(art)	_CLEAR_SUBJECT((art),1)
-#define CLEAR_FROM(art)		_CLEAR_FROM((art),1)
-#define CLEAR_AUTHOR(art)	_CLEAR_AUTHOR((art),1)
-#define CLEAR_LINES(art)	_CLEAR_LINES((art),1)
-#define CLEAR_NEWSGROUPS(art)	_CLEAR_NEWSGROUPS((art),1)
-#define CLEAR_DATE(art)		_CLEAR_DATE((art),1)
-#define CLEAR_ID(art)		_CLEAR_ID((art),1)
-#define CLEAR_REFS(art)		_CLEAR_REFS((art),1)
-#define CLEAR_XREF(art)		_CLEAR_XREF((art),1)
-#define CLEAR_APPROVED(art)	_CLEAR_APPROVED((art),1)
-#define CLEAR_PARENT(art)	_CLEAR_PARENT((art),1)
-#define CLEAR_CHILDREN(art)	_CLEAR_CHILDREN((art),1)
-
-#define NG_SUB		(1<<0)	/* newsgroup is subscribed/unsubscribed to */
-#define NG_NOENTRY	(1<<1)	/* no entry in the .newsrc for this group */
-#define NG_POSTABLE	(1<<2)	/* newsgroup can be posted to */
-#define NG_MODERATED	(1<<3)	/* newsgroup is moderated */
-#define NG_NEW		(1<<4)	/* newsgroup is new */
-
-#define IS_SUBSCRIBED(ng)	((ng)->status & NG_SUB)
-#define IS_NOENTRY(ng)		((ng)->status & NG_NOENTRY)
-#define IS_POSTABLE(ng)	  	((ng)->status & NG_POSTABLE)
-#define IS_MODERATED(ng)  	((ng)->status & NG_MODERATED)
-#define IS_NEW(ng)		((ng)->status & NG_NEW)
-
-#define SET_SUB(ng)    		((ng)->status |= NG_SUB)
-#define SET_UNSUB(ng)  		((ng)->status &= ~NG_SUB)
-#define SET_POSTABLE(ng)	((ng)->status |= NG_POSTABLE)
-#define SET_UNPOSTABLE(ng)	((ng)->status &= ~NG_POSTABLE)
-#define SET_MODERATED(ng)	((ng)->status |= NG_MODERATED)
-#define SET_UNMODERATED(ng)	((ng)->status &= ~NG_MODERATED)
-#define SET_NOENTRY(ng)		((ng)->status |= NG_NOENTRY)
-#define SET_NEW(ng)		((ng)->status |= NG_NEW)
-
-#define CLEAR_NOENTRY(ng)	((ng)->status &= ~NG_NOENTRY)
-#define CLEAR_NEW(ng)		((ng)->status &= ~NG_NEW)
+#define IS_SUBSCRIBED(ng) (((ng)->status & NG_SUB) == NG_SUB)
+#define IS_NOENTRY(ng)    (((ng)->status & NG_NOENTRY) == NG_NOENTRY)
+  
+#define SET_SUB(ng)    ((ng)->status &= ~NG_UNSUB, (ng)->status |= NG_SUB)
+#define SET_UNSUB(ng)  ((ng)->status &= ~NG_SUB, (ng)->status |= NG_UNSUB)
+#define CLEAR_NOENTRY(ng) ((ng)->status &= ~NG_NOENTRY)
 
 #define EMPTY_GROUP(ng) ((ng)->last < (ng)->first)
   
-extern struct newsgroup *CurrentGroup;   /* current index into the newsrc array  */
+#define CLEAR_ARTICLES(ng) \
+  if ((ng)->articles != NIL(struct article)) { \
+      FREE((ng)->articles); \
+      (ng)->articles = NIL(struct article); \
+  }	
+
+#define INDEX(artnum)  (artnum - newsgroup->first)
+#define CURRENT        INDEX(newsgroup->current)
+#define LAST           INDEX(newsgroup->last)
+
+extern struct newsgroup *CurrentGroup;   /* current index into the newsrc array       */
 extern ng_num MaxGroupNumber;       /* size of the newsrc array                  */
 
-/*
-  If this assertion fails, it means that you've got too many groups to
-  fit in an integer of ng_num's size, and you need to change the
-  typedef of ng_num above so that it is an integer with more bytes.
-  */
-#define INC_MAXGROUPNUMBER() { assert(MaxGroupNumber < NOT_IN_NEWSRC-1); \
-			       MaxGroupNumber++; }
+struct newsgroup **Newsrc;          /* sequence list for .newsrc file            */
 
-extern struct newsgroup **Newsrc;          /* sequence list for .newsrc file            */
-
-/*
-  NOTE WELL: There are places in the code that depend on the fact that
-  when a variable of type ng_num with value 0 is decremented, it
-  acquires a value of NOT_IN_NEWSRC.  I don't know of any systems on
-  which XRN works for which an unsigned integer type doesn't wrap
-  around like this, but if there is one, then the code will fail.
-  */
-#define NOT_IN_NEWSRC ((ng_num)-1)
+#define NOT_IN_NEWSRC -1            /* must be less than 0 */
 
 /* not a valid group (must be less than 0) */
 #define NO_GROUP -1
+
+
+#define GROUP_NAME_SIZE 128
 
 #endif /* NEWS_H */
