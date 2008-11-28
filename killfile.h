@@ -92,8 +92,6 @@ void read_global_kill_file _ARGUMENTS((struct newsgroup *));
 void read_local_kill_file _ARGUMENTS((struct newsgroup *));
 kill_entry *kill_file_iter _ARGUMENTS((struct newsgroup *, int mode,
 				       kill_file_iter_handle *handle));
-kill_entry *kill_file_iter_refresh _ARGUMENTS((struct newsgroup *, int mode,
-					       kill_file_iter_handle *handle));
 void write_kill_file _ARGUMENTS((struct newsgroup *, int mode));
 Boolean has_kill_files _ARGUMENTS((struct newsgroup *));
 void add_kill_entry _ARGUMENTS((struct newsgroup *newsgroup, int mode,

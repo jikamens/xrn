@@ -260,8 +260,7 @@ static void doAll(status, first, last, group)
 			     ret, "enterNewsgroup", "doAll");
 		}
 		else if (status == SUBSCRIBE) {
-		  if (! subscribe())
-		    ret = BAD_GROUP;
+		    subscribe();
 		}
 		else {
 		    unsubscribe();
@@ -487,12 +486,11 @@ static void limitHandler(widget, client_data, call_data)
     if (strcmp(DOIT_STRING, (char *) client_data) == 0) {
       FREE(LimitString);
 
-      if ((LimitString = GetDialogValue(LimitBox))) {
+      if ((LimitString = GetDialogValue(LimitBox)))
 	if (! *LimitString)
 	  LimitString = NULL;
 	else
 	  LimitString = XtNewString(LimitString);
-      }
 
       redrawAllWidget();
     }
@@ -575,7 +573,6 @@ void allGotoFunction(widget, event, string, count)
 	mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_DELETED_MSG, newGroup);
     }
     else if (ret == XRN_NOMORE) {
-	exitNewsgroup();
 	mesgPane(XRN_SERIOUS, 0, NO_ARTICLES_MSG, newGroup);
     }
     else {

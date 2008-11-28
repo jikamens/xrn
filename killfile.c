@@ -634,18 +634,16 @@ static kill_file *read_kf(file_name, reference, fetch_flags)
 }
 
 static kill_entry *kf_iter _ARGUMENTS((kill_file *, kill_file_iter_handle *,
-				       Boolean, Boolean));
+				       Boolean));
 
 static kill_entry *kf_iter(
 			   _ANSIDECL(kill_file *,		kf),
 			   _ANSIDECL(kill_file_iter_handle *,	handle_p),
-			   _ANSIDECL(Boolean,			expand_includes),
-			   _ANSIDECL(Boolean,			refresh)
+			   _ANSIDECL(Boolean,			expand_includes)
 			   )
      _KNRDECL(kill_file *,		kf)
      _KNRDECL(kill_file_iter_handle *,	handle_p)
      _KNRDECL(Boolean,			expand_includes)
-     _KNRDECL(Boolean,			refresh)
 {
   kill_entry *sub_entry = 0;
   int handle = (int) *handle_p;
@@ -662,7 +660,7 @@ static kill_entry *kf_iter(
     assert(expand_includes);
     assert(kf->cur_entry);
 
-    sub_entry = kf_iter(kf->cur_sub_kf, handle_p, expand_includes, refresh);
+    sub_entry = kf_iter(kf->cur_sub_kf, handle_p, expand_includes);
 
     if (sub_entry)
       return sub_entry;
@@ -670,7 +668,7 @@ static kill_entry *kf_iter(
     kf->cur_sub_kf = 0;
     handle = kf->cur_entry;
     handle++;
-  } else if (! refresh) {
+  } else {
     handle++;
   }
 
@@ -678,11 +676,6 @@ static kill_entry *kf_iter(
     return 0;
 
   this_entry = &kf->entries[handle-1];
-
-#ifdef DEBUG
-  fprintf(stderr, "kf_iter: Processing entry %d in %s: %s\n", handle,
-	  kf->file_name, this_entry->any.value);
-#endif
 
 #if !defined(POSIX_REGEX) && !defined(SYSV_REGEX)
   if (this_entry->type == KILL_ENTRY)
@@ -693,8 +686,7 @@ static kill_entry *kf_iter(
     if (! (this_entry->include.kf->flags & KF_SEEN)) {
       kill_file_iter_handle sub_handle = 0;
 
-      sub_entry = kf_iter(this_entry->include.kf, &sub_handle,
-			  expand_includes, refresh);
+      sub_entry = kf_iter(this_entry->include.kf, &sub_handle, expand_includes);
 
       if (sub_entry) {
 	kf->cur_entry = handle;
@@ -704,21 +696,13 @@ static kill_entry *kf_iter(
       }
     }
 
-    *handle_p = (kill_file_iter_handle) ++handle;
-    return kf_iter(kf, handle_p, expand_includes, True);
+    *handle_p = (kill_file_iter_handle) handle;
+    return kf_iter(kf, handle_p, expand_includes);
   }
 
   *handle_p = (kill_file_iter_handle) handle;
   return this_entry;
 }
-
-/*
-  Iterate through the entries in a kill file, possibly recursively.
-
-  NOTE: If you add an entry to a kill file while iterating through it,
-  and you have cached a previous entry pointer, you must refresh that
-  entry by calling kill_file_iter_refresh(newsgroup, mode, handle).
-*/
 
 kill_entry *kill_file_iter(newsgroup, mode, handle)
      struct newsgroup *newsgroup;
@@ -732,27 +716,10 @@ kill_entry *kill_file_iter(newsgroup, mode, handle)
   else
     kf = GlobalKillFile;
 
-  if (! (handle || kf->cur_sub_kf))
-    clear_seen();
+  clear_seen();
 
-  return kf_iter(kf, handle, True, False);
+  return kf_iter(kf, handle, True);
 }
-
-kill_entry *kill_file_iter_refresh(newsgroup, mode, handle)
-     struct newsgroup *newsgroup;
-     int mode;
-     kill_file_iter_handle *handle;
-{
-  kill_file *kf;
-
-  if (mode == KILL_LOCAL)
-    kf = (kill_file *) newsgroup->kill_file;
-  else
-    kf = GlobalKillFile;
-
-  return kf_iter(kf, handle, True, True);
-}
-  
 
 #define CHECK_WRITE(cmd) if (! (cmd)) { \
        mesgPane(XRN_SERIOUS, mesg_name, ERROR_WRITING_FILE_MSG, temp_file, \
@@ -807,7 +774,7 @@ static void write_kf(kf)
       CHECK_WRITE(fprintf(fp, "THRU %ld\n", kf->thru) != EOF);
     }
 
-    while ((entry = kf_iter(kf, &handle, False, False))) {
+    while ((entry = kf_iter(kf, &handle, False))) {
       if (entry_expired(entry, now))
 	continue;
       unparse_kill_entry(entry, buf);
@@ -832,7 +799,7 @@ done:
   }
 
   handle = 0;
-  while ((entry = kf_iter(kf, &handle, False, False)))
+  while ((entry = kf_iter(kf, &handle, False)))
     free_entry_contents(entry);
   XtFree((char *)kf->entries);
   XtFree((char *)kf);
@@ -1026,11 +993,6 @@ void kill_update_last_used(file, entry)
      kill_file *file;
      kill_entry *entry;
 {
-  if (file->cur_sub_kf) {
-    kill_update_last_used(file->cur_sub_kf, entry);
-    return;
-  }
-
   if (entry->type != KILL_ENTRY)
     return;
 
@@ -1039,5 +1001,8 @@ void kill_update_last_used(file, entry)
 
   entry->entry.last_used = time(0);
 
-  file->flags |= KF_CHANGED;
+  if (file->cur_sub_kf)
+    kill_update_last_used(file->cur_sub_kf, entry);
+  else
+    file->flags |= KF_CHANGED;
 }

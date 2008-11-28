@@ -1,8 +1,8 @@
-#ifndef XRN_CONFIG_H
-#define XRN_CONFIG_H
+#ifndef CONFIG_H
+#define CONFIG_H
 
 /*
- * $Id: config.h,v 1.92 2006-01-03 16:16:52 jik Exp $
+ * $Id: config.h,v 1.87 1999-09-02 01:11:20 jik Exp $
  */
 
 /*
@@ -91,20 +91,19 @@
   the user clicks on the "Cancel" button when viewing an article
   written by someone else, XRN will check at that time if the user is
   allowed to cancel the article, and display an error if not.
-
-  BREAKING NEWS: This feature is now enabled by default because XRN no
-  longer uses XHDR requests to retrieve header fields of displayed
-  articles -- it parses the already downloaded article header.
-  However, the ability to disable this feature is being preserved in
-  case we go back to using XHDR in the future.
   */
-#define CANCEL_CHECK
+/* #define CANCEL_CHECK */
 
 /* display compilation time in the XRN title bar */
 /* #define WANT_DATE */
 
 /* if you want a short icon name */
 #define SHORT_ICONNAME
+
+/*
+ * Note: You can probably skip ahead to the DISTRIBUTION section if you are
+ * using InterNetNews - INN
+ */
 
 /*
  * Your organization name, to be placed in outgoing messages.  Optional.
@@ -120,7 +119,7 @@
 /*
  * Name of the nntp server is in this file - can be overridden
  * by command line option, X resource, or environment variable.
- * Optional.
+ * Ignored if using INN.  Optional.
  */
 /* #define SERVER_FILE "/usr/local/news/server" */
 
@@ -146,7 +145,8 @@
  * This is needed only when your host name (which is determined in one
  * of numerous ways) doesn't have a period in it, and a domain isn't
  * available from one of these other sources: domainName X resource,
- * DOMAIN environment variable, DOMAIN_FILE (see below), or DOMAIN_NAME.
+ * DOMAIN environment variable, INN "domain" configuration value (if
+ * using INN), DOMAIN_FILE (see below), or DOMAIN_NAME.
  */
 /* #define DOMAIN_NAME ".big.firm.com" */
 
@@ -195,7 +195,8 @@
 
 /*
  * Name of the host to use as the users hosts name in the Path field 
- * in a composition is in the file.  Optional.
+ * in a composition is in the file.  Ignored if INN is being used.
+ * Optional.
  */
 /* #define PATH_FILE "/usr/local/news/pathhost" */
 
@@ -369,12 +370,19 @@
  * generate Message-ID and Date fields
  *
  *   NNTP POST should handle this, but does not for some
- *   implementations.
+ *   implementations.  Do not define this if you are using INN.
  *
  * NOTE: This requires the strftime() C library function.  If you
  * don't have strftime(), you can't use this.
  */
 /* #define GENERATE_EXTRA_FIELDS */
+
+/*
+ * don't use the XHDR NNTP command for getting a single header field
+ * from a single article (for performance reasons), use HEADER and 
+ * cache information...
+ */
+/* #define DONT_USE_XHDR_FOR_A_SINGLE_ITEM */
 
 /*
  * the active file of most currently used news systems has a problem:
@@ -402,28 +410,16 @@
 #define NNTP_REREADS_ACTIVE_FILE
 
 /*
- * Do you want to use inews for postings?
+ * Do you want to use inews for postings?  For INN, it is suggested that you do.
  */
 /* #define INEWS "/usr/local/bin/inews" */
 
 /*
- * Does INEWS read the signature file?  If you define this incorrectly
+ * Does INEWS read the signature file? The version of INEWS for INN
+ * reads the signature file by default.  If you define this incorrectly
  * you will probably end up with two signatures on postings.
  */
 /* #define INEWS_READS_SIG */
-
-/*
- * I really hate to do this.  Recent versions of INN (I detected the
- * issue in in 2.4.2) lie about the content of the Newsgroups field
- * when it is retrieved using xhdr.  This is, in my opinion, a
- * violation of the NNTP spec and simply broken behavior.
- * Unfortunately, it's better for XRN to be slower and get followups
- * right than faster and get them wrong, so I need to enable this
- * workaround by default.  When enabled, XRN will never fetch
- * Newsgroups headers with XHDR; it'll fetch the entire header with
- * HEAD and parse it to get the Newsgroups header.  Dang!
- */
-#define NO_XHDR_NEWSGROUPS
 
 /*
  * If you don't want XRN to eat type ahead, define this.
@@ -501,7 +497,7 @@
  */
 
 /* POSIX regex routines */
-#if defined(linux) || defined(hpux) || defined(__hpux) || defined(__osf__) || defined(__CYGWIN__)
+#if defined(linux) || defined(hpux) || defined(__hpux) || defined(__osf__)
 #define POSIX_REGEX
 #endif
 
@@ -600,4 +596,4 @@
 #define NO_FCHMOD
 #endif
 
-#endif /* XRN_CONFIG_H */
+#endif /* CONFIG_H */
