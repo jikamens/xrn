@@ -1,6 +1,6 @@
 %{
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: rcyacc.y,v 1.7 2005-12-01 08:51:06 jik Exp $";
+static char XRNrcsid[] = "$Id: rcyacc.y,v 1.6 1997-07-18 12:57:24 jik Exp $";
 #endif
 
 /*
@@ -179,3 +179,5 @@ articles  : NUMBER
 
    
 %%
+#include "rclex.c"
+

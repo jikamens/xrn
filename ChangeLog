@@ -1,86 +1,3 @@
-2002-05-15  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* internals.c: Fix a bug which might in rare cases temporarily
-	prevent (until the next rescan) XRN from entering a newsgroup that
-	had been unsubscribed when the user attempted to enter and
-	subscribe to it.
-
-	* internals.c: When attempting to enter and subscribe to an
-	unsubscribed newsgroup, don't mark the group subscribed until
-	we've confirmed that it is an OK group.
-
-	* mesg_strings.c, server.c: When authentication fails and the user
-	had been prompted for a password, offer the user the opportunity
-	to retry the authentication.
-
-	* mesg_strings.c: Change "Newsgroup `%s' does not exist." to
-	"Newsgroup `%s' does not exist or you can't access it." because
-	the problem may be that the group appears in the newsgroup list
-	but the user does not have permission to read it.
-
-	* server.c: If the user is prompted for an authentication
-	password, cache it so the user doesn't have to be prompted again
-	when reconnecting to the server.
-
-2002-05-14  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* server.c, server.h: We need to distinguish between ERR_ACCESS
-	when the user isn't allowed to enter a particular newsgroup and
-	ERR_ACCESS when the user hasn't authenticated successfully to the
-	server at all.
-
-	* allMode.c, internals.c, internals.h, ngMode.c: Notice when the
-	server refuses access to a newsgroup when the user attempts to
-	subscribe to it, and abort the subscribe operation.
-
-	* mesg_strings.c, server.c: When an attempt to enter a newsgroup
-	failed because the server denied access to the newsgroup, display
-	a message to that effect and continue, treating the newsgroup as a
-	bad group, rather than aborting the program.
-
-2002-05-13  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* artMode.c: Add some comments documenting what to do if one of
-	the XAW_REDISPLAY_BUG asserts fires off.
-
-	* Imakefile: Disable XAW_REDISPLAY_BUG for XFree86 4.2.0, in which
-	the bug appears to be fixed.
-
-2002-05-03  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-14.
-
-2002-05-03  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* error_hnds.c, internals.c, internals.h: If we need to retry an
-	operation, e.g., because the disk filled up, then instead of
-	cancelling the current prefetch completely while asking the user
-	whether to retry, suspend it instead, using a new function called
-	suspendPrefetch.  This way, we don't mess up the data that we were
-	able to collect before the operation we're retrying failed.
-
-	This fixes a crash that could occur if the disk filled up while
-	attempting to create the cache file whiel prefetching an article
-	for the next newsgroup we're about to read.
-
-	* server.c (get_base_article): Don't start retrieving an article
-	from the server until we've successfully opened the cache file for
-	that article.  Otherwise, we'll leave the server connection in an
-	inconsistent state.
-
-2002-03-18  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* mesg_strings.c: Shorten the attribution lines used in followups
-	and replies.  In this day and age where virtually everyone is
-	using threaded News readers, the message ID in the attribution
-	line is superfluous.  Suggestion from Anton Ertl
-	<anton@a0.complang.tuwien.ac.at>.
-
-	* compose.c: Don't forget to build extra fields for followups and
-	replies when GENERATE_EXTRA_FIELDS is defined.  Bug report from
-	Anton Ertl <anton@a0.complang.tuwien.ac.at>.
-
 2002-01-15  Jonathan Kamens  <jik@kamens.brookline.ma.us>
 
 	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
@@ -110,6 +27,8 @@
 
 	(prefetchSetFetched): Don't try to fetch if the current article
 	number is greater than the last article in the newsgroup.
+
+2001-10-14  Jonathan Kamens  <jik@kamens.brookline.ma.us>
 
 2001-10-14  Jonathan Kamens  <jik@kamens.brookline.ma.us>
 
@@ -1677,4 +1596,4 @@ Tue Nov  8 18:30:03 1994  Jonathan I. Kamens  <jik@cam.ov.com>
 	Always include article text when calling an external editor
 	command.  Fix from per@erix.ericsson.se (Per Hedeland).
 
-# $Id: ChangeLog,v 1.151 2002-05-15 14:13:29 jik Exp $
+# $Id: ChangeLog,v 1.146 2002-01-15 17:47:43 jik Exp $
