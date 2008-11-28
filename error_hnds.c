@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: error_hnds.c,v 1.22 2005-12-01 08:47:56 jik Exp $";
+static char XRNrcsid[] = "$Id: error_hnds.c,v 1.11 1994-12-09 11:43:11 jik Exp $";
 #endif
 
 /*
@@ -50,8 +50,6 @@ static char XRNrcsid[] = "$Id: error_hnds.c,v 1.22 2005-12-01 08:47:56 jik Exp $
 #include "error_hnds.h"
 #include "resources.h"
 #include "newsrcfile.h"
-#include "file_cache.h"
-#include "mesg_strings.h"
 
 
 /*
@@ -124,9 +122,9 @@ void ehInstallErrorHandlers()
 }
 
 
-static RETSIGTYPE sig_catcher _ARGUMENTS((int));
+static int sig_catcher _ARGUMENTS((int));
 
-static RETSIGTYPE sig_catcher(signo)
+static int sig_catcher(signo)
     int signo;
 {
     char buffer[80];
@@ -142,18 +140,16 @@ static RETSIGTYPE sig_catcher(signo)
     ehSignalExitXRN(buffer);
     (void) kill(getpid(), signo);
     /*NOTREACHED*/
-#ifdef SIGFUNC_RETURNS
     return(0);
-#endif
 }
 
 void ehInstallSignalHandlers()
 {
     int i;
-#ifdef SIGFUNC_RETURNS
-    int (*oldcatcher)(int);
+#ifdef VOID_SIGNAL
+    void (*oldcatcher)();
 #else
-    void (*oldcatcher)(int);
+    int (*oldcatcher)();
 #endif
 
     for (i = 1; i <= SIGTERM; i++) {
@@ -175,7 +171,7 @@ void ehInstallSignalHandlers()
 
 	default:
 	    if (! app_resources.dumpCore) {
-		oldcatcher = signal(i, sig_catcher);
+		oldcatcher = signal(i, (SIG_PF0) sig_catcher);
 		if (oldcatcher == SIG_IGN) {
 		    (void) signal(i, SIG_IGN);
 		}
@@ -220,10 +216,8 @@ static void deathNotifier(message)
     };
 
     die = 0;
-
-    cancelPrefetch();
-
-    if (! (XRNState & XRN_X_UP)) {
+    
+    if ((XRNState & XRN_X_UP) != XRN_X_UP) {
 	(void) fprintf(stderr, "xrn: %s\n", message);
 	return;
     }
@@ -234,7 +228,7 @@ static void deathNotifier(message)
 
     while (!die) {
 	XtAppNextEvent(TopContext, &ev);
-	MyDispatchEvent(&ev);
+	XtDispatchEvent(&ev);
     }
 
     return;
@@ -254,10 +248,8 @@ static int retryNotifier(message)
     };
 
     die = retry = 0;
-
-    suspendPrefetch();
-
-    if (! (XRNState & XRN_X_UP)) {
+    
+    if ((XRNState & XRN_X_UP) != XRN_X_UP) {
 	(void) fprintf(stderr, "xrn: %s\n", message);
 	return 0;
     }
@@ -270,14 +262,11 @@ static int retryNotifier(message)
 
     while (!retry && !die) {
 	XtAppNextEvent(TopContext, &ev);
-	MyDispatchEvent(&ev);
+	XtDispatchEvent(&ev);
     }
 
     PopDownDialog(dialog);
-
-    if (retry)
-      resetPrefetch();
-
+    
     return retry;
 }
 
@@ -292,38 +281,35 @@ static void exitXRN(status)
     int status;
 {
     static int beenHere = 0;
-    int do_exit = 0;
 
     /*
      * immediate exit, exitXRN was called as a result of something in
      * itself
      */ 
-    if (beenHere) {
-      do_exit++;
+    if (beenHere == 1) {
+	exit(-1);
     }
-    else {
-      beenHere++;
+    
+    beenHere = 1;
 
-      if ((XRNState & XRN_NEWS_UP) == XRN_NEWS_UP) {
+    if ((XRNState & XRN_NEWS_UP) == XRN_NEWS_UP) {
 	/* XXX is this really needed?  does free files... */
 	releaseNewsgroupResources(CurrentGroup);
 
+#ifdef XRN_PREFETCH  
 	cancelPrefetch();
-	cancelRescanBackground();
-	(void) file_cache_destroy(FileCache);
-	FileCache = 0;
+#endif /* XRN_PREFETCH */
 	if (status != XRN_NORMAL_EXIT_BUT_NO_UPDATE) {
-	  if (status == XRN_NORMAL_EXIT) {
-	    while (!updatenewsrc()) {
-	      ehErrorRetryXRN("Cannot update the newsrc file", True);
+	    if (status == XRN_NORMAL_EXIT) {
+		while (!updatenewsrc()) {
+		    ehErrorRetryXRN("Cannot update the newsrc file", True);
+		}
+	    } else {
+		if (!updatenewsrc()) {
+		    fprintf(stderr, "xrn: .newsrc file update failed\n");
+		}
 	    }
-	  } else {
-	    if (!updatenewsrc()) {
-	      fprintf(stderr, "xrn: .newsrc file update failed\n");
-	    }
-	  }
 	}
-      }
     }
 
     /* clean up the lock */
@@ -332,8 +318,7 @@ static void exitXRN(status)
     /* close down the NNTP server */
     close_server();
 
-    if (do_exit)
-      exit(-1);
+    return;
 }
 
 
@@ -353,17 +338,13 @@ void ehErrorExitXRN(message)
     char *message;
 {
     exitXRN(XRN_ERROR_EXIT);
-    if (message)
-	deathNotifier(message);
+    deathNotifier(message);
     exit(-1);
 }
 
-int ehErrorRetryXRN(
-		    _ANSIDECL(char *,	message),
-		    _ANSIDECL(Boolean,	save)
-		    )
-     _KNRDECL(char *,	message)
-     _KNRDECL(Boolean,	save)
+int ehErrorRetryXRN(message, save)
+    char *message;
+    Boolean save;
 {
     int retry;
      

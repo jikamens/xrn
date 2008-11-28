@@ -5,19 +5,33 @@
 /* classic lex, implied below */
 
 %{
-#include "rcyacc.h"
-#include "newsrcfile.h"
+#if defined(FLEX_SCANNER) && !defined(FLEX_LEX_COMPAT)
+/*
+ * If you get an error on the line below when compiling, the problem
+ * is probably that you are using "flex -l" instead of "flex".  You do
+ * not need to give flex the "-l" argument in order to build this
+ * file.  You can probably solve this problem by (a) deleting
+ * lex.yy.c, (b) adding "LEX=flex" to the Imakefile, (c) rebuilding
+ * the Makefile from the Imakefile (with "xmkmf" or whatever else you
+ * used the first time), and (d) trying to compile again.
+ */
+int yylineno = 1;
+#define YYLINE yylineno++
+#undef yywrap
+#else
+#define YYLINE
+#endif
 %}
 
-%option yylineno
+extern char *XtNewString();
 letter            [a-zA-Z]
 any               [^ \t\n]
 digit             [0-9]
 sep               [:!]
 %%
                   yyin = Newsrcfp;
-^[ \t]*"\n"       ;
-"\n"              return(EOL);
+^[ \t]*"\n"       YYLINE;
+"\n"              {YYLINE; return(EOL); };
 "-"               return(DASH);
 ","               return(COMMA);
 {sep}             {yylval.character = yytext[0]; return(SEPARATOR); };  
@@ -32,12 +46,13 @@ sep               [:!]
                   };
 [ \t]             ;
 ^"options ".*"\n" {
+		    YYLINE;
                     optionsLine = XtNewString((char *) yytext);
                     optionsLine[utStrlen(optionsLine) - 1] = '\0';
                   };
 %%
 /*
- * $Id: rclex.l,v 1.4 2008-11-28 17:48:19 jik Exp $
+ * $Id: newsrc.l,v 1.4 1994-11-23 01:48:17 jik Exp $
  */
 
 /*
@@ -65,7 +80,7 @@ sep               [:!]
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-int yywrap()
+yywrap()
 {
     return(1);
 }
