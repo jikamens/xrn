@@ -1,4 +1,4 @@
-AC_INIT([xrn],[9.03-beta-15])
+AC_INIT([xrn],[10.00-beta-1])
 AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CC
 AC_PROG_CPP

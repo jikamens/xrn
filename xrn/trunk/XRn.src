@@ -1,8 +1,8 @@
 !
 ! $Id: XRn.src,v 1.204 2008-11-28 17:57:52 jik Exp $
 !
-MOTIFxAPP_CLASSx.version:			9.03-beta-15 (Motif)
-XAWxAPP_CLASSx.version:			9.03-beta-15
+MOTIFxAPP_CLASSx.version:			10.00-beta-1 (Motif)
+XAWxAPP_CLASSx.version:			10.00-beta-1
 xAPP_CLASSx.Geometry:			680x700
 *breakLength:			0
 *font:			8x13

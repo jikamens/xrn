@@ -1,5 +1,5 @@
-%define tgz_version 9.03-beta-15
-%define rpm_version 9.03b15
+%define tgz_version 10.00-beta-1
+%define rpm_version 10.00b1
 
 Summary: An X Windows System news reader.
 Name: xrn
