@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: cursor.c,v 1.36 2006-10-17 02:23:12 jik Exp $";
+static char XRNrcsid[] = "$Id: cursor.c,v 1.34 1997-03-03 13:59:26 jik Exp $";
 #endif
 
 /*
@@ -53,7 +53,6 @@ static char XRNrcsid[] = "$Id: cursor.c,v 1.36 2006-10-17 02:23:12 jik Exp $";
 #include "mesg_strings.h"
 #include "Text.h"
 #include "buttons.h"
-#include "file_cache.h"
 
 /*
  * Move the cursor to the beginning of the current line.
@@ -379,13 +378,9 @@ void buildString(newString, first, last, oldString)
 int moveToArticle(newsgroup, artNum, file, ques)
     struct newsgroup *newsgroup;
     long artNum;			/* number of new article */
-    file_cache_file **file;		/* cache file for new article */
-    char **ques;			/* status line for new article */
+    char **file, **ques;		/* filename and status line for new article */
 {
-    (void) fillUpArray(newsgroup, artNum, 0, True, False);
-
-    if (abortP())
-      return ABORT;
+    (void) fillUpArray(newsgroup, artNum, 0, False, False);
 
     if (checkArticle(artNum) != XRN_OKAY)
 	return NOMATCH;

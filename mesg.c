@@ -1,5 +1,7 @@
+
+
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: mesg.c,v 1.28 1998-01-28 21:18:29 jik Exp $";
+static char XRNrcsid[] = "$Id: mesg.c,v 1.26 1997-01-12 03:41:22 jik Exp $";
 #endif
 
 /*
@@ -60,10 +62,14 @@ static char XRNrcsid[] = "$Id: mesg.c,v 1.28 1998-01-28 21:18:29 jik Exp $";
 #include "Text.h"
 #include "ButtonBox.h"
 #include "InfoLine.h"
-#include "InfoDialog.h"
-#include "mesg_strings.h"
 
 char error_buffer[2048];
+/* entire widget */
+static Widget MesgTopLevel = (Widget) 0;
+/* text window */
+static Widget MesgText = (Widget) 0;
+/* amount of text currently in the window */
+static long current_length = 0;
 static char *MesgString = 0;
 
 #ifndef XawFmt8Bit
@@ -77,6 +83,51 @@ static char *MesgString = 0;
  * then someone should be shot!
  */
 static char InfoString[512]; 
+
+BUTTON(mesgDismiss,dismiss);
+BUTTON(mesgClear,clear);
+
+/*ARGSUSED*/
+void mesgDismissFunction(widget, event, string, count)
+    Widget widget;
+    XEvent *event;
+    String *string;
+    Cardinal *count;
+{
+    XtPopdown(MesgTopLevel);
+    TextDestroy(MesgText);
+    XtDestroyWidget(MesgTopLevel);
+    MesgTopLevel = (Widget) 0;
+    MesgText = (Widget) 0;
+    current_length = 0;
+    return;
+}
+
+void mesgClearFunction(widget, event, string, count)
+    Widget widget;
+    XEvent *event;
+    String *string;
+    Cardinal *count;
+{
+    TextClear(MesgText);
+    current_length = 0;
+    return;
+}
+
+static void displayMesgString _ARGUMENTS((char *new_string));
+
+static void displayMesgString(new_string)
+    char *new_string;
+{
+    long newlen = strlen(new_string);
+
+    if (! MesgText)
+	return;
+
+    TextReplace(MesgText, new_string, newlen, current_length, current_length);
+    current_length += newlen;
+    TextSetInsertionPoint(MesgText, current_length);
+}
 
 
 int newMesgPaneName()
@@ -111,12 +162,14 @@ va_dcl
  */
 {
     va_list args;
+    Widget pane, buttonBox, label, button;
     static int last_name = 0;
+    static Arg shellArgs[] = {
+	{XtNinput, (XtArgVal) True},
+    };
     time_t tm;
     char *time_str;
     char addBuff[MESG_SIZE];
-    static Boolean intro_displayed = False;
-    char *separator = "\n--------\n";
 
     if (name && last_name && (name == last_name))
 	type |= XRN_APPEND;
@@ -147,15 +200,40 @@ va_dcl
     time_str += 11; /* Skip over the day and date */
     time_str[8] = '\0'; /* We only want the time, not the year and the newline */
 
-    InfoDialogCreate(TopLevel);
+    if (MesgTopLevel == (Widget) 0) {
+	MesgTopLevel = XtCreatePopupShell("Information", topLevelShellWidgetClass,
+					  TopLevel, shellArgs, XtNumber(shellArgs));
 
-    if (! (MesgLength() || MesgString)) {
+	pane = XtVaCreateManagedWidget("pane", panedWidgetClass, MesgTopLevel,
+				       NULL);
+
+	label = InfoLineCreate("label", 0, pane);
+
+	MesgText = TextCreate("text", True, pane);
+
+	buttonBox = ButtonBoxCreate("box", pane);
+
+	button = ButtonBoxAddButton("mesgDismiss", mesgDismissCallbacks,
+				    buttonBox);
+	makeDefaultButton(button);
+
+	(void) ButtonBoxAddButton("mesgClear", mesgClearCallbacks,
+				  buttonBox);
+
+	ButtonBoxDoneAdding(buttonBox);
+
+	XtRealizeWidget(MesgTopLevel);
+	XtSetKeyboardFocus(MesgTopLevel, MesgText);
+	XtInstallAccelerators(MesgText, button);
+
+	XDefineCursor(XtDisplay(MesgTopLevel), XtWindow(MesgTopLevel),
+		      XCreateFontCursor(XtDisplay(MesgTopLevel), XC_left_ptr));
+
+	XtPopup(MesgTopLevel, XtGrabNone);
+    }
+
+    if (! (current_length || MesgString)) {
 	(void) sprintf(addBuff, "%s: ", time_str);
-	if (! intro_displayed) {
-	  intro_displayed = True;
-	  (void) sprintf(&addBuff[strlen(addBuff)], "%s%s%s: ",
-			 MESG_PANE_DISMISS_MSG, separator, time_str);
-	}
     }
     else if (type & XRN_SAME_LINE) {
 	*addBuff = '\0';
@@ -164,7 +242,7 @@ va_dcl
 	(void) sprintf(addBuff, "\n%8s  ", "");
     }
     else {
-	(void) sprintf(addBuff, "%s%s: ", separator, time_str);
+	(void) sprintf(addBuff, "\n--------\n%s: ", time_str);
     }
 
     (void) vsprintf(&addBuff[strlen(addBuff)], fmtString, args);
@@ -201,7 +279,7 @@ void _info(
 		info_widget = TopInfoLine;
 		if (! TopInfoLine)
 		    return;
-		InfoLineSet(TopInfoLine, msg);
+		XtVaSetValues(TopInfoLine, XtNlabel, (XtArgVal) msg, 0);
 
 		if (now) {
 		    xthHandlePendingExposeEvents();

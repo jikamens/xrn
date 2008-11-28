@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: Buttons.c,v 1.2 1997-03-30 15:28:40 jik Exp $";
+static char XRNrcsid[] = "$Id: buttons.c,v 1.68 1997-03-02 17:59:32 jik Exp $";
 #endif
 
 /*
@@ -263,7 +263,7 @@ void setButtonActive(
 		     _ANSIDECL(char *,		name),
 		     _ANSIDECL(Boolean,		active)
 		     )
-     _KNRDECL(ButtonList *,	list)
+     _KNRDECL(ButtonList,	list)
      _KNRDECL(char *,		name)
      _KNRDECL(Boolean,		active)
 {
