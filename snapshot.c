@@ -43,7 +43,6 @@ void groupSnapshotSave(newsgroup)
 	mask = 1 << bit;
 	if (IS_READ(art))
 	    statuses[byte] |= mask;
-	ART_STRUCT_UNLOCK;
     }
 }
 

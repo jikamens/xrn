@@ -1,7 +1,7 @@
 LAST_REL =		LAST_REL
 CURRENT_REL =		CURRENT_REL
 TAR_FILE =		xrn-$(NEW_VERSION).tgz
-PATCH_FILE =		xrn-$(OLD_VERSION)-$(NEW_VERSION).patch
+PATCH_FILE =		xrn.patch
 RCS_FILES = 		$(shell find . -name '*,v' -print)
 ifeq ($(shell uname),Linux)
 TAR =			tar
@@ -9,8 +9,7 @@ else
 TAR =			gtar
 endif
 CHECKED_OUT_FILES =	$(shell rlog -R -L $(RCS_FILES))
-LIST_TAR =		$(TAR) --list --gzip --file $(TAR_FILE) | \
-			sed -e '/\/$$/d' -e 's,^[^/]*/,,'
+LIST_TAR =		$(TAR) --list --gzip --file $(TAR_FILE) | sed '/\/$$/d'
 LIST_SHAR_FILES =	$(TAR) --list --gzip --file $(TAR_FILE) | \
 				sed -e '/^\.\/$$/d' -e 's/\/$$//'
 SHAR_PARTS =		$(shell ls part?? | tail -1 | sed 's/part//')
@@ -18,7 +17,7 @@ MAKEKIT =		makekit
 PATCH_H =		patchlevel.h
 VERSION_FILES =		XRn.src patchlevel.h xrn-man.src
 SED_VERS_STRING=	sed -n -e 's/.*"\([^ ]*\)"$$/\1/p'
-OLD_VERSION=		$(shell co -p$(LAST_REL) patchlevel.h 2>/dev/null | \
+OLD_VERSION=		$(shell co -p$(CURRENT_REL) patchlevel.h | \
 			$(SED_VERS_STRING))
 NEW_VERSION=		$(shell $(SED_VERS_STRING) patchlevel.h)
 ifndef RCS_LABEL
@@ -56,13 +55,11 @@ endif
 	mkdir $(SRCTMP)
 	$(TAR) --create --exclude Attic --exclude RCS --exclude '*~' \
 		--exclude '.#*' --exclude '*/.#*' --exclude TAGS \
-		--exclude '*.tgz' --exclude '*.patch' --exclude '*.patch.gz' \
-		--exclude '*.orig' \
+		--exclude $(TAR_FILE) \
+		--exclude $(PATCH_FILE) --exclude '*.orig' \
 		--exclude '*.rej' --exclude Makefile.dist \
 		--exclude .purify --exclude xrn-linux.lsm \
 		--exclude 'part*' --exclude shar --exclude .gdbinit \
-		--exclude gnksa-logos \
-		--exclude xrn.spec \
 		--verbose . | $(TAR) --directory=$(SRCTMP) --extract
 	tar --directory=$(dir $(SRCTMP)) --create --gzip \
 		--file=$(notdir $(SRCTMP)).tgz $(notdir $(SRCTMP))

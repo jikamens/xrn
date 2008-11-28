@@ -2,7 +2,7 @@
 #define SERVER_H
 
 /*
- * $Id: server.h,v 1.37 2006-01-03 16:16:43 jik Exp $
+ * $Id: server.h,v 1.33 1999-01-03 16:02:26 jik Exp $
  */
 
 /*
@@ -128,11 +128,5 @@ extern int parse_active_line _ARGUMENTS((char *, unsigned char,
 					 struct newsgroup **));
 extern char *unparse_active_line _ARGUMENTS((struct newsgroup *));
 extern int active_read;
-
-/* If the server returns code 502, it could mean one of two things --
-   either the user's authentication failed, or the user was denied
-   access to a specific resource.  This boolean is true in the former
-   case and false in the latter. */
-extern Boolean authentication_failure;
 
 #endif /* SERVER_H */
