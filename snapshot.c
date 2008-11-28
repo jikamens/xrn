@@ -1,14 +1,10 @@
 #include <X11/Intrinsic.h>
-#if XtSpecificationRelease > 4	/* X11R4 didn't have this? */
 #include <X11/Xfuncs.h>
-#endif
 #include <assert.h>
 
-#include "config.h"
 #include "snapshot.h"
 #include "newsrcfile.h"
 #include "news.h"
-#include "artstruct.h"
 #include "utils.h"
 
 static char *	group;
@@ -25,7 +21,6 @@ void groupSnapshotSave(newsgroup)
     struct newsgroup *newsgroup;
 {
     int i, byte, bit, mask;
-    struct article *art;
 
     FREE(group);
     FREE(statuses);
@@ -37,13 +32,11 @@ void groupSnapshotSave(newsgroup)
     statuses = XtCalloc(1, (last - first + 1) / 8 + 1);
 
     for (i = first; i <= last; i++) {
-	art = artStructGet(newsgroup, i, False);
 	byte = (i - first) / 8;
 	bit = (i - first) % 8;
 	mask = 1 << bit;
-	if (IS_READ(art))
+	if (IS_READ(newsgroup->articles[INDEX(i)]))
 	    statuses[byte] |= mask;
-	ART_STRUCT_UNLOCK;
     }
 }
 
@@ -72,21 +65,18 @@ void groupSnapshotRestore(newsgroup)
     struct newsgroup *newsgroup;
 {
     int i, byte, bit, mask;
-    struct article *art, copy;
 
-    assert(group && !strcmp(group, newsgroup->name) && (first == newsgroup->first) && (last == newsgroup->last));
+    assert(group && !strcmp(group, newsgroup->name) &&
+	   (first == newsgroup->first) && (last == newsgroup->last));
 
     for (i = first; i <= last; i++) {
-	art = artStructGet(newsgroup, i, False);
-	copy = *art;
 	byte = (i - first) / 8;
 	bit = (i - first) % 8;
 	mask = 1 << bit;
 	if (statuses[byte] & mask)
-	    SET_READ(&copy);
+	    SET_READ(newsgroup->articles[INDEX(i)]);
 	else
-	    SET_UNREAD(&copy);
-	artStructReplace(newsgroup, &art, &copy, i);
+	    SET_UNREAD(newsgroup->articles[INDEX(i)]);
     }
 
     groupSnapshotFree(newsgroup);

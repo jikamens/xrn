@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: xrn.c,v 1.36 2005-12-01 08:49:34 jik Exp $";
+static char XRNrcsid[] = "$Id: xrn.c,v 1.21 1995-01-25 03:17:52 jik Exp $";
 #endif
 
 /*
@@ -36,10 +36,14 @@ static char XRNrcsid[] = "$Id: xrn.c,v 1.36 2005-12-01 08:49:34 jik Exp $";
 #include "config.h"
 #include "utils.h"
 #include <X11/Xos.h>
-#include <X11/Intrinsic.h> /* so we have Widget */
-#ifdef MOTIF
-# include <Xm/Xm.h>
-#endif
+#include <X11/Intrinsic.h>
+#include <X11/Xutil.h>
+#include <X11/StringDefs.h>
+#include <X11/Shell.h>
+
+#include <X11/Xaw/Paned.h>
+#include <X11/Xaw/Label.h>
+#include <X11/Xaw/Box.h>
 
 #include "news.h"
 #include "xthelper.h"
@@ -52,10 +56,8 @@ static char XRNrcsid[] = "$Id: xrn.c,v 1.36 2005-12-01 08:49:34 jik Exp $";
 #include "xrn.h"
 #include "compose.h"
 #include "mesg_strings.h"
-#include "InfoLine.h"
-#include "Frame.h"
+#include "Text.h"
 #include "ngMode.h"
-#include "file_cache.h"
 
 #ifdef XFILESEARCHPATH
 static void AddPathToSearchPath _ARGUMENTS((char *));
@@ -65,26 +67,55 @@ static void AddPathToSearchPath _ARGUMENTS((char *));
 
 Widget TopLevel;
 XtAppContext TopContext;
+Widget Frame;
+Widget TopButtonBox;    /* button box containing the command buttons */
+Widget BottomButtonBox; /* button box containing the article specific buttons */
 Widget TopInfoLine;      /* top button info line                      */
 Widget BottomInfoLine;   /* bottom button info line                   */
+Widget Text;             /* newsgroup and article subject display     */
+Widget ArticleText;      /* article display                           */
 
 int XRNState;            /* XRN status: news and x                    */
 
 int inchannel, outchannel;
-file_cache FileCache;
 
 /*ARGSUSED*/
 int main(argc, argv)
     int argc;
     char **argv;
 {
-    Widget frame;
+    static Arg frameArgs[] = {			/* main window description */
+	{XtNx, (XtArgVal) 10},
+	{XtNy, (XtArgVal) 10},
+	{XtNheight, (XtArgVal) 800},
+	{XtNwidth, (XtArgVal) 680},
+    };
+#ifdef TITLEBAR
+    Widget titlebar;
+#endif
+    static Arg labelArgs[] = {
+	{XtNlabel, (XtArgVal) ""},
+    };
+    static Arg boxArgs[] = {
+	/* Only the button boxes should resizeToPreferred */
+	{XtNresizeToPreferred, (XtArgVal) True},
+	{XtNskipAdjust, (XtArgVal) True}, /* skipAdjust DOESN'T REALLY EXIST */
+    };
+#if 0
+    /* See below for why these are disabled. */
+    XtWidgetGeometry intended, return_geometry;
+    Arg sizeArgs[2];
+#endif
+    Arg fontArgs[1];
 
     int sv[2];
+    Dimension height;
 
     pipe (sv);
     inchannel = sv[0];
     outchannel = sv[1];
+
+
 
     XRNState = 0;
 
@@ -94,73 +125,156 @@ int main(argc, argv)
     
     TopLevel = Initialize(argc, argv);
 
-    if (app_resources.cacheFilesMaxFiles < 10)
-      app_resources.cacheFilesMaxFiles = 10;
-    if (app_resources.cacheFilesMaxSize < 0)
-      app_resources.cacheFilesMaxSize = 1;
-    
     ehInstallSignalHandlers();
     ehInstallErrorHandlers();
 
-    FileCache = file_cache_create(app_resources.tmpDir, "xrn",
-				  app_resources.cacheFilesMaxFiles,
-				  app_resources.cacheFilesMaxSize);
-
     if (app_resources.geometry != NIL(char)) {
-       GetMainFrameSize(TopLevel, (app_resources.geometry));
+	int bmask;
+	bmask = XParseGeometry(app_resources.geometry,       /* geometry specification */
+			       (int *) &frameArgs[0].value,    /* x      */
+			       (int *) &frameArgs[1].value,    /* y      */
+			       (unsigned int *) &frameArgs[3].value,    /* width  */
+			       (unsigned int *) &frameArgs[2].value);   /* height */
+
+	/* handle negative x and y values */
+	if ((bmask & XNegative) == XNegative) {
+	    frameArgs[0].value += (XtArgVal) DisplayWidth(XtDisplay(TopLevel),
+							  DefaultScreen(XtDisplay(TopLevel)));
+	    frameArgs[0].value -= (int) frameArgs[3].value;
+	}
+	if ((bmask & YNegative) == YNegative) {
+	    frameArgs[1].value += (XtArgVal) DisplayHeight(XtDisplay(TopLevel),
+							   DefaultScreen(XtDisplay(TopLevel)));
+	    frameArgs[1].value -= (int) frameArgs[2].value;
+	}
     }
     
     /* create the pane and its widgets */
 
-    frame = CreateMainFrame(TopLevel);
+    Frame = XtCreateManagedWidget("vpane", panedWidgetClass, TopLevel,
+				  frameArgs, XtNumber(frameArgs));
 
-    TopInfoLine = InfoLineCreate("info", "", frame);
-    BottomInfoLine = 0;
-    
+#ifdef TITLEBAR
+    XtSetArg(labelArgs[0], XtNlabel, app_resources.title);
+    titlebar = XtCreateManagedWidget("titlebar", labelWidgetClass, Frame,
+				     labelArgs, XtNumber(labelArgs));
+#endif /* TITLEBAR */
+
+    XtSetArg(labelArgs[0], XtNlabel, "");
+
+    Text = TextCreate("index", True, Frame);
+    TextSetLines(Text, app_resources.topLines);
+
+    TopInfoLine = XtCreateManagedWidget("indexinfo", labelWidgetClass, Frame,
+					labelArgs, XtNumber(labelArgs));
+
+    TopButtonBox = XtCreateManagedWidget("indexbuttons", boxWidgetClass, Frame,
+					  boxArgs, XtNumber(boxArgs));
+
+    /* article display text window */
+    ArticleText = TextCreate("articleText", True, Frame);
+
+    BottomInfoLine = XtCreateManagedWidget("textinfo", labelWidgetClass, Frame,
+					   labelArgs, XtNumber(labelArgs));
+
+    BottomButtonBox = XtCreateManagedWidget("textbuttons", boxWidgetClass, Frame,
+					     boxArgs, XtNumber(boxArgs));
+
     createButtons();
 
     /* create the icon */
     xmIconCreate();
 
-    XrnAddCloseCallbacks(TopLevel);
+#ifdef TITLEBAR
+    XtSetArg(fontArgs[0], XtNheight, (XtPointer) &height);
+    XtGetValues(titlebar, fontArgs, XtNumber(fontArgs));
+    XawPanedSetMinMax(titlebar, (int) height, (int) height);
+#endif /* TITLEBAR */
+
+    XtSetArg(fontArgs[0], XtNheight, &height);
+    XtGetValues(TopInfoLine, fontArgs, XtNumber(fontArgs));
+    XawPanedSetMinMax(TopInfoLine, (int) height, (int) height);
+    
+    XtSetArg(fontArgs[0], XtNheight, &height);
+    XtGetValues(BottomInfoLine, fontArgs, XtNumber(fontArgs));
+    XawPanedSetMinMax(BottomInfoLine, (int) height, (int) height);
+    XtSetKeyboardFocus(Frame, ArticleText);
+    
+    /*
+     * This next call doesn't do anything by default, unless you
+     * modify the application defaults file, because there are no
+     * accelerators for Text in it.  However, it makes it possible for
+     * users to add accelerators to their own resources, so that, for
+     * example, they can use the arrow keys to scroll through the
+     * index window rather than through the article text.  To do that,
+     * they would put the following in their resources:
+     *
+     * xrn*index.accelerators: #override \n\
+     * 		<Key>Down:	next-line() \n\
+     * 		<Key>Up:	previous-line()
+     */
+    XtInstallAccelerators(ArticleText, Text);
+
+#if XtSpecificationRelease > 5
+    XtAddCallback(TopLevel, XtNsaveCallback, saveNewsrcCB, NULL);
+    XtAddCallback(TopLevel, XtNdieCallback, ehDieCB, NULL);
+#endif /* X11R6 or greater */
 
     /*
-      Be sure that initializeNews() and determineMode() get called after
-      the main window is already realized.  -- jik 11/13/94
+      I'm #if 0'ing this code out, because as far as I can tell, now
+      that I've moved things around so that initializeNews() and
+      determineMode() get called after the main window is already
+      realized, this code is no longer necessary.  Disabling it causes
+      no problems under X11R6; if it causes problems for you under
+      X11R5 or X11R4, let me know. -- jik 11/13/94
       */
+#if 0
+    /* Get the top button box to start out the right size. This is a */
+    /* somewhat gross hack, but it does do the job.		     */
+    intended.request_mode = CWWidth | XtCWQueryOnly;
+    XtSetArg(sizeArgs[0], XtNwidth, &intended.width);
+    XtGetValues(TopButtonBox, sizeArgs, 1);
+    XtQueryGeometry(TopButtonBox, &intended, &return_geometry);
+    XtSetArg(sizeArgs[0], XtNheight, return_geometry.height);
+    XtSetValues(TopButtonBox, sizeArgs, 1);
+    /* Let's do a similar gross hack for the bottom button box */
+    XtSetArg(sizeArgs[0], XtNwidth, &intended.width);
+    XtGetValues(BottomButtonBox, sizeArgs, 1);
+    XtQueryGeometry(BottomButtonBox, &intended, &return_geometry);
+    XtSetArg(sizeArgs[0], XtNheight, return_geometry.height);
+    XtSetValues(BottomButtonBox, sizeArgs, 1);
+#endif
     
     XtRealizeWidget(TopLevel);
     XRNState |= XRN_X_UP;
-    xthWaitForMapped(TopLevel, False);
-#ifdef MOTIF
-    XmUpdateDisplay(TopLevel);
-#endif
+    xthWaitForMapped(TopLevel);
 
     /* initialize the news system, read the newsrc file */
     initializeNews();
     XRNState |= XRN_NEWS_UP;
 
     /* set up the text window, mode buttons, and question */
-    determineMode(True);
+    determineMode();
 
-    xrnUnbusyCursor();
+    unbusyCursor();
+    addTimeOut();
 
     if (app_resources.version == 0) {
-	mesgPane(XRN_SERIOUS, 0, NO_APP_DEFAULTS_MSG);
-    } else if (strcmp(app_resources.version, PACKAGE_VERSION) != 0) {
-	mesgPane(XRN_SERIOUS, 0, NO_APP_DEFAULTS_MSG);
+	mesgPane(XRN_SERIOUS, 0, NO_APP_DEFAULTS_MSG,
+		 "XRn", "XRn"
+	    );
+    } else if (strcmp(app_resources.version, XRN_VERSION) != 0) {
+	mesgPane(XRN_SERIOUS, 0, NO_APP_DEFAULTS_MSG,
+		 "XRn", "XRn"
+	    );
 	mesgPane(XRN_SERIOUS | XRN_APPEND, 0, VERSIONS_MSG, app_resources.version,
-		 PACKAGE_VERSION);
+		 XRN_VERSION);
     }
 
     XtAppAddInput(TopContext,
                 inchannel, (XtPointer) XtInputReadMask, processMessage, (XtPointer) 0);
 
-#if XtSpecificationRelease < 6
-    MyMainLoop(TopContext);
-#else
     XtAppMainLoop(TopContext);
-#endif
     exit(0);
 }       
 
@@ -207,30 +321,3 @@ static void AddPathToSearchPath(path)
 }
 #endif
 
-#if XtSpecificationRelease < 6
-static XEvent last_event;
-
-XEvent *XtLastEventProcessed(display)
-     Display *display;
-{
-  return &last_event;
-}
-
-void MyMainLoop(app)
-     XtAppContext app;
-{
-  XEvent event;
-
-  for (;;) {
-    XtAppNextEvent(app, &event);
-    MyDispatchEvent(&event);
-  }
-}
-
-Boolean MyDispatchEvent(event)
-     XEvent *event;
-{
-  last_event = *event;
-  return XtDispatchEvent(event);
-}
-#endif /* XtSpecificationRelease < 6 */

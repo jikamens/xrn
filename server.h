@@ -2,7 +2,7 @@
 #define SERVER_H
 
 /*
- * $Id: server.h,v 1.37 2006-01-03 16:16:43 jik Exp $
+ * $Id: server.h,v 1.7 1995-01-25 03:17:52 jik Exp $
  */
 
 /*
@@ -36,8 +36,6 @@
  */
 
 #include "codes.h"
-#include "news.h"
-#include "file_cache.h"
 
 /*
  * function definitions for the nntp server (in nntp/clientlib.c)
@@ -48,64 +46,47 @@ extern int get_server _ARGUMENTS((char *,int));
 extern char *getserverbyfile _ARGUMENTS((char *));
 extern void put_server _ARGUMENTS((char *));
 extern int server_init _ARGUMENTS((char *));
-extern void start_server _ARGUMENTS((void));
+extern void start_server _ARGUMENTS((char *));
 extern void stop_server _ARGUMENTS((void));
 
-/* Find out if a group exists, and if it doesn't and the active file
-   hasn't been read, then read it. */
-extern Boolean verifyGroup _ARGUMENTS((char *, struct newsgroup **,
-				       Boolean));
-   
 /* get the list of active news groups from the news server */
-extern void getactive _ARGUMENTS((Boolean));
+extern void getactive _ARGUMENTS((void));
 
 /* see if the subscribed to groups have 0 or 1 article */
 extern void badActiveFileCheck _ARGUMENTS((void));
 
 /* get a single article in the current group from the news server */
-extern file_cache_file *getarticle _ARGUMENTS((struct newsgroup *, art_num,
-					       long *, int));
+extern char *getarticle _ARGUMENTS((struct newsgroup *, art_num, long *, int, int, int));
 
-#define FULL_HEADER   (1<<0)
-#define XLATED        (1<<1)
-#define ROTATED       (1<<2)
-#define PAGEBREAKS    (1<<3)
-#define BACKSPACES    (1<<4)
+#define FULL_HEADER   1
+#define NORMAL_HEADER 2
+#define NOT_ROTATED   1
+#define XLATED        2
+#define NOT_XLATED    1
+#define ROTATED       2
 
 /*
  * tell the server that the next set of article requests will be for this group
  *  returns NO_GROUP on failure
  */
-extern int getgroup _ARGUMENTS((struct newsgroup *,art_num *,art_num *,
-				int *, Boolean));
+extern int getgroup _ARGUMENTS((struct newsgroup *,art_num *,art_num *, int *));
 
 /* get a list of subject lines for a range of articles in the current group from the server */
 extern Boolean getsubjectlist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-					  Boolean, int *));
-extern Boolean getnewsgroupslist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-					     Boolean, int *));
+					  /* Boolean */ int, int));
 extern Boolean getauthorlist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-					 Boolean, int *));
+					 /* Boolean */ int, int));
 extern Boolean getlineslist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-					Boolean, int *));
-extern Boolean getdatelist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-				       Boolean, int *));
-extern Boolean getidlist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-				     Boolean, int *));
-extern Boolean getreflist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-				      Boolean, int *));
-extern Boolean getxreflist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-				       Boolean, int *));
-extern Boolean getapprovedlist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-					   Boolean, int *));
+					/* Boolean */ int, int));
 
 
 /* xhdr commands */
 extern void xhdr _ARGUMENTS((struct newsgroup *, art_num, char *, char **));
-extern char *xhdr_id _ARGUMENTS((struct newsgroup *, char *, char *, long *));
 
 /* post article */
 extern int postArticle _ARGUMENTS((char *,int, char **));
+
+extern struct article *getarticles _ARGUMENTS((struct newsgroup *));
 
 #define XRN_MAIL	 0
 #define XRN_NEWS	 1
@@ -113,26 +94,5 @@ extern int postArticle _ARGUMENTS((char *,int, char **));
 #define POST_FAILED      0
 #define POST_OKAY        1
 #define POST_NOTALLOWED  2
-
-extern Boolean ServerDown, PostingAllowed;
-extern int server_page_height;
-
-/* parse_active_line return values */
-
-#define ACTIVE_IGNORED	0
-#define ACTIVE_BOGUS	1
-#define ACTIVE_NEW	2
-#define ACTIVE_OLD	3
-
-extern int parse_active_line _ARGUMENTS((char *, unsigned char,
-					 struct newsgroup **));
-extern char *unparse_active_line _ARGUMENTS((struct newsgroup *));
-extern int active_read;
-
-/* If the server returns code 502, it could mean one of two things --
-   either the user's authentication failed, or the user was denied
-   access to a specific resource.  This boolean is true in the former
-   case and false in the latter. */
-extern Boolean authentication_failure;
 
 #endif /* SERVER_H */

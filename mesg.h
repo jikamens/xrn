@@ -4,7 +4,7 @@
 #include "butdefs.h"
 
 /*
- * $Id: mesg.h,v 1.15 1997-01-12 03:41:22 jik Exp $
+ * $Id: mesg.h,v 1.12 1995-01-25 03:17:52 jik Exp $
  */
 
 /*
@@ -37,14 +37,13 @@
  *
  */
 
-#define XRN_INFO 	(1<<0)
-#define XRN_SERIOUS 	(1<<1)
-#define XRN_APPEND	(1<<2)
-#define XRN_SAME_LINE	(1<<3)
-#define XRN_WARNING	(1<<4)
+#define XRN_INFO 	1<<0
+#define XRN_SERIOUS 	1<<1
+#define XRN_APPEND	1<<2
+#define XRN_SAME_LINE	1<<3
 
-extern void _info _ARGUMENTS((char *, Boolean));
-#define INFO(msg) _info((msg), False)
+extern void _info _ARGUMENTS((char *, /* Boolean */ int));
+#define info(msg) _info((msg), False)
 #define infoNow(msg) _info((msg), True)
 
 extern void mesgPane _VARARGUMENTS((int, int, char *, ...));
