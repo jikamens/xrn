@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: error_hnds.c,v 1.22 2005-12-01 08:47:56 jik Exp $";
+static char XRNrcsid[] = "$Id: error_hnds.c,v 1.21 2002-05-03 17:44:56 jik Exp $";
 #endif
 
 /*
@@ -124,9 +124,9 @@ void ehInstallErrorHandlers()
 }
 
 
-static RETSIGTYPE sig_catcher _ARGUMENTS((int));
+static int sig_catcher _ARGUMENTS((int));
 
-static RETSIGTYPE sig_catcher(signo)
+static int sig_catcher(signo)
     int signo;
 {
     char buffer[80];
@@ -142,18 +142,16 @@ static RETSIGTYPE sig_catcher(signo)
     ehSignalExitXRN(buffer);
     (void) kill(getpid(), signo);
     /*NOTREACHED*/
-#ifdef SIGFUNC_RETURNS
     return(0);
-#endif
 }
 
 void ehInstallSignalHandlers()
 {
     int i;
-#ifdef SIGFUNC_RETURNS
-    int (*oldcatcher)(int);
+#ifdef VOID_SIGNAL
+    void (*oldcatcher)();
 #else
-    void (*oldcatcher)(int);
+    int (*oldcatcher)();
 #endif
 
     for (i = 1; i <= SIGTERM; i++) {
@@ -175,7 +173,7 @@ void ehInstallSignalHandlers()
 
 	default:
 	    if (! app_resources.dumpCore) {
-		oldcatcher = signal(i, sig_catcher);
+		oldcatcher = signal(i, (SIG_PF0) sig_catcher);
 		if (oldcatcher == SIG_IGN) {
 		    (void) signal(i, SIG_IGN);
 		}

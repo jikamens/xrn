@@ -37,12 +37,11 @@
 #include "sort.h"
 #include "artstruct.h"
 #include "internals.h"
+#include "getdate.h"
 #include "mesg.h"
 #include "mesg_strings.h"
 #include "hash.h"
 #include "resources.h"
-
-extern time_t get_date _ARGUMENTS((char *));
 
 #define SUB_SORT_WIDTH 24
 

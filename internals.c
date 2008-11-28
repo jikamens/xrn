@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: internals.c,v 1.244 2005-10-06 12:35:57 jik Exp $";
+static char XRNrcsid[] = "$Id: internals.c,v 1.240 2002-05-03 17:44:56 jik Exp $";
 #endif
 
 /*
@@ -1114,7 +1114,6 @@ char *stringToRegexp(input, max_length)
 {
     static char output[BUFFER_SIZE];
     char *inptr, *outptr;
-    int back;
 
     max_length -= 2; /* to make room for braces */
     
@@ -1135,7 +1134,6 @@ char *stringToRegexp(input, max_length)
 	case '$':
 	    *outptr++ = '\\';
 	    *outptr = *inptr;
-	    back = 1;
 	    break;
 	/*
 	  Some characters can't be backslashed, because they are
@@ -1169,17 +1167,13 @@ char *stringToRegexp(input, max_length)
 	    *outptr++ = '[';
 	    *outptr++ = *inptr;
 	    *outptr = ']';
-	    back = 2;
 	    break;
 	default:
 	    *outptr = *inptr;
-	    back = 0;
 	    break;
 	}
-	if (outptr - output >= max_length) {
-	  outptr -= back;
+	if (outptr - output >= max_length)
 	  break;
-	}
     }
     *outptr = '\0';
     return output;
@@ -2242,17 +2236,20 @@ void catchUp()
 /*
  * subscribe to a specified newsgroup
  *
- *   returns: true on success, false on failure
+ *   returns: void
  *
  */
-static Boolean subscribe_group _ARGUMENTS((struct newsgroup *));
+static void subscribe_group _ARGUMENTS((struct newsgroup *));
 
-static Boolean subscribe_group(newsgroup)
+static void subscribe_group(newsgroup)
     struct newsgroup *newsgroup;
 {
     if (!IS_SUBSCRIBED(newsgroup)) {
 	art_num first, last;
 	int number;
+
+	if (IS_NOENTRY(newsgroup))
+	    addToNewsrcEnd(newsgroup->name, SUBSCRIBE);
 
 	/*
 	  Update the first and last article numbers for the newsgroup,
@@ -2262,22 +2259,18 @@ static Boolean subscribe_group(newsgroup)
 	    SET_SUB(newsgroup);
 	    articleArrayResync(newsgroup, first, last, number);
 	    (void) updateArticleArray(newsgroup, False);
-	    return True;
 	}
-	else
-	  return False;
     }
-    return True;
+    return;
 }
 
 
 /*
   subscribe to the current newsgroup
-  returns: true on success, false on failure
   */
-Boolean subscribe()
+void subscribe()
 {
-    return subscribe_group(CurrentGroup);
+    subscribe_group(CurrentGroup);
 }
 
 
@@ -2988,6 +2981,10 @@ Boolean updateArticleArray(
     int number;
 #endif
 
+    if (newsgroup->last == 0) {
+	return True;
+    }
+
 #define CHECK_CACHED(label) \
     if (newsgroup->from_cache) { \
 	art_num first, last; \
@@ -3009,7 +3006,7 @@ Boolean updateArticleArray(
     }
 
 empty_retry:
-    if ((newsgroup->last == 0) || EMPTY_GROUP(newsgroup)) {
+    if (EMPTY_GROUP(newsgroup)) {
       CHECK_CACHED(empty_retry);
 	artListFree(newsgroup);
 	return True;
@@ -3179,13 +3176,12 @@ int addToNewsrcBeginning(newGroup, status)
     return BAD_GROUP;
   }
     
+  CLEAR_NOENTRY(newsgroup);
   if (status == SUBSCRIBE) {
-    if (! subscribe_group(newsgroup))
-      return BAD_GROUP;
+    subscribe_group(newsgroup);
   } else {
     SET_UNSUB(newsgroup);
   }
-  CLEAR_NOENTRY(newsgroup);
   if (newsgroup->newsrc == NOT_IN_NEWSRC) {
     for (i = MaxGroupNumber - 1; i != NOT_IN_NEWSRC; i--) {
       Newsrc[i + 1] = Newsrc[i];
@@ -3219,13 +3215,12 @@ int addToNewsrcEnd(newGroup, status)
       return BAD_GROUP;
     }
     
-    if (status == SUBSCRIBE) {
-      if (! subscribe_group(newsgroup))
-	return BAD_GROUP;
-    } else {
-      SET_UNSUB(newsgroup);
-    }
     CLEAR_NOENTRY(newsgroup);
+    if (status == SUBSCRIBE) {
+	subscribe_group(newsgroup);
+    } else {
+	SET_UNSUB(newsgroup);
+    }
     if (newsgroup->newsrc == NOT_IN_NEWSRC) {
       INC_MAXGROUPNUMBER();
     } else {
@@ -3255,13 +3250,12 @@ int addToNewsrcAfterGroup(newGroup, afterGroup, status)
       return BAD_GROUP;
     }
     
+    CLEAR_NOENTRY(newsgroup);
     if (status == SUBSCRIBE) {
-      if (! subscribe_group(newsgroup))
-	return BAD_GROUP;
+	subscribe_group(newsgroup);
     } else {
 	SET_UNSUB(newsgroup);
     }
-    CLEAR_NOENTRY(newsgroup);
 
     if (! avl_lookup(NewsGroupTable, afterGroup, (char **) &ng)) {
       Boolean no_group = True;
@@ -4037,9 +4031,6 @@ int enterNewsgroup(name, flags)
 
     if (! IS_SUBSCRIBED(newsgroup)) {
 	if (flags & ENTER_UNSUBBED) {
-	    if (! updateArticleArray(newsgroup, flags & ENTER_SETUP)) {
-	      return BAD_GROUP;
-	    }
 	    if (flags & ENTER_SUBSCRIBE) {
 		if (IS_NOENTRY(newsgroup)) {
 		    if (addToNewsrcEnd(name, SUBSCRIBE) != GOOD_GROUP)
@@ -4048,6 +4039,9 @@ int enterNewsgroup(name, flags)
 		else {
 		    SET_SUB(newsgroup);
 		}
+	    }
+	    if (! updateArticleArray(newsgroup, flags & ENTER_SETUP)) {
+	      return BAD_GROUP;
 	    }
 	    unsubbed = True;
 	}

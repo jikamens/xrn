@@ -1,5 +1,5 @@
 /*
- * $Id: Imakefile,v 1.130 2002-05-13 04:22:35 jik Exp $
+ * $Id: Imakefile,v 1.129 2001-09-03 21:19:36 jik Exp $
  *
  * xrn - an X-based NNTP news reader
  *
@@ -162,12 +162,12 @@ XRN_DEFINES = -DSOLARIS
  * You probably don't need to change anything in this block.
  */
 
-#if defined(XFree86Version) && (XFree86Version >= 4000) && \
-	(XFree86Version < 40200000)
-/* I know this bug was introduced in XFree86 4.0 and fixed in 4.2, but
-   I don't know if it's in any other X11 distributions besides
-   XFree86.
-   */
+#if defined(XFree86Version) && (XFree86Version >= 4000)
+/* Note that I know this bug was introduced in XFree86 4.0, but I
+   don't know if it's in any other X11 distributions besides XFree86.
+   Furthermore, I'm being cautious by enabling the workaround for all
+   XFree86 releases after 4.0 until I get around to verifying that it
+   is fixed in some future release. */
 REDISPLAY_DEFINES = -DXAW_REDISPLAY_BUG
 #endif
 
