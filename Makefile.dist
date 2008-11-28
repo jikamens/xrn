@@ -62,7 +62,6 @@ endif
 		--exclude .purify --exclude xrn-linux.lsm \
 		--exclude 'part*' --exclude shar --exclude .gdbinit \
 		--exclude gnksa-logos \
-		--exclude xrn.spec \
 		--verbose . | $(TAR) --directory=$(SRCTMP) --extract
 	tar --directory=$(dir $(SRCTMP)) --create --gzip \
 		--file=$(notdir $(SRCTMP)).tgz $(notdir $(SRCTMP))
