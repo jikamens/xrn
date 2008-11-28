@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: dialogs.c,v 1.23 1998-07-05 14:39:13 jik Exp $";
+static char XRNrcsid[] = "$Id: dialogs.c,v 1.19 1996-05-29 18:28:03 jik Exp $";
 /* Modified 2/20/92 dbrooks@osf.org to clean up dialog layout */
 #endif
 
@@ -92,11 +92,6 @@ Widget CreateDialog(parent, title, textField, args, count)
         {XtNtransientFor, (XtArgVal) NULL},
     };
     Widget typein;
-    char *t = XtNewString(title), *p;
-
-    p = t;
-    while ((p = strchr(p, '\t')))
-      *p = ' ';
 
     XtSetArg(shellArgs[2], XtNtransientFor, GetAncestorShell(parent));
     /* override does not get titlebar, transient does */
@@ -105,12 +100,11 @@ Widget CreateDialog(parent, title, textField, args, count)
     
     /* create the dialog box */
     XtSetArg(dargs[cnt], XtNvalue, textField); cnt++;
-    XtSetArg(dargs[cnt], XtNlabel, t); cnt++;
+    XtSetArg(dargs[cnt], XtNlabel, title); cnt++;
     XtSetArg(dargs[cnt], XtNinput, True); cnt++;
     dialog = XtCreateManagedWidget("dialog", dialogWidgetClass, popup, dargs, cnt);
 
     /* add the buttons */
-    XtFree(t);
     for (i = 0; i < count; i++) {
 	Arg bargs[2];
 	static XtCallbackRec callbacks[] = {
@@ -230,18 +224,10 @@ static void cbHandler(widget, client_data, call_data)
  * Always returns XRN_CB_ABORT if X isn't up (according to the
  * XRN_X_UP bit in the XRNState variable).
  */
-int ConfirmationBox(
-		    _ANSIDECL(Widget,	parent),
-		    _ANSIDECL(char *,	message),
-		    _ANSIDECL(char *,	button1),
-		    _ANSIDECL(char *,	button2),
-		    _ANSIDECL(Boolean,	continue_first)
-		    )
-     _KNRDECL(Widget,	parent)
-     _KNRDECL(char *,	message)
-     _KNRDECL(char *,	button1)
-     _KNRDECL(char *,	button2)
-     _KNRDECL(Boolean,	continue_first)
+int ConfirmationBox(parent, message, button1, button2, continue_first)
+    Widget parent;
+    char *message, *button1, *button2;
+    Boolean continue_first;
 {
   int retval;
 
@@ -306,7 +292,7 @@ int ChoiceBox(parent, message, count, va_alist)
 
   for (;;) {
     XtAppNextEvent(app, &ev);
-    (void) MyDispatchEvent(&ev);
+    (void) XtDispatchEvent(&ev);
     if (retVal != -1) {
       PopDownDialog(widget);
       XtFree((char *) dialog_args);
@@ -328,10 +314,8 @@ static void passwordHandler(widget, client_data, call_data)
   Widget dialog = XtParent(XtParent(widget));
 
   password_result = (int) client_data;
-  if (password_result == XRN_CB_CONTINUE) {
-    dialog_password = GetDialogValue(dialog);
-    dialog_password = XtNewString(dialog_password);
-  }
+  if (password_result == XRN_CB_CONTINUE)
+    dialog_password = XtNewString(GetDialogValue(dialog));
   PopDownDialog(dialog);
   return;
 }
@@ -356,7 +340,7 @@ String PasswordBox(widget, prompt)
     XEvent ev;
 
     XtAppNextEvent(TopContext, &ev);
-    MyDispatchEvent(&ev);
+    XtDispatchEvent(&ev);
   }
 
   if (password_result == XRN_CB_CONTINUE)
