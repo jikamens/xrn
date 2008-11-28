@@ -8,7 +8,7 @@
 #include "xmisc.h"
 
 /*
- * $Id: butdefs.h,v 1.8 1995-05-14 22:27:12 jik Exp $
+ * $Id: butdefs.h,v 1.7 1995-05-10 02:17:34 jik Exp $
  */
 
 /*
@@ -54,7 +54,7 @@ extern void CONCAT(nm,Button) _ARGUMENTS((Widget, XtPointer, BUTTON_CALL_DATA_T)
 extern XtCallbackRec CONCAT(nm,Callbacks)[];\
 extern Arg CONCAT(nm,Args)[]
 
-#define _BUTTON(nm,lbl,in_expr,in_set,in_unset)\
+#define BUTTON(nm,lbl)\
 \
 void CONCAT(nm,Core)(widget, event, string, count)\
     Widget widget;\
@@ -62,16 +62,16 @@ void CONCAT(nm,Core)(widget, event, string, count)\
     String *string;\
     Cardinal *count;\
 {\
-    if (in_expr) {\
+    if (inCommand) {\
 	return;\
     }\
-    in_set;\
+    inCommand = 1;\
     removeTimeOut();\
     xrnBusyCursor();\
     CONCAT(nm,Function)(widget, event, string, count);\
     xrnUnbusyCursor();\
     addTimeOut();\
-    in_unset;\
+    inCommand = 0;\
     return;\
 }\
 \
@@ -98,8 +98,5 @@ XtCallbackRec CONCAT(nm,Callbacks)[] = {\
     {(XtCallbackProc) CONCAT(nm,Button), NULL},\
     {NULL, NULL}\
 }
-
-#define BUTTON(nm,lbl) _BUTTON(nm,lbl,inCommand,inCommand = 1,inCommand = 0)
-#define SUBBUTTON(nm,lbl) _BUTTON(nm,lbl,inCommand && inSubCommand,inCommand++; inSubCommand = 1,inCommand--; inSubCommand = 0)
 
 #endif /* BUTDEFS_H */

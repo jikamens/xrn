@@ -4,7 +4,7 @@
 #include "butdefs.h"
 
 /*
- * $Id: compose.h,v 1.12 1998-03-22 23:47:48 jik Exp $
+ * $Id: compose.h,v 1.9 1995-04-27 01:52:24 jik Exp $
  */
 
 /*
@@ -36,9 +36,9 @@
  * compose.h: functions for composing and sending messages
  */
 
-extern void post _ARGUMENTS((Boolean ingroupp));
+extern void post _ARGUMENTS((/* Boolean */ int ingroupp));
 extern void mail _ARGUMENTS((void));
-extern void post_and_mail _ARGUMENTS((Boolean ingroupp));
+extern void post_and_mail _ARGUMENTS((/* Boolean */ int ingroupp));
 extern void followup _ARGUMENTS((void));
 extern void reply _ARGUMENTS((void));
 extern void followup_and_reply _ARGUMENTS((void));
@@ -48,13 +48,9 @@ extern void gripe _ARGUMENTS((void));
 extern void forward _ARGUMENTS((void));
 extern void processMessage _ARGUMENTS((XtPointer, int *, XtInputId *));
 extern char *getUser _ARGUMENTS((void));
-extern Boolean pendingCompositionP _ARGUMENTS((void));
 
 BUTDECL(compAbort);
 BUTDECL(compSave);
-BUTDECL(compSwitchFollowup);
-BUTDECL(compSwitchReply);
-BUTDECL(compSwitchBoth);
 BUTDECL(compSend);
 BUTDECL(compIncludeArticle);
 BUTDECL(compIncludeFile);

@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: cancel.c,v 1.11 1995-09-29 08:02:08 jik Exp $";
+static char XRNrcsid[] = "$Id: cancel.c,v 1.8 1995-05-10 02:17:34 jik Exp $";
 #endif
 
 /*
@@ -53,7 +53,7 @@ static char XRNrcsid[] = "$Id: cancel.c,v 1.11 1995-09-29 08:02:08 jik Exp $";
 static Widget CancelTopLevel  = (Widget) 0;
 
 BUTDECL(cancel);
-SUBBUTTON(cancel,cancel);
+BUTTON(cancel,cancel);
 
 void cancelFunction(widget, event, string, count)
     Widget widget;
@@ -70,30 +70,26 @@ void cancelFunction(widget, event, string, count)
 }
 
 
-void cancelCreate(name)
-char *name;
+void cancelCreate()
 {
-    Widget box, button;
+    Widget box;
 
     static Arg shellArgs[] = {
 	{XtNinput, (XtArgVal) True},
 	{XtNsaveUnder, (XtArgVal) False},
     };
 
-    CancelTopLevel = XtCreatePopupShell(name ? name : "Cancel",
-					transientShellWidgetClass,
+    CancelTopLevel = XtCreatePopupShell("Cancel", transientShellWidgetClass,
 					TopLevel, shellArgs,
 					XtNumber(shellArgs));
 
     box = ButtonBoxCreate("cancelBox", CancelTopLevel);
-    button = ButtonBoxAddButton("cancel", cancelCallbacks, box);
+    (void) ButtonBoxAddButton("cancel", cancelCallbacks, box);
     ButtonBoxDoneAdding(box);
 
     XtRealizeWidget(CancelTopLevel);
     xthCenterWidgetOverCursor(CancelTopLevel);
     XtPopup(CancelTopLevel, XtGrabNone);
-    xthWaitForMapped(button, True);
-    xthHandleAllPendingEvents();
     return;
 }
 

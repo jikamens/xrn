@@ -1,1218 +1,292 @@
-2002-05-15  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* internals.c: Fix a bug which might in rare cases temporarily
-	prevent (until the next rescan) XRN from entering a newsgroup that
-	had been unsubscribed when the user attempted to enter and
-	subscribe to it.
-
-	* internals.c: When attempting to enter and subscribe to an
-	unsubscribed newsgroup, don't mark the group subscribed until
-	we've confirmed that it is an OK group.
-
-	* mesg_strings.c, server.c: When authentication fails and the user
-	had been prompted for a password, offer the user the opportunity
-	to retry the authentication.
-
-	* mesg_strings.c: Change "Newsgroup `%s' does not exist." to
-	"Newsgroup `%s' does not exist or you can't access it." because
-	the problem may be that the group appears in the newsgroup list
-	but the user does not have permission to read it.
-
-	* server.c: If the user is prompted for an authentication
-	password, cache it so the user doesn't have to be prompted again
-	when reconnecting to the server.
-
-2002-05-14  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* server.c, server.h: We need to distinguish between ERR_ACCESS
-	when the user isn't allowed to enter a particular newsgroup and
-	ERR_ACCESS when the user hasn't authenticated successfully to the
-	server at all.
-
-	* allMode.c, internals.c, internals.h, ngMode.c: Notice when the
-	server refuses access to a newsgroup when the user attempts to
-	subscribe to it, and abort the subscribe operation.
-
-	* mesg_strings.c, server.c: When an attempt to enter a newsgroup
-	failed because the server denied access to the newsgroup, display
-	a message to that effect and continue, treating the newsgroup as a
-	bad group, rather than aborting the program.
-
-2002-05-13  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* artMode.c: Add some comments documenting what to do if one of
-	the XAW_REDISPLAY_BUG asserts fires off.
-
-	* Imakefile: Disable XAW_REDISPLAY_BUG for XFree86 4.2.0, in which
-	the bug appears to be fixed.
-
-2002-05-03  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Thu May 11 03:03:23 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
 	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-14.
+	7.04-beta-2.
 
-2002-05-03  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Thu May 11 03:00:35 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* error_hnds.c, internals.c, internals.h: If we need to retry an
-	operation, e.g., because the disk filled up, then instead of
-	cancelling the current prefetch completely while asking the user
-	whether to retry, suspend it instead, using a new function called
-	suspendPrefetch.  This way, we don't mess up the data that we were
-	able to collect before the operation we're retrying failed.
+ *	* busyCursor.c: Only widgets that are subclasses of Core can have
+	popups.  This fixes a coredumping problem in 7.04-beta-1.
 
-	This fixes a crash that could occur if the disk filled up while
-	attempting to create the cache file whiel prefetching an article
-	for the next newsgroup we're about to read.
+ *	* XRn.src: Need to protect the binding for artMarkUnread() with
+	~Shift so that it doesn't conflict with the binding for artMail().
+	Otherwise, Shift-M in article mode won't pop up a mail window,
+	it'll mark the current article unread.
 
-	* server.c (get_base_article): Don't start retrieving an article
-	from the server until we've successfully opened the cache file for
-	that article.  Otherwise, we'll leave the server connection in an
-	inconsistent state.
+Wed May 10 20:23:23 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-2002-03-18  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+	* news.h, newsrcfile.c: Newsrc should be declared extern in the
+	header file, and defined in only one .c file.
 
-	* mesg_strings.c: Shorten the attribution lines used in followups
-	and replies.  In this day and age where virtually everyone is
-	using threaded News readers, the message ID in the attribution
-	line is superfluous.  Suggestion from Anton Ertl
-	<anton@a0.complang.tuwien.ac.at>.
+	* Imakefile: SCO needs to link against -lintl for the
+	regular-expression routines, according to Rob Leland
+	<root@dial-in.nw.dc.us>.
 
-	* compose.c: Don't forget to build extra fields for followups and
-	replies when GENERATE_EXTRA_FIELDS is defined.  Bug report from
-	Anton Ertl <anton@a0.complang.tuwien.ac.at>.
-
-2002-01-15  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+Wed May 10 02:45:19 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
 	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-13.
-
-	* internals.c (articleArrayResync): Fix a bug which was causing
-	XRN to have incorrect article counts for a newsgroup that has been
-	unsubscribed for a long time when you attempt to resubscribe to
-	it.  In particular, we need to update our idea of what the last
-	article in the newsgroup is *before* we use that information to
-	determine which articles to mark unavailable.
-
-2001-10-19  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-12.
-
-2001-10-18  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* internals.c: Fix two bugs unmasked by the bug fixes in the
-	previous release.  These bugs manifested themselves when
-	resubscribing to a newsgroup to which you had not been subscribed
-	for a while:
-
-	(articleArrayResync): Don't try to manipulate article numbers that
-	are greater than the last article in the newsgroup.
-
-	(prefetchSetFetched): Don't try to fetch if the current article
-	number is greater than the last article in the newsgroup.
-
-2001-10-14  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-11.
-
-2001-10-14  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* artstruct.c, artstruct.h, internals.c, internals.h, news.h: Fix
-	a couple of related bugs which could sometimes cause allocated
-	memory to be freed twice.  In particular:
-
-	* Add an assertion at the beginning of artStructGet to prevent it
-	  from being called with an article number greater than the
-	  highest article number in the newsgroup, and modify one caller
-	  to artStructGet to fix the fact that it was, indeed, calling the
-	  function with a too-high article number.
-
-	* Add a new function, artListExtend, which adds new articles onto
-	  the end of an article list by comparing the previous high
-	  article number for the newsgroup (passed in as an argument) with
-	  the current one (in the newsgroup structure).
-
-	* Add a new function, newsgroupSetLast, which uses artListExtend
-	  to upgrade the article list appropriately after setting the high
-	  article number in the newsgroup structure.
-
-	* Use newsgroupSetLast when changing a newsgroup's high article
-	  number.
-
-	* Add some debugging code which isn't activated by default.
-
-	* Add a WALL() initialization to eliminate a spurious compiler
-	  warning about a variable possibly being used before
-	  initialization.
-
-2001-10-08  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-10.
-
-2001-10-08  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* allMode.c, artMode.c, ngMode.c: Fix this bug: If you tried to
-	enter a newsgroup when it didn't have any articles in it,
-	subsequent rescans would fail to detect new articles in the
-	newsgroup until you entered and exited some other group.  This was
-	happening because after failing to enter a group because it had no
-	articles in it, xrn thought it was still in the group, and it
-	won't rescan a group that it's currently in.  This bug probably
-	only manifested when background rescans were enabled.
-
-2001-09-24  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-9.
-
-2001-09-24  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* artMode.c, internals.c, server.c: Prevent XRN from complaining
-	to stderr and in the message window if the NNTP server doesn't
-	support XHDR by message ID.  Furthermore, fix a bug which was
-	preventing the "Goto parent" button from working in article mode
-	with servers that have this problem.
-
-2001-09-24  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-8.
-
-2001-09-24  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* artMode.c (isPrevSubject): Fix an assertion failure when
-	attempting to use the "Subject prev" button in article mode
-	(reported by George Ross <gdmr@dcs.ed.ac.uk>).
-
-2001-09-07  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-7.
-
-2001-09-07  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* internals.c: Fix a bug which could cause incorrect threading
-	and/or XRN crashes when encountering an article containing an
-	invalid "References" header field.
-
-2001-09-03  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-6.
-
-2001-09-03  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* artMode.c, artstruct.c, artstruct.h, compose.c, internals.c,
-	newsrcfile.c, save.c, server.c, snapshot.c, sort.c: A new
-	mechanism for protecting article structures has been introduced.
-	Previously, code that used article structures was allowed to
-	"check them out" read-only or read-write, and all such code was
-	expected to be careful not to call other functions which might
-	modify its article structure out from under it.  This allowed
-	subtle bugs in the code where such inappropriate modification was
-	taking place and was very difficult to detect.  Now, any time
-	someone fetches an article structure, no other structures can be
-	manipulated until the artstruct interface is "unlocked".  The
-	majority of these changes consist of all the calls necessary to
-	unlock the artstruct interface as soon as an article structure is
-	no longer needed.
-
-	* server.c: Add a missing "#include <time.h>".
-
-	(getarticle): Eliminate a possible sscanf buffer overrun.
-
-	* internals.c (checkLock): Eliminate a possible fscanf buffer
-	overrun.
-
-	* compose.c (compSendFunction): Delete a way-obsolete comment.
-
-	* CREDITS: Add Jan Schaumann <jschauma@netmeister.org>.
-
-	* file_cache.c: Add a missing "#include <errno.h>".
-
-	* Imakefile: Add support for checkergcc.
-
-	* InfoDialog.c: After adding text to the information window,
-	position the cursor at the beginning of the last line in the
-	window rather than at the end of it.  That way, the information
-	window won't end up in a state where it's scrolled right and
-	there's no obvious way to get it back to the left margin.
-
-2001-03-11  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-5.
-
-	* server.c: There was an error (not enough room for a null at the
-	end of an allocated string) in the bug fix in revision 1.165 of
-	this file.
-
-2001-02-02  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-4.
-
-2001-01-12  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* server.c: Fix a bug which was causing the first characters of
-	some lines to be dropped (i.e., not displayed) after form feeds in
-	article bodies.
-
-	* refile.c, save.c, server.c: Use \f instead of \014.
-
-2000-12-19  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* server.c (linesFixFunction): Don't modify the buffer passed into
-	us.  Especially, don't try to lengthen it.  We were corrupting
-	other data by overwriting the end of the "numoflines" string being
-	passed in.  Also, there's no need to strip leading and trailing
-	whitespace here; that's already done elsewhere.
-
-2000-10-10  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* ngMode.c: Add some debugging code.  Delete some unnecessary,
-	ancient "race-condition handling" code.
-
-	* ngMode.c, xrn.c: Explicitly set the automatic rescan timeout
-	every time we enter newsgroup mode, rather than just when XRN
-	first starts up.  This ensures that the automatic rescan won't
-	sometimes stop working until the user clicks on a button (or types
-	a key sequence corresponding to a button).
-
-2000-10-05  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-3.
-
-2000-10-05  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* compose.c: Strip empty Followup-To fields out of postings before
-	posting them.  Alas, some NNTP servers don't do this for us and
-	then complain about the fact that the Followup-To field doesn't
-	contain any valid newsgroups.
-
-2000-10-04  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-2.
-
-2000-10-04  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* internals.c, server.c, xrn-man.src: Notice dynamically when the
-	NNTP server isn't answering XHDR requests for some fields, and
-	automatically switch over to using HEAD.
-
-	* artstruct.c, config.h, news.h, server.c: Fetch the article
-	header from the NNTP server using HEAD, or read the header from
-	the cached article file if it exists, and use that header to get
-	field values when retrieving information about an article to reply
-	to it.  The header is parsed and all the fields in it are cached,
-	so that it only needs to be retrieved (if HEAD is necessary) and
-	parsed once for all needed fields.  This is both a workaround for
-	the fact that some NNTP server don't return valid XHDR data for
-	all the fields we want, and a performance improvement because it
-	means that only one round trip to the server, rather than several
-	round trips, is required when responding to a message.  This also
-	means that the CANCEL_CHECK feature can now be enabled by default,
-	because it is no longer expensive (since whenever XRN is checking
-	if a use can cancel an article, the article is in the cache, so
-	the necessary information can be read out of the cache without
-	needing to talk to the server at all).
-
-2000-08-20  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
-	9.03-beta-1.
-
-2000-08-08  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* internals.c, killfile.c, killfile.h: Fix a nefarious bug
-	handling kill-file entries of type "t" or "T" which could cause
-	memory access violations (i.e., crashes).
-
-	* killfile.c (kill_update_last_used): Slight optimization when
-	dealing with recursive included kill files.
-
-	* killfile.c: Add a little bit of debugging code.
-
-	* killfile.c (kill_file_iter): An optimization -- don't clear the
-	bits indicating which KILL files we've already seen when we're in
-	the middle of iterating through a kill file; instead, only do it
-	when we start iterating.  I believe this will speed up kill file
-	processing.
-
-2000-07-05  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* xrn.spec: Changes to conform to RedHat packaging conventions.
-
-2000-06-22  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* artMode.c: Slightly improve the performance of artKillSession by
-	not marking as read articles which have already been marked read.
-
-	* Imakefile, XrnText.c, artMode.c: Introduce a workaround to an
-	Xaw bug in XFree86 4.0, along with several assert() calls in the
-	code to detect this bug so that I'll find out when it manifests on
-	other platforms besides XFree86.
-
-2000-05-17  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* Imakefile, Text.c, XrnText.c: Rename Text.c to XrnText.c to
-	disambiguate it from the Text.c in Xaw, so that it is easier to
-	debug XRN.
-
-2000-05-11  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* artMode.c: Newer versions of the Xaw Text widget won't scroll if
-	the end of the text is already displayed.  Therefore, our previous
-	method of figuring out if the article was finished when the user
-	tries to scroll no longer works.  Add an additional method --
-	retrieve the top displayed text position, then try to scroll, then
-	retrieve it again.  If it hasn't changed, assume that we're at the
-	end of the message and move on to the next one.
-
-2000-05-01  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* CREDITS, server.c: Allow error 503 messages to contain the
-	string "Time Out" too.  Fix from Kevin Cosgrove
-	<kevinc@dOink.COM>.
-
-2000-04-30  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* server.c: Don't lose when a newsgroup returned by the LIST
-	command has a name starting with a period.
-
-2000-03-13  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* server.c: Be a bit more lenient about figuring out when
-	something is a timeout response from the NNTP server, so that the
-	code will work with Microsoft Exchange NNTP servers.
-
-2000-03-09  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* COMMON-PROBLMS, compose.c, server.c, server.h: Work properly
-	with INN 2.2.2.
-
-2000-01-14  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* server.c: Delete unused label.
-
-	* CREDITS: Add Ted Marston <ted@nowtsfree.freeserve.co.uk>.
-
-	* server.c: If a server (e.g., leafnode) sends a bogus response to
-	an XHDR message, then assume that it'll eventually send a ".\r\n"
-	terminator and look for it.
-
-	* file_cache.c: Fix a dereferencing error in a DEBUG message that
-	isn't usually compiled.
-
-1999-12-23  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* xrn.spec: New file.
-
-1999-12-19  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* server.c (wrapText): Instead of assigning XtMalloc(0) to a
-	variable which will later be XtRealloc()ed, just make it null to
-	begin with, since XtRealloc accepts a null first argument.
-
-	* clientlib.c: Add some braces to get rid of a compiler warning.
-
-1999-11-22  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* Imakefile: Modifications to build the Linux distribution on
-	RedHat 6.1.
-
-	* internals.c, server.c, artMode.c, allMode.c, artstruct.c,
-	Buttons.c: Add curly braces to eliminate compiler warnings.
-
-1999-11-11  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* xrn-man.src: hiddenHost will have the domain name appended to it
-	if it doesn't have a period in it.
-
-1999-10-26  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* compose.c: Don't warn about a Followup-To line pointing at
-	another group if the Followup-To line has "poster" in it.  Fix for
-	a bug pointed out by Anton Ertl
-	<anton@mips.complang.tuwien.ac.at>.
-
-1999-10-01  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* compose.c: When there is a non-fatal error in a message composed
-	in an external editor, e.g., a cross-posted message without a
-	Followup-To setting, and the user decides to re-edit the message
-	but then leaves the message as-is, XRN should not abort because
-	the message was unchanged in the second edit.  Problem reported by
-	Anton Ertl <anton@mips.complang.tuwien.ac.at>.
-
-1999-09-26  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* CREDITS: Add Jim Rees.
-
-	* Imakefile: OpenBSD needs -lcompat.  Fix from Jim Rees
-	<rees@umich.edu>.
-
-1999-09-24  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
-
-	Significant user-visible changes in XRN 9.02:
-
-
-	Enhancements:
-
-	* XRN 9.02 is believed to be Y2K-compliant.  The maintainer of XRN
-	knows of no Y2K-related problems in this release of XRN.  Previous
-	releases of XRN did, in fact, have Y2K-related problems.
-
-	* XRN 9.02 is now really compliant with the Good Net-Keeping Seal
-	of Approval.  See <URL:http://www.xs4all.nl/~js/gnksa/> for
-	general information about the GNKSA, or
-	<URL:http://www.xs4all.nl/~js/gnksa/Evaluations/xrn-9.02beta4.txt>
-	for the GNKSA review of XRN.  Although the maintainer of XRN
-	thought that 9.01 was compliant (and so stated when 9.01 was
-	released), there were some actually some problems, which have been
-	fixed.  XRN has been awarded GNKSA seal number 14.  The following
-	user-visible changes were made to achieve GNKSA compliance in XRN
-	9.02:
-
-	** Additional checking of the syntax of "From" lines in outgoing
-	E-mail messages and newsgroup postings has been added.  Rather
-	than relying on sendmail to do syntax checking, there are now
-	internal checks of the format of "From" lines.  This is necessary
-	because sendmail will not catch all "From" line format errors.
-
-	** The default prefix for included text in followups and responses
-	has been changed from "|> " to ">".
-
-	* KILL files can now search on the "Approved" header in addition
-	to the other headers which were previously supported (see the XRN
-	man page for a complete list of supported headers).
-
-	* Two new kill-file commands have been added.  The 't' and 'T'
-	commands adds a kill-file entry for the killed article's
-	sub-thread or thread (respectively) to the group's kill file.
-
-	* A new XRN X resource, "authenticateOnConnect", has been added.
-	When it is set to true, XRN will always authenticate to the News
-	server upon start-up, rather than waiting until the News server
-	asks for authentication.  This is necessary to support News
-	servers which aren't smart enough to ask the client for
-	authentication when they should or which allow partial access
-	without authentication and additional access with authentication.
-
-	* The XRN tar distribution now unpacks in its own directory rather
-	than the current working directory.
-
-
-	Bug fixes:
-
-	* When entering a newsgroup with no unread articles with the "Goto
-	group" command, XRN would sometimes get confused and enter a
-	broken state, displaying article mode with no articles and
-	refusing to exit from it.  This has been fixed.
-
-	* Minor changes have been made to make XRN compile cleanly on
-	recent versions of Linux, FreeBSD, IRIX, Ultrix.
-
-	* Minor changes have been made to make XRN compile cleanly when
-	linking against INN client libraries.
-
-	* Minor changes has been made to work around gcc and/or Xt bugs.
-		
-	* Some messages in the German XRN message table have been updated.
-
-1998-05-25  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
-
-	* Significant user-visible changes in XRN 9.01:
-
-	** Bug fixes:
-
-	* The amount of memory used when threading a newsgroup with many
-	unavailable articles has been greatly reduced.
-
-	* Threading while prefetching a newsgroup (i.e., threading
-	newsgroup B in the background while reading newsgroup A) now works
-	properly; previously, a newsgroup would not be threaded until the
-	user actually went to read it.
-
-	* Some minor improvements to newsgroup prefetching and fetching,
-	including some speed improvements, have been made.
-
-	* When the "Date" header field of articles is being converted into
-	the local timezone, XRN will no longer delete the final newline
-	from the field and thus cause it to be concatenated to the next
-	line in the article header.
-
-	* A newsrc corruption problem caused by a bug in gcc 2.8.1 on
-	Solaris has been fixed by introducing a workaround.
-
-	* The rot13 function will no longer rotate non-ASCII characters.
-
-	* Some memory leaks and questionable memory references have been
-	fixed.
-
-
-	** Enhancements:
-
-	* XRN is now compliant with the "Good Net-Keeping Seal of
-	Approval" (<http://www.xs4all.nl/~js/gnksa/>).
-
-	* Automatic scrolling of the Subject list in Article mode now
-	notices what direction the cursor is moving and scrolls only in
-	that direction.
-
-	* The German language support in XRN has been improved.
-
-	* Some support for a French version of XRN has been added,
-	although it is incomplete (it will compile and run, but some
-	messages will be in English rather than French).
-
-	* A CREDITS file, listing all of the people who have contributed
-	to XRN, has been added.
-
-	* When composing a response to an article, the user can now switch
-	between posting it, mailing it, and both posting and mailing it.
-
-	* "From" lines in outgoing postings are now checked for validity
-	before the messages are sent.
-
-	* XRN now detects and warns about attempts to post or mail
-	messages with no body.
-
-	* XRN now detects and warns about attempts to post messages
-	containing only included text.
-
-	* When a message is both posted and mailed, XRN now inserts a note
-	at the beginning of the mailed copy indicating that it is a
-	courtesy copy of a message that was also posted.
-
-
-	** Changes in functionality:
-
-	* Instead of putting a long label on the Information window, it
-	now displays a message the first time it pops up, informing the
-	user that it can be left up or dismissed.
-
-	* When the NNTP server name is appended to the newsrc file name,
-	it is now also appended to the lock and save file names.  This
-	makes it easier to run multiple XRNs at the same time talking to
-	different NNTP servers.
-
-1998-01-14  Jonathan I. Kamens  <jik@kamens.brookline.ma.us>
-
-	*** Significant user-visible changes in XRN 9.00 (some changes are
-	not listed; consult the XRN man page for additional information
-	about these changes):
-
-
-	** Enhancements:
-
-	* Article threading and sorting
-
-	The article subject list can be sorted by thread, in which case
-	indentation is used to show thread nesting (see "sortedSubjects"
-	in the man page).  A button/command has been added to find an
-	article's parent.  Articles can be killed by thread or subthread.
-
-	Also, the article subject list can now be sorted by date as well
-	as by subject.
-
-	Article sorting by subject has been sped up significantly.
-
-	* Improved caching of fetched articles
-
-	Article files are now stored in a rotating article cache whose
-	size and number of files can be configured by the user (see
-	"cacheFilesMaxFiles" and "cacheFilesMaxSize" in the man page).
-	This means that XRN will exit newsgroups more quickly because it
-	doesn't have to remove all of a newsgroup's article files when
-	exiting a group.  It also means that articles won't be
-	unnecessarily fetched multiple times from the server (for example,
-	the current article no longer has to be refetched if you tell XRN
-	to save or print it).
-
-	* Improved authentication support
-
-	Username/password authentication, using the "AUTHINFO USER" and
-	"AUTHINFO PASS" NNTP commands, is now supported.  A new
-	compile-time config.h option, ALLOW_RESOURCE_PASSWORDS, controls
-	whether the user is allowed to encode passwords in X resources.
-
-	* Improved-kill support
-
-	Kill-file entries can now compare against the "Newsgroups",
-	"Date", "Message-ID", "References", and "Xref" header fields in
-	addition to the "From" and "Subject" fields.  Furthermore, the 'h'
-	kill-file entry modifier can be used to compare against all of
-	those fields
-
-	Rather than having separate buttons for "session kill", "local
-	kill", and "global kill", there is only one kill button for each
-	field being killed, and different most buttons and/or modifier
-	keys are used when hitting the button to signify whether the kill
-	is for this session, the local kill file, or the global kill file.
-
-	Automatic expiration of old kill-file entries has been added.  See
-	"killTimeout" and "KILL FILE FORMAT" in the man page.
-
-	A kill file can now include other kill files.
-
-	* Enhancements to Article mode
-
-	An error message is now displayed when the user attempts to cancel
-	a message he is not authorized to cancel.
-
-	A new "resort" command has been added, to allow the user to resort
-	the article list.  Also, a button binding of ctrl-o was added to
-	"unsort" the article list, i.e., to arrange the list the articles
-	in numerical order.
-
-	The "List old" button in article mode has been modified to allow
-	the user to specify how far back to list, by holding down the ctrl
-	key when executing the command.
-
-	A new "artSub" button, which isn't in the default button list but
-	which has a default key binding of '+', has been added.  This
-	command subscribes the user to the current group if he isn't
-	already subscribed (i.e., if he entered an unsubscribed group from
-	All mode).
-
-	* Enhancements to All mode
-
-	A "Search" button and key binding ('/') has been added.
-
-	A "Limit" button and corresponding 'l' binding has been added, to
-	allow the user to limit the list to only newsgroups matching a
-	specified regular expression.
-
-	* Enhancements to multiple modes
-
-	Newsgroup and subject list widths are now adjusted automatically
-	when the XRN window is resized.
-
-	Outgoing messages and postings can now be saved automatically into
-	a folder.  See "saveSentMail" and "saveSentPostings" in the man
-	page.
-
-	Buttons whose functionality is disabled (e.g., the "Post" button,
-	when the user is not allowed to post articles to the NNTP server)
-	are no longer displayed, even if they are listed in a button list.
-
-	A new "validNewsgroups" resource, complementing the old
-	"ignoreNewsgroups" resource, has been added.
-
-	XRN won't choke on NNTP servers which send multi-line responses
-	for individual articles to XHDR requests.  A server shouldn't do
-	that, but XRN tries to handle those that do.
-
-
-	** Bug fixes:
-
-	* Don't falsly claim that there are no articles in a newsgroup.
-
-	* Don't hang forever when prefetching a newsgroup with lots of
-	unread but unavailable articles in it.
-
-	* Don't hang for a long time when the user attempts to visit a
-	newsgroup that no longer exists with many unread articles in its
-	active-file cache entry.
-
-	* Don't do anything with the regular expressions of kill-file
-	entries which contain unknown commands.  Previously, such regular
-	expressions were compiled and compared against all unkilled
-	articles, even though it didn't know what to do about any articles
-	that matched.
-
-	* Include "Sender:" in cancel messages when necessary.
-
-	* When an external editor is being used for message composition
-	and the user aborts the message, save the latest version of the
-	article, rather than an old version, in the dead.letter file.
-
-	* Handle lines longer than 1024 characters sent by the NNTP
-	server.
-
-	* Don't process individual articles' "Xref" headers multiple
-	times.
-
-	* Don't claim that an article was canceled when in fact its cancel
-	message was mailed to a newsgroup moderator.
-
-	* Inclusion of article text in a followup and reply will now
-	always work, even if the article was canceled or the user has
-	exited the newsgroup in which the original article is located.
-
-	* Don't coredump when encountering newsgroups with really long
-	names.
-
-
-	** Changes in functionality:
-
-	* To improve performance, NNTP_REREADS_ACTIVE_FILE is now defined
-	by default in config.h.  Sites running very old NNTP servers which
-	do not reread the active file each time the client sends a LIST
-	command should comment out this definition before compiling XRN.
-
-	* When comparing a kill file entry against the author of an
-	article, the full contents of the article's "From" line are now
-	used.  Previously, only the portion of the "From" line that was
-	displayed in the Subject list was used.  This means, e.g., that
-	you can set the authorFullName resource to "True" and still kill
-	articles by user name, site name, etc.
-
-	* Article mode is now more conservative about when the subject
-	list is regenerated and which subject lines are added to it.  For
-	example, when you attempt to go to an article that is not
-	currently displayed in the subject list, only that article, rather
-	than all articles after it, will be added to the list.
-
-	* The IDENTIFY_VERSION_IN_MESSAGES compile-time configuration
-	option is now enabled by default.
-
-	* New newsgroups no longer show up after automatic rescans.  In
-	order to discover new newsgroups, you have to execute the rescan
-	command explicitly.
-
-	* When displayLocalTime is true and the user asks to see the full
-	article header, the article's actual "Date" field, rather than the
-	converted date, is now displayed.
-
-	* Conversion of backspace characters, pagebreak characters, or the
-	"Date" field no longer takes place when an article is being saved
-	or piped.
-
-Thu May  9 17:48:38 1996  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
-
-	*** Significant user-visible changes in XRN 8.02:
-
-
-	** Enhancements:
-
-	* Various warnings have been added to prevent the user from
-	accidentally cross-posting a followup to a large number of
-	newsgroups, and to discourage the user from posting articles to a
-	large number of groups.  Also, a facility has been added to allow
-	the installer of XRN to configure a maximum number of newsgroups
-	to which the user may post a single message, but this feature is
-	disabled by default (because I don't believe that the maintainer
-	of XRN should be trying to set policy of this sort for other
-	sites).
-
-	* When an articles says "Followup-To: poster" and the user
-	attempts to post a followup, XRN now gives three options (post and
-	mail, just post, or just mail), while it previously gave only two
-	(just post or just mail).
-
-	* If NEWUSER_GROUPS in config.h starts with "/", it is now treated
-	as the name of a file to read as an initial .newsrc file, rather
-	than as a string to put into the initial file. (submitted by John
-	DiMarco <jdd@cdf.toronto.edu>).
-
-	* The "hiddenHost" X resource, which performs the same function as
-	the "HIDDENHOST" environment variable, has been added.  See the
-	man page for more information.
-
-
-	** Bug fixes:
-
-	* The cursor was sometimes not being positioned correctly in the
- 	Subject list in article mode when a backwards search resulted in a
-	match on an article whose Subject was not displayed prior to the
-	search.
-
-	* When XRN was trying to pre-fetch a newsgroup in the background,
-	and the newsgroup being fetched had lots of unavailable (but
-	previously unread) articles, it would hang for a while until it
-	found available articles, rather than breaking the search for
-	available articles up into small chunks like a well-behaved
-	background task.
-
-	* When "cacheActive" was true and the user attempted to go to a
-	group that was previously unsubscribed, XRN would sometimes claim
-	that there were no articles in the group when in fact there were.
-
-	* When "cacheActive" was true, XRN was confused by old cache
- 	entries whose "last article" values were lower than the current
-	first article in the newsgroup.
-
-	* Articles with only one blank line separating their headers and
-	bodies were displayed wrong and included incorrectly in followups
-	and replies when the "leaveHeaders" resource was set to "none".
-	(reported by Franz.Mauch@uni-konstanz.de)
-
-	* Unpredictable incorrect behavior was occurring when
- 	REALLY_USE_LOCALTIME was defined, and possibly in some other
- 	as-yet-undetermined circumstances as well, because some files were
- 	missing the inclusion of "config.h". (reported by Odd Einar
- 	Aurbakken <oea@ifi.uio.no>)
-
-	* The temporary file created while saving the .newsrc was not
-	being deleted if writing to it failed (e.g., because the user
-	exceeded his disk quota or the disk filled up). (reported by
-	Philippe Brieu <philippe@pablo.physics.LSA.UMich.EDU>)
-
-	* Some libraries and settings for SVR4 and Motorola computers were
-	missing from Imakefile and config.h. (fixes by Albert Chin-A-Young
-	<chinay@cig.mot.com>)
-
-	* Some minor problems were preventing compilation on
- 	FreeBSD. (fixes by "Adrian T. Filipi-Martin"
- 	<atf3r@stretch.cs.virginia.edu>)
-
-
-	** Changes in functionality:
-
-	* Cancel messages are no longer cross-posted to the "control"
-	newsgroup.  Such cross-posting is an anachronism which is no
-	longer necessary. (reported by jb@falstaff.MAE.cwru.edu (Jim
- 	Berilla))
-
-	* Messages containing forwarded articles no longer mention the
-	article number in their Subject lines.  The article number is only
-	relevant for the News server from which the user read it, and more
-	often than not articles will be forwarded to people who use other
-	News servers, so there's no point in mentioning the article
-	number.
-
-Sat Dec  2 20:41:39 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
-
-	*** Significant user-visible changes in XRN 8.01:
-
-
-	** Bug fixes:
-
-	* XRN would sometimes enter a newsgroup even tnough there weren't
- 	any articles in it, and when it did, it got wedged in article mode
- 	and refused to accept any commands. (reported by Hugues Leroy
- 	<Hugues.Leroy@irisa.fr>)
-
-	* For users with an external editorCommand, XRN was coredumping on
- 	attempts to post an article or send a mail message that was not a
- 	response to a previous message. (reported by
- 	dennett@image.Kodak.COM (Charles R. Dennett))
-
-	* A couple of key bindings were inactive because of ambiguities in
- 	the translation tables in the app-defaults file. (reported by
- 	Wayne D Richardson <wdr@VNET.IBM.COM>).
-
-
-	** Changes in functionality:
-
-	* If the user had cacheActive set to True, and he read news using
- 	a news reader other than XRN between two invocations of XRN, then
- 	XRN's cache would become obsolete and XRN would become convinced
- 	when it was run the second time that there were article numbering
- 	problems and mark all articles unread in the groups that were read
- 	by the other news reader.  Now, when XRN encounters an article
- 	numbering problem in a cached active file entry, it will retrieve
- 	new statistics about the group from the server, to see if they
- 	agree with what's in the user's .newsrc, before deciding that
- 	there is an article numbering problem. (reported by
- 	dennett@image.Kodak.COM (Charles R. Dennett))
-
-
-	** Enhancements:
-
-	* 'l' has been added to the list of valid action characters in the
- 	verboseKill option.  When 'l' is specified, each KILL-file pattern
- 	is displayed as it is processed.
-
-	* The buttonsOnTop X resource, which causes buttons to go above
- 	the windows they modify rather than below them, primarily so that
- 	the main button box won't change locations in between modes, has
- 	been added.  (code submitted by nelson@lan.nsc.com
- 	(Taed Nelson), with some additional changes by me).
-
-Thu Nov  2 21:25:22 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
-
-	*** Significant user-visible changes in XRN 8.00:
-
-
-	** Major enhancements:
-
-	* XRN no longer needs to read the entire newsgroup list from
-	the NNTP server each time it starts up and each time the user
-	requests a rescan.  Instead, if the "cacheActive" option is
-	true, the complete newsgroup list is retrieved only when XRN
-	determines that the active-file cache is missing information
-	(e.g., the first time the user runs XRN when cacheActive is
-	true, or when cacheActive is true and the user asks to go to a
-	newsgroup that XRN doesn't know about) or when the user
-	explicitly tells XRN to retrieve the entire list (with the
-	"ngGetList" command in Newsgroup mode).
-
-	When the user issues the "ngRescan" command when "cacheActive"
-	is true, XRN does the rescan by querying the server explicitly
-	about each subscribed newsgroup (and by using the NNTP
-	NEWGROUPS command to ask the server if there are any new
-	newsgroups), rather than by retrieving a complete newsgroup
-	list.  Furthermore, since each group's query is independent of
-	the others, the queries occur in the background and the user
-	can actively read news while they are occurring.
-
-	This functionality will probably be used most frequently by
-	people reading news over a slow SLIP or PPP link who don't
-	want to download a complete newsgroup list every time they
-	check for new articles.  However, the fact that rescanning
-	happens in the background when "cacheActive" is true may make
-	this feature useful even to users with fast network
-	connections.
-
-	* XRN no longer needs all available newsgroups to be listed in
-	the user's .newsrc file.  If the new "fullNewsrc" option is
-	set to false (it is true by default, so XRN's old behavior
-	remains the default), then only the newsgroups that the user
-	wishes to list in the .newsrc file will be stored there.  The
-	user can remove a newsgroup from the .newsrc by editing it
-	outside of XRN in a text editor, or by setting the newsgroup's
-	status to "ignored" in All mode.  When "fullNewsrc" is false,
-	XRN can no longer use the contents of the .newsrc to determine
-	when new newsgroups are created, so it instead uses the NNTP
-	NEWGROUPS command to query the server about new groups.
-
-	* Some sections of the man page have been reorganized or
-	rewritten for increased clarity, and new sections dealing
-	specifically with composing messages and with the format of
-	KILL files (suggested by uri@watson.ibm.com) have been added.
-
-	* Commands have been added to Article, All and Newsgroup modes
-	to allow the user to both post and mail a single message or to
-	just mail a message.
-
-	* New functionality has been added to make it possible to move
-	around in the subject list in Article mode without the
-	displayed article following the subject cursor.  For the most
-	part, this change will be transparent to people who don't want
-	to use this functionality.  However, the one non-transparent
-	aspect of it is that the up and down arrows no longer display
-	the next and previous article; instead, they move the cursor
-	without changing the displayed article.  The 'P' and 'N' keys
-	retain the behavior which used to be bound to the arrow keys
-	as well.  Users who prefer the old behavior can restore it by
-	putting the following in their X resources:
-
-		xrn*artFrame.subjects.translations: #override	\n\
+	7.04-beta-1.
+
+Wed May 10 02:22:04 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* Imakefile: Add -DXRN to the symbols defined when compiling, so
+	that modules which are written to work as part of XRN and
+	independently of it know that they're being compiled as part of
+	XRN.
+
+	* allMode.c: Some calls to setButtonSensitive() which really only
+	needed to happen once were happening every time all mode was
+	entered.  They have been fixed to only happen when the all mode
+	widgets are first created.
+
+	* allMode.c: Some button/action functions which previously failed
+	to verify that they were called from inside all mode now correctly
+	verify this before performing their functions.
+
+	* allMode.c, ngMode.c: The code which resets the groups selected
+	for a later move operation is now called only when the displayed
+	list of newsgroups actually changes.
+
+ *	* artMode.c: Some button/action functions have been updated so
+	that they will behave correctly when they are called when the
+	subject cursor is on an article other than the currently displayed
+	one.
+
+	* Imakefile, InfoLine.c, InfoLine.h, addMode.c, allMode.c,
+        artMode.c, ngMode.c: A new "InfoLine" interface for creating a
+        one-line information label (usually to be placed inside a pane)
+        has been added and is used to create information lines for the
+        various modes.
+
+	* XRn.src: In translations and accelerators, use symbolic names
+	for keys, instead of their hexidecimal values.  In particular, use
+	"space" instead of 0x20, "Linefeed" instead of 0xff0a, and
+	"Return" instead of 0xff0d.
+
+ *	* XRn.src, xrn-man.src: The key bindings for the various modes
+	have been updated.  A few key bindings were changed or removed,
+	but for the most part, the primary goal was to add new key
+	bindings so that much more can be done without reaching for the
+	mouse.  Furthermore, all default key bindings are now documented
+	in the man page.
+
+ *	* XRn.src, allMode.c, allMode.h, xrn-man.src: Two new buttons,
+	"allNext" and "allPrev", have been added in all mode to move the
+	cursor to the next or previous newsgroup.
+
+	* XRn.src, mesg.c: Some resources that were hard-coded in mesg.c
+	have been moved into XRn.src.
+
+ *	* XRn.src, butexpl.h, xrn-man.src: New functionality has been
+	added to make it possible to move around in the subject list in
+	article mode without the displayed article following the subject
+	cursor.  For the most part, this change will be transparent to
+	people who don't want to use this functionality.  However, the one
+	non-transparent aspect of it is that the up and down arrows no
+	longer display the next and previous article; instead, they move
+	the cursor without changing the displayed article.  The 'P' and
+	'N' keys retain the behavior which used to be bound to the arrow
+	keys.  Users who prefer the old behavior can restore it by putting
+	the following in their X resources:
+
+		xrn*artFrame.subjects.translations: #overrid	\n\
 			~Meta<Key>Up:	artPrev()		\n\
 			~Meta<Key>Down:	artNext()		\n
 
 	For more information about this new functionality, see the
-	documentation about it near the beginning of the "ARTICLE
-	MODE" section of the man page.
+	documentation about it near the beginning of the "ARTICLE MODE"
+	section of the man page.
 
+	* TODO: Remove the item about adding and documenting key bindings,
+	because it has been done.
 
-	** Changes in functionality:
+	* TODO: Add an item about making attribution lines customizable.
 
-	* In previous releases of XRN, all modes used the same widgets
-	to display data in -- the top text window, info line, and
-	button box, and the bottom text window, info line, and button
-	box.  This structure took advantage of available screen real
-	estate poorly (why should part of the XRN window be blank and
-	unused in all modes except article mode?) and made code
-	maintenance difficult.  The code has therefore been
-	reorganized so that each mode has its own "Paned" widget which
-	fills the entire XRN window when the mode is active.  There
-	are probably numerous little user-visible aspects of this
-	change, but the big ones are:
+	* TODO: Add an item about documenting the widget tree in the man
+        page.
 
-	(1) Screen real estate is utilized more fully -- for example,
-	in newsgroup mode, there's no longer a bottom text window,
-	info line or button box, which means that many more newsgroups
-	can be listed in the same space.
+	* artMode.c, compose.c, dialogs.c, utils.h, xmisc.c: Some "gcc
+	-Wall" nits have been eliminated by initializing variables that
+	don't really need to be initialized, but that make gcc complain
+	about them possibly being uninitialized.
 
-	(2) The "Bindings" resources and command-line options have
-	been removed.  Instead, users should use the "translations"
-	resources for the various modes in order to set bindings.  The
-	correct resource to use for customizing each mode's
-	translations is given in the documentation for that mode in
-	the man page.
+	* ButtonBox.c, ButtonBox.h, Imakefile, addMode.c, allMode.c,
+	artMode.c, butdefs.h, buttons.c, buttons.h, cancel.c, compose.c,
+	mesg.c, ngMode.c: The generic button code has been revamped, so
+	that there is a generic "ButtonBox" interface for creating a
+	widget to contain a box of buttons and for adding buttons to it.
 
-	(3) Because each mode uses separate widgets, it is now
-	possible to customize the appearance of modes separately --
-	for example, you can use different fonts for the newsgroup or
-	article lists in different modes.
+	* addMode.c, allMode.c, artMode.c, busyCursor.c, busyCursor.h,
+	butdefs.h, internals.c, ngMode.c, xmisc.c, xmisc.h, xrn.c: The
+	code which turns the mouse pointer into a watch when XRN is busy
+	has been rewritten to use Xt commands to set the cursor, rather
+	than using Xlib commands directly.
 
-	(4) Because the widget hierarchy has changed, the names of
+	* config.h, xrn.c: The title-bar functionality has been removed.
+	Title bars are the responsibility of the window manager, not of
+	XRN.
+
+	* TODO, buttons.c, config.h: The DONT_FORCE_BUTTON_TRANSLATIONS
+	and matchTranslations functionality has been removed.  It's not
+	relevant as long as we're not supporting Motif, and when we do put
+	Motif back, we can put it back in a more correct way, if
+	necessary.
+
+	* artMode.c, artMode.h: The various lists of buttons have been
+	reordered to be in the same order as the man page's list.
+
+ *	* XRn.src, addMode.c, addMode.h, allMode.c, allMode.h, artMode.c,
+	artMode.h, buttons.c, buttons.h, compose.c, internals.c,
+	internals.h, ngMode.c, ngMode.h, resources.c, resources.h,
+	server.c, server.h, xrn-man.src, xrn.c, xrn.h: In previous
+	versions of XRN, all modes used the widgets to display data in --
+	the top text window, the top info line, the top button box, the
+	bottom text window, the bottom info line, and the bottom button
+	box.  This structure was problematic because it took advantage of
+	available screen real estate poorly (why should part of the XRN
+	window be blank and unused in all modes except article mode?).  It
+	also made it difficult to maintain the code.  Therefore, the code
+	has been reorganized so that each mode has its own "Paned" widget
+	which fills the entire XRN window when the mode is active.  There
+	are probably all kinds of little user-visible aspects of this
+	change, but the big ones are: (1) Screen real estate is utilized
+	more fully -- for example, in newsgroup mode, there's no longer a
+	bottom text window, info line or button box, which means that many
+	more newsgroups can be listed in the same space.  (2) The
+	"Bindings" resources and command-line options have been removed.
+	Instead, users should use the "translations" resources for the
+	various modes in order to set bindings.  The correct resource to
+	use for customizing each mode's translations is given in the
+	documentation for that mode in the man page.  (3) Because each
+	mode uses separate widgets, it is now possible to customize the
+	appearance of modes separately -- for example, you can use
+	different fonts for the newsgroup or article lists in different
+	modes.  (4) Because the widget hierarchy has changed, the names of
 	some widgets have changed, and therefore some user X resources
-	which refer to those widgets might no longer work.  See the
-	XRN source code or the application-defaults file to find out
-	the new names of the various widgets.
+	which refer to those widgets might no longer work.  See the XRN
+	source code or the application-defaults file to find out about the
+	new names of the various widgets.
 
-	(5) The primary button box now changes locations depending on
-	which mode XRN is in.  I've had some feedback from users who
-	do not like this particular aspect of this change; I am
-	contemplating addressing their complaints in the next release
-	by adding an option which will reorder the widgets from top to
-	bottom so that they are displayed "button box, info line, text
-	widget", instead of "text widget, info line, button box", so
-	that the button box will always be on top of the window and
-	therefore will never move.
+Thu May  4 21:12:04 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* The "extraMailHeaders" option has been removed.  The
-	behavior which was previously available only by setting it to
-	true now occurs all the time.  This behavior is to add
-	"X-Newsgroups" and "In-reply-to" lines to mailed replies,
-	indicating the "Newsgroups" line and the message ID of the
-	posting being replied to.  However, the "X-Newsgroups" and
-	"In-reply-to" lines are no longer included in followups that
-	are also being mailed, because they're redundant in that
-	context (since the message contains "Newsgroups" and
-	"References" lines).
+ *	* server.c: Fix bug reported by
+	philippe@pablo.physics.lsa.umich.edu (Philippe Brieu): "I tried to
+	connect to a news server that was down, and got the `failed to
+	connect to NNTP server' message; I selected `exit'
+	(because I knew `retry' wouldn't work), but .xrnlock remained."  The
+	.xrnlock file is now properly deleted.
 
-	* Key bindings for all commands have been added, and all key
-	bindings have been documented in the man page.
+	* error_hnds.c: Allow ehErrorExitXRN to be called with a null
+	string pointer if no death notifier should be displayed.
 
-	* Two new commands ("allNext" and "allPrev") have been added
-	in All mode, for moving the cursor to the next or previous
-	newsgroup.
-
-	* Default buttons lists which do not contain all available
-	buttons have been added.  In previous releases of XRN, the
-	default button lists for all modes contained all available
-	buttons.  However, the number of available buttons has been
-	steadily increasing, and many of them are not used by most
-	people, so it is unnecessary for them to be taking up space in
-	the default configuration.  Of course, users can still
-	configure their own personal button lists to contain whatever
-	buttons they list, and all commands are available through
-	their key bindings even if they are not available as buttons.
-
-	* XRN's title-bar functionality has been removed.  Title bars
-	are the responsibility of the window manager, not of XRN.
-
-	* XRN now checks for an empty "Subject" field and requires the
-	user to fill it in if it is empty, whether or not INN is being
-	used.  Previously, this check occurred only when INN was being
-	used.
-
-	* More characters have been added to the list of characters
-	that may be special according to some regular-expression
-	libraries and that therefore should be quoted by enclosing
-	them in square braces when placing entries into KILL files.
-
-	* When the signature file is too big to be included in a
-	followup or reply, XRN will not display an error instead of
-	ignoring it silently, so that the user knows why it was
-	ignored.  This change was suggested by Harald Leinders
-	<hl@arthur.ph2.Uni-Koeln.DE>.
-
-	* A cancel button has been added to the "List old" command in
-	Article mode, as suggested by George Ross <gdmr@dcs.ed.ac.uk>.
-	It's not possible to do this really well until the NNTP code
-	in XRN is multi-threaded or interrupt-driven, but in the
-	meantime, this button allows the "List old" to be aborted one
-	third or two third of the way through its work.
-
-	* XRN will no longer let the user quit or exit while a
-	composition is pending (the user must abort or send the
-	message being composed before quitting).
-
-	* As suggested by wilker@math.purdue.edu (Clarence
-	W. Wilkerson), it is now possible to disable an external
-	editor command specified in X resources or in the app-defaults
-	file by specifying an empty-string value for the
-	"editorCommand" option (in other words, an empty
-	"editorCommand" is now the same as if it had not been
-	specified at all).
-
-	* When XRN creates a new RMAIL file to save a message in it,
-	it now puts "-*- rmail -*-" on the first line of the file,
-	just like recent versions of Emacs do, so that the file can be
-	loaded into Emacs with C-x C-f and will automatically go into
-	RMAIL mode.
-
-
-	** Bug fixes:
-
-	* When including an article in a followup or reply, the
-	inclusion prefix was being inserted in the middle of lines
-	longer than 256 characters, rather than being inserted only at
-	line beginnings.  Also, in some cases, part of the header was
-	being be included in the followup or reply, even when the
-	"includeHeader" option was false.
-
-	* Several minor memory leaks, temporary-file leaks and
-	file-descriptor leaks.
-
-	* Several instances in which a small amount of unnecessary
-	traffic with the NNTP server was occurring.
-
-	* Some minor non-portability problems which were preventing
-	XRN from compiling (or compiling cleanly) on some platforms.
-
-	* When there were new groups to be added to the .newsrc and
-	the user selected "Add after group" and specified a
-	nonexistent newsgroup in the dialog box, XRN ignored the
-	problem and pretended that the group was added to the .newsrc,
-	when in fact it wasn't, which made it come up as a new group
-	again the next time the user ran XRN. (reported by
-	philippe@pablo.physics.lsa.umich.edu (Philippe Brieu))
-
-	* When the "MODE READER" command was sent to the NNTP server
-	when connecting to it, XRN wasn't detecting when the server
-	returned an access-denied error and aborting; instead, it was
-	looping forever, disconnecting from and reconnecting to the
-	server repeatedly.
-
-	* Some of the German button labels and message strings were
-	incorrect. (fixes by foks@iatge.de (Thomas Foks) and audited
-	by kay@zhv.basf-ag.de (Kay Marquardt) (There are still some
-	English label strings in the German labels, because I can't
-	translate them myself since I don't know German, and noone who
-	knows German has sent me translations for them.  Feel free to
-	send me translations for them if you know German.)
-
-	* The German message that is displayed when the app-defaults
-	file is missing was incorrect and was causing a core-dump.
-
-	* XRN was core-dumping when parsing "From" lines in articles
-	when the "authorFullName" option was false. (fix by "David
-	A. Curry" <davy@ecn.purdue.edu>)
-
-	* On Linux, XRN was processing KILL files very slowly and
-	coredumping when processing KILL files in some cases because
-	of bugs in libc's regular-expression routines. (see README and
-	README.Linux for more information)
-
-	* XRN was coredumping when it encountered an error writing to
-	a temporary file while trying to retrieve an article from the
+	* clientlib.c (server_init): After sending the MODE READER command
+	to the NNTP server, detect if it returns an access-denied error,
+	rather than looping forever disconnecting and reconnecting to the
 	server.
 
-	* Users that started XRN without a .newsrc file weren't seeing
-	unread articles in news.announce.newusers (or whatever
-	NEWUSER_GROUPS was set to) after startup, until after they
-	executed a rescan, and if they exited from XRN immediately
-	after it created their .newsrc without doing a rescan, it
-	marked all of the articles in news.announce.newusers read.
-	(reported by Michael Schmitz <schmitz@ph-cip.Uni-Koeln.DE>)
+Sun Apr 30 16:51:32 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* The "Cancel search" button wasn't popping up immediately at
-	the start of the search, and in some cases it was popping up
-	and then being deleted by XRN before it could be placed by the
-	window manager, which caused the window manager to put up a
-	button outline and require the user to place the outline, even
-	though there was no longer actually a button associated with
-	it.
+ *	* addMode.c: Fix a bug reported by
+	philippe@pablo.physics.lsa.umich.edu (Philippe Brieu): When there
+	are new groups to be added to the .newsrc and the user clicks on
+	"Add after group" and then specifies a nonexistent newsgroup in
+	the dialog box, XRN ignores the problem and pretends that the
+	group was added to the .newsrc, when in fact it wasn't, which
+	means that it comes up again the next time the user runs XRN.
 
-	* XRN was attempting to pop up a confirmation box after an X
-	IO error has occurred; on some systems, this was causing XRN
-	to go into an infinite loop and consume resources after the
-	user had logged out (or killed his X session, or killed
-	XRN). (reported by George Ross <gdmr@dcs.ed.ac.uk>).
+Fri Apr 28 13:49:42 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
-	* Additional bug fixes or bug reports which led to fixes were
-	provided by: from philippe@pablo.physics.lsa.umich.edu
-	(Philippe Brieu), dyson@sunfish.physics.uiowa.edu (Richard
-	L. Dyson), Jean-Marc.Lasgouttes@inria.fr (Jean-Marc
-	Lasgouttes), nissen@montefiore.ulg.ac.be (Alain Nissen),
-	pawliger@mv.us.adobe.com (Marc Pawliger), "Ivar Ruyter"
-	<ivarr@troll.hz.kfa-juelich.de>, "David W. Schuler"
-	<dschuler@VNET.IBM.COM>, Masahiko Suenaga
-	<f77266a@kyu-cc.cc.kyushu-u.ac.jp>, Tim <tda10@cus.cam.ac.uk>,
-	Rein Tollevik <Rein.Tollevik@si.sintef.no>, Chris Torek
-	<torek@purr.bsdi.com>.
+ *	* xrn-man.src: Rewrite the sections which talk about the various
+	modes, and add a new section which talks about composing messages.
+
+ *	* XRn.src: Add default buttons lists which don't display all
+	buttons.  The button boxes were getting much too crowded, so I'm
+	hiding by default the buttons whose functions can be done with the
+	mouse in other ways (i.e., all the scrolling buttons), as well as
+	the "Mail" buttons, because although that functionality should be
+	available for consistency's sake, it doesn't have to be available
+	by default, since XRN is a news reader, not a mail reader.
+
+	* artMode.c: Rearrange the button lists to match the order in the
+	man page.
+
+	* Imakefile: Break up the steps for generating xrn.man into
+	multiple steps, and make them a big more robust so that numbers as
+	well as strings can be extracted from the configuration into the
+	Makefile, and so that symbols which don't actually have any values
+	can also be extracted.
+
+	* xrn-man.sym: Add MAX_SIGNATURE_SIZE.
+
+	* xrn-man.sym: Add XLATE.
+
+	* ngMode.c: Reorder the button list so it's in the same order as
+	in the man page.
+
+ *	* butexpl.h, ngMode.c, ngMode.h, xrn-man.src: Add ngPostAndMail
+	and ngMail buttons.
+
+ *	* allMode.c, allMode.h, butexpl.h, xrn-man.src: Add allPostAndMail
+	and allMail buttons.
+
+Thu Apr 27 12:18:18 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+ *	* XRn.src, artMode.c, artMode.h, butexpl.h, xrn-man.src: Add
+	artPostAndMail and artMail buttons.  The former posts a message
+	and sends it via mail as well, and the latter just sends mail.
+
+	* compose.c: Woops; strcat should have been strcpy.
+
+ *	* compose.c, resources.c, resources.h, xrn-man.src: Get rid of the
+	extraMailHeaders X resource -- make its behavior the default.
+	There's really no reason to do otherwise.
+
+	* compose.c, mesg_strings.c, compose.h: Turn the post() function
+	into post_or_mail(), and add a new post() function which calls it.
+	Also, add a mail() function to just send a mail message, and
+	post_and_mail() to compose a message for both posting and mailing.
+
+ *	Don't include the X-Newsgroups and In-reply-to lines in a message
+	that's being both posted and mailed, because in that case, they're
+	redundant.
+
+	* compose.h, allMode.c, artMode.c, ngMode.c: The argument to
+	post() should be Boolean, not int.
+
+Wed Apr 26 14:06:50 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* compose.c: Lots of code cleanup which probably isn't quite done,
+	but this is a good stopping point.  Most of these changes aren't
+	visible to the end user, but the code needs to be cleaned up
+	before I can make some user-visible changes that I want to make.
+
+Thu Apr 20 12:07:05 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* Imakefile: Use LOCAL_LIBRARIES, not EXTRA_LOAD_FLAGS, to specify
+	which libraries should get linked in.  Fix from Rein Tollevik
+	<Rein.Tollevik@si.sintef.no>.
+
+	* utils.c: Fixes from Rein Tollevik <Rein.Tollevik@si.sintef.no>
+	to tconvert() so that it displayes 4-digit years and gets the
+	timezone name correct.
+
+Wed Apr 19 22:02:40 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* newsrc.l: It's YY_FLEX_LEX_COMPAT, not FLEX_LEX_COMPAT, in flex
+	2.5.1.
+
+Mon Apr 10 20:30:41 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* compose.c: Fix a memory leak when cancelling an article.
+
+Sun Apr  9 23:17:55 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+ *	* compose.c: Fixed a a bug which was causing the includePrefix to
+	be put every 256 characters in long lines when including an
+	article in a followup or reply.  Also fixed a bug which could in
+	very rare circumstances cause XRN to decide that the end of the
+	header had been reached when in fact it handn't, when skipping the
+	header when includeHeader is False.
 
 Thu Apr  6 19:32:34 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
 
@@ -1677,4 +751,4 @@ Tue Nov  8 18:30:03 1994  Jonathan I. Kamens  <jik@cam.ov.com>
 	Always include article text when calling an external editor
 	command.  Fix from per@erix.ericsson.se (Per Hedeland).
 
-# $Id: ChangeLog,v 1.151 2002-05-15 14:13:29 jik Exp $
+# $Id: ChangeLog,v 1.57 1995-05-11 03:03:33 jik Exp $
