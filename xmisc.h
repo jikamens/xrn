@@ -2,7 +2,7 @@
 #define XMISC_H
 
 /*
- * $Id: xmisc.h,v 1.6 1995-05-10 02:20:01 jik Exp $
+ * $Id: xmisc.h,v 1.5 1995-01-25 03:17:52 jik Exp $
  */
 
 /*
@@ -42,8 +42,8 @@ extern void xmIconCreate _ARGUMENTS((void));
 typedef enum {InitIcon, ReadIcon, UnreadIcon, BusyIcon, PrevIcon} IconType;
 extern void xmSetIconAndName _ARGUMENTS((IconType));
 
-extern void xrnUnbusyCursor _ARGUMENTS((void));
-extern void xrnBusyCursor _ARGUMENTS((void));
+extern void unbusyCursor _ARGUMENTS((void));
+extern void busyCursor _ARGUMENTS((void));
 
 /* suitable for call back use */
 extern void CBunbusyCursor _ARGUMENTS((Widget,XtPointer,XtPointer));
