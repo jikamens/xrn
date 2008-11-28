@@ -1,14 +1,7 @@
 #include <X11/Intrinsic.h>
-#ifdef MOTIF
-# include <Xm/PanedW.h>
-#else
-# include <X11/Xaw/Paned.h>
-#endif
-/*
+#include <X11/Xaw/Paned.h>
 #include <X11/Xaw/Box.h>
-*/
 
-#include "config.h"
 #include "buttons.h"
 #include "butdefs.h"
 #include "addMode.h"
@@ -30,36 +23,30 @@ static Widget AddFrame;
 static Widget AddText, AddInfoLine, AddButtonBox;
 
 BUTTON(addQuit,quit);
-BUTTON(addIgnoreRest,ignore rest);
 BUTTON(addFirst,add first);
 BUTTON(addLast,add last);
 BUTTON(addAfter,add after group);
 BUTTON(addUnsub,add unsubscribed);
-BUTTON(addIgnore,ignore);
 
 XtActionsRec AddActions[] = {
     {"addQuit",		addQuitAction},
-    {"addIgnoreRest",	addIgnoreRestAction},
     {"addFirst",	addFirstAction},
     {"addLast",		addLastAction},
     {"addAfter",	addAfterAction},
     {"addUnsub",	addUnsubAction},
-    {"addIgnore",	addIgnoreAction},
 };
 
 int AddActionsCount = XtNumber(AddActions);
 
-static ButtonList AddButtonList[] = {
-  {"addQuit",	    addQuitCallbacks,	    ADDQUIT_EXSTR,	  True},
-  {"addIgnoreRest", addIgnoreRestCallbacks, ADDIGNORE_REST_EXSTR, True},
-  {"addFirst",	    addFirstCallbacks,	    ADDFIRST_EXSTR,	  True},
-  {"addLast",	    addLastCallbacks,	    ADDLAST_EXSTR,	  True},
-  {"addAfter",	    addAfterCallbacks,	    ADDAFTER_EXSTR,	  True},
-  {"addUnsub",	    addUnsubCallbacks,	    ADDUNSUB_EXSTR,	  True},
-  {"addIgnore",	    addIgnoreCallbacks,	    ADDIGNORE_EXSTR,	  True},
+ButtonList AddButtonList[] = {
+    {"addQuit",		addQuitCallbacks,	ADDQUIT_EXSTR},
+    {"addFirst",	addFirstCallbacks,	ADDFIRST_EXSTR},
+    {"addLast",		addLastCallbacks,	ADDLAST_EXSTR},
+    {"addAfter",	addAfterCallbacks,	ADDAFTER_EXSTR},
+    {"addUnsub",	addUnsubCallbacks,	ADDUNSUB_EXSTR},
 };
 
-static int AddButtonListCount = XtNumber(AddButtonList);
+int AddButtonListCount = XtNumber(AddButtonList);
 
 /*
  * release storage associated with add mode and go to newsgroup mode
@@ -148,10 +135,7 @@ static void addFunction(first, newsgroup, status)
 	if (! *newGroup)
 	    break;
 
-	clearNew(newGroup);
-	if (status == IGNORE)
-	    add_ret = ignoreGroup(newGroup);
-	else if (oldGroup)
+	if (oldGroup)
 	    add_ret = addToNewsrcAfterGroup(newGroup, oldGroup, status);
 	else if (newsgroup)
 	    add_ret = addToNewsrcAfterGroup(newGroup, newsgroup, status);
@@ -209,33 +193,6 @@ void addQuitFunction(widget, event, string, count)
 
     TextSelectAll(AddText);
     addFunction(False, 0, UNSUBSCRIBE);
-
-    TextEnableRedisplay(AddText);
-}
-
-/*
- * ignore the remaining groups and exit add mode
- */
-/*ARGSUSED*/
-void addIgnoreRestFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    if (CurrentMode != ADD_MODE) {
-	return;
-    }
-
-    if (app_resources.fullNewsrc) {
-	addQuitFunction(widget, event, string, count);
-	return;
-    }
-
-    TextDisableRedisplay(AddText);
-
-    TextSelectAll(AddText);
-    addFunction(False, 0, IGNORE);
 
     TextEnableRedisplay(AddText);
 }
@@ -342,24 +299,6 @@ void addUnsubFunction(widget, event, string, count)
     addFunction(False, 0, UNSUBSCRIBE);
 }
 
-/*
- * ignore group(s)
- */
-/*ARGSUSED*/
-void addIgnoreFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    if (app_resources.fullNewsrc) {
-	addUnsubFunction(widget, event, string, count);
-	return;
-    }
-
-    addFunction(False, 0, IGNORE);
-}
-
 void switchToAddMode(groups)
     String groups;
 {
@@ -378,64 +317,26 @@ void switchToAddMode(groups)
 void displayAddWidgets()
 {
     if (! AddFrame) {
-	AddFrame = XtCreateManagedWidget("addFrame",
-#ifdef MOTIF
-                                         xmPanedWindowWidgetClass,
-#else
-                                         panedWidgetClass,
-#endif
+	AddFrame = XtCreateManagedWidget("addFrame", panedWidgetClass,
 					 TopLevel, 0, 0);
 
-#ifndef MOTIF
 	XawPanedSetRefigureMode(AddFrame, False);
-#endif /* MOTIF */
-
-	if (app_resources.fullNewsrc) {
-	  setButtonActive(AddButtonList, "addIgnoreRest", False);
-	  setButtonActive(AddButtonList, "addIgnore", False);
-	}
-
-#define BUTTON_BOX() {\
-	  AddButtonBox = ButtonBoxCreate("buttons", AddFrame);\
-	  doButtons(app_resources.addButtonList, AddButtonBox,\
-		    AddButtonList, &AddButtonListCount, TOP);\
-	}
-	
-#define INFO_LINE() {\
-	  AddInfoLine = InfoLineCreate("info", 0, AddFrame);\
-	}
-	
-	if (app_resources.buttonsOnTop) {
-	  BUTTON_BOX();
-	  INFO_LINE();
-	}
 
 	AddText = TextCreate("list", True, AddFrame);
-
-	if (! app_resources.buttonsOnTop) {
-	  INFO_LINE();
-	  BUTTON_BOX();
-	}
-
-#undef BUTTON_BOX
-#undef INFO_LINE
-
 	TextSetLineSelections(AddText);
 	TextDisableWordWrap(AddText);
 
+	AddInfoLine = InfoLineCreate("info", 0, AddFrame);
 	TopInfoLine = AddInfoLine;
 
-	if (app_resources.fullNewsrc) {
-	    setButtonSensitive(AddButtonBox, "addIgnoreRest", False);
-	    setButtonSensitive(AddButtonBox, "addIgnore", False);
-	}
-
-#ifdef MOTIF
-        XmProcessTraversal(AddFrame, XmTRAVERSE_CURRENT);
-#else
+	AddButtonBox = ButtonBoxCreate("buttons", AddFrame);
+	doButtons(app_resources.addButtonList, AddButtonBox,
+		  AddButtonList, &AddButtonListCount, TOP);
+	XtManageChild(AddButtonBox);
+	
 	XawPanedSetRefigureMode(AddFrame, True);
+
 	XtSetKeyboardFocus(AddFrame, AddText);
-#endif
     }
     else {
 	TopInfoLine = AddInfoLine;

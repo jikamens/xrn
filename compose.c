@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: compose.c,v 1.134 2006-01-03 16:16:54 jik Exp $";
+static char XRNrcsid[] = "$Id: compose.c,v 1.80 1995-09-05 18:57:22 jik Exp $";
 #endif
 
 /*
@@ -31,8 +31,6 @@ static char XRNrcsid[] = "$Id: compose.c,v 1.134 2006-01-03 16:16:54 jik Exp $";
  * compose.c: routines for composing messages and articles
  */
 
-#include <stdio.h>
-
 #include "copyright.h"
 #include "config.h"
 #include "utils.h"
@@ -41,7 +39,6 @@ static char XRNrcsid[] = "$Id: compose.c,v 1.134 2006-01-03 16:16:54 jik Exp $";
 #include <errno.h>
 #include <sys/file.h>
 #include <signal.h>
-#include <assert.h>
 #include "error_hnds.h"
 #ifdef RESOLVER
 #include <sys/socket.h>
@@ -52,7 +49,6 @@ static char XRNrcsid[] = "$Id: compose.c,v 1.134 2006-01-03 16:16:54 jik Exp $";
 #include "ngMode.h"
 #include "Text.h"
 #include "ButtonBox.h"
-#include "file_cache.h"
 
 #if defined(aiws) || defined(DGUX)
 struct passwd *getpwuid();
@@ -95,45 +91,11 @@ extern int fclose _ARGUMENTS((FILE *));
 #include "butdefs.h"
 #include "mesg_strings.h"
 
-struct header {
-    struct newsgroup *newsgroup;
-    art_num article;
-    file_cache_file artFile;
-    char *newsgroups;
-    char *subject;
-    char *id;
-    char *followupTo;
-    char *references;
-    char *from;
-    char *sender;
-    char *replyTo;
-    char *distribution;
-    char *keywords;
-
-    char *user;
-    char *real_user;
-    char *fullname;
-    char *host;
-    char *real_host;
-#ifndef INEWS
-    char *sender_host;
+#ifdef INN
+#include <libinn.h>
 #endif
-    char *path;
-    char *organization;
 
-    char  *date; /* added to header structure....... */
-};
-
-static void freeHeader _ARGUMENTS((struct header *));
 static void saveDeadLetter _ARGUMENTS((char *));
-static int trim_references _ARGUMENTS((char *));
-static void switch_message_type _ARGUMENTS((struct header *));
-static char *update_headers _ARGUMENTS((struct header *, int, int, int));
-static char *followup_or_reply_title _ARGUMENTS((struct header *, int, int));
-static void compose_buttons _ARGUMENTS((Widget, int));
-static int check_quoted_text _ARGUMENTS((char *));
-static char *insert_courtesy_tag _ARGUMENTS((char *));
-static Boolean IsValidAddressField _ARGUMENTS((CONST char *));
 
 #ifdef GENERATE_EXTRA_FIELDS
 static char *gen_id _ARGUMENTS((void));
@@ -149,9 +111,7 @@ static char *gen_id _ARGUMENTS((void));
 /* entire pane */
 static Widget ComposeTopLevel = (Widget) 0;
 /* text window */
-static Widget ComposeLabel = (Widget) 0;
 static Widget ComposeText = (Widget) 0;
-static Widget ComposeButtonBox = (Widget) 0;
 
 /*
   This stuff is used by the external editorCommand code.  See
@@ -170,7 +130,7 @@ typedef enum {
 EditStatus editing_status = NoEdit;
 extern int inchannel;
 
-static int Call_Editor _ARGUMENTS((Boolean save_message, Boolean preserve_mtime));
+static int Call_Editor _ARGUMENTS((/* Boolean */ int save_message));
 
 /*
   End stuff used for editorCommand support.
@@ -190,8 +150,37 @@ static int PostingMode = POST;
 static char *PostingModeStrings[] =
     { "post", "followup", "reply", "forward", "gripe", "followup",
       "post", "mail" };
-#define IS_RESPONSE(mode) ((mode == FOLLOWUP) || (mode == REPLY) || \
-			   (mode == FOLLOWUP_REPLY))
+
+struct header {
+    art_num article;
+    char *artFile;
+    char *newsgroups;
+    char *subject;
+    char *messageId;
+    char *followupTo;
+    char *references;
+    char *from;
+    char *replyTo;
+    char *distribution;
+    char *keywords;
+
+    char *user;
+    char *real_user;
+    char *fullname;
+    char *host;
+    char *real_host;
+#ifndef INEWS
+    char *sender_host;
+#endif
+#ifndef INN
+    char *path;
+#endif
+    char *organization;
+
+    char  *date; /* added to header structure....... */
+};
+
+static void freeHeader _ARGUMENTS((struct header *));
 
 /*
  * storage for the header information needed for building, checking,
@@ -202,29 +191,12 @@ static char *PostingModeStrings[] =
 
 static struct header Header, CancelHeader;
 
-#define SIG_PREFIX "-- \n"
 
 BUTTON(compAbort,abort);
 BUTTON(compSave,save);
-BUTTON(compSwitchFollowup,switch to followup);
-BUTTON(compSwitchReply,switch to reply);
-BUTTON(compSwitchBoth,switch to followup/reply);
 BUTTON(compSend,send);
 BUTTON(compIncludeArticle,include article);
 BUTTON(compIncludeFile,include file);
-
-static ButtonList CompButtonList[] = {
-  {"compAbort",			compAbortCallbacks,		0,	True},
-  {"compSwitchFollowup",	compSwitchFollowupCallbacks,	0,	True},
-  {"compSwitchReply",		compSwitchReplyCallbacks,	0,	True},
-  {"compSwitchBoth",		compSwitchBothCallbacks,	0,	True},
-  {"compSend",			compSendCallbacks,		0,	True},
-  {"compSave",			compSaveCallbacks,		0,	True},
-  {"compIncludeArticle",	compIncludeArticleCallbacks,	0,	True},
-  {"compIncludeFile",		compIncludeFileCallbacks,	0,	True},
-};
-
-static int CompButtonListCount = XtNumber(CompButtonList);
 
 /*
  * Get the username of the user running the program, or an empty string
@@ -264,21 +236,21 @@ char *getUser()
   
   host:
   * Contents of the HIDDENHOST environment variable, if it's set, or
-  * Contents of the hiddenHost X resource, if it's set, or
+  * INN "fromhost" configuration value, if using INN and it's set, or
   * Contents of the file HIDDEN_FILE, if it's defined and non-empty, or
   * The string RETURN_HOST, if it's defined, or
   * Contents of real_host
   If the derived value for host doesn't have a period in it, the
   domain is determined (see below) and appended to it.
 
-  path:
+  path: (not used under INN)
   * Contents of the HIDDENPATH environment variable, if it's set, or
   * Contents of the file PATH_FILE, if it's defined and non-empty, or
   * Contents of real_host
   
   host's domain: (only if host doesn't already have a period in it)
-  * Contents of the "domainName" X resource, if it's set, or
   * Contents of the DOMAIN environment variable, if it's set, or
+  * INN "domain" configuration value, if using INN and it's set, or
   * Contents of the file DOMAIN_FILE, if it's defined and non-empty, or
   * The string DOMAIN_NAME, if it's defined, or
   * Error signalled and post/mail aborted
@@ -286,14 +258,14 @@ char *getUser()
   Here's how they're used:
 
   real_host:
-  * Message-ID: field (if GENERATE_EXTRA_FIELDS is defined),
-  * Verification that the user is allowed to cancel an article
+  * Message-ID: field (if GENERATE_EXTRA_FIELDS is defined)
 
   sender_host:
-  * Sender: field, if necessary
+  * Sender: field, if necessary,
   
-  host:
-  * From: field
+  Host:
+  * From: field,
+  * Verification that the user is allowed to cancel an article
 
   path:
   * Path: field
@@ -313,273 +285,282 @@ char *getUser()
 static int getHeader _ARGUMENTS((art_num, struct header *));
 
 static int getHeader(article, Header)
-     art_num article;
-     struct header *Header;
+    art_num article;
+    struct header *Header;
 {
-  struct newsgroup *newsgroup = CurrentGroup;
-  struct passwd *pwd;
-  char host[HOST_NAME_SIZE], buffer[BUFFER_SIZE], *ptr;
-  char real_host[HOST_NAME_SIZE];
+    struct newsgroup *newsgroup = CurrentGroup;
+    struct passwd *pwd;
+    char host[HOST_NAME_SIZE], buffer[BUFFER_SIZE], *ptr;
+    char real_host[HOST_NAME_SIZE];
 #ifndef INEWS
-  char sender_host[HOST_NAME_SIZE];
+    char sender_host[HOST_NAME_SIZE];
 #endif
-  char path[HOST_NAME_SIZE];
+#ifdef INN
+    char *inn_org;
+#else
+    char path[HOST_NAME_SIZE];
+#endif
 
-  (void) memset((char *)Header, 0, sizeof(*Header));
+    (void) memset((char *)Header, 0, sizeof(*Header));
 
-  Header->newsgroup = newsgroup;
-
-  if (article > 0) {
-
-#define CHECK(field,name) \
-    if (art->field) \
-      Header->field = XtNewString(art->field); \
-    else { \
-      ART_STRUCT_UNLOCK; \
-      xhdr(newsgroup, article, name, &Header->field); \
-      art = artStructGet(newsgroup, article, False); \
+    if (article > 0) {
+	Header->article = article;
+	xhdr(newsgroup, article, "newsgroups", &Header->newsgroups);
+	xhdr(newsgroup, article, "subject", &Header->subject);
+	xhdr(newsgroup, article, "message-id", &Header->messageId);
+	xhdr(newsgroup, article, "followup-to", &Header->followupTo);
+	xhdr(newsgroup, article, "references", &Header->references);
+	xhdr(newsgroup, article, "from", &Header->from);
+	xhdr(newsgroup, article, "reply-to", &Header->replyTo);
+	xhdr(newsgroup, article, "distribution", &Header->distribution);
+	xhdr(newsgroup, article, "keywords", &Header->keywords);
+    } else {
+	/* information for 'post' */
+	if (newsgroup) {
+	    Header->newsgroups = XtNewString(newsgroup->name);
+	} else {
+	    Header->newsgroups = XtNewString("");
+	}
     }
 
-    struct article *art = artStructGet(newsgroup, article, False);
+    /*
+     * since I'm lazy down below, I'm going to replace NIL pointers with ""
+     */
+    if (Header->newsgroups == NIL(char)) {
+	Header->newsgroups = XtNewString("");
+    }
+    if (Header->subject == NIL(char)) {
+	Header->subject = XtNewString("");
+    }
+    if (Header->messageId == NIL(char)) {
+	Header->messageId = XtNewString("");
+    }
+    if (Header->followupTo == NIL(char)) {
+	Header->followupTo = XtNewString("");
+    }
+    if (Header->references == NIL(char)) {
+	Header->references = XtNewString("");
+    }
+    if (Header->from == NIL(char)) {
+	Header->from = XtNewString("");
+    }
+    if (Header->replyTo == NIL(char)) {
+	Header->replyTo = XtNewString("");
+    }
+    if (Header->distribution == NIL(char)) {
+	Header->distribution = XtNewString("");
+    }
+    if (Header->keywords == NIL(char)) {
+	Header->keywords = XtNewString("");
+    }
 
-    Header->article = article;
-    CHECK(newsgroups, "newsgroups");
-    CHECK(subject, "subject");
-    CHECK(references, "references");
-    CHECK(from, "from");
-    CHECK(id, "message-id");
-
-    ART_STRUCT_UNLOCK;
-
-    xhdr(newsgroup, article, "followup-to", &Header->followupTo);
-    xhdr(newsgroup, article, "sender", &Header->sender);
-    xhdr(newsgroup, article, "reply-to", &Header->replyTo);
-    xhdr(newsgroup, article, "distribution", &Header->distribution);
-    xhdr(newsgroup, article, "keywords", &Header->keywords);
-
-#undef CHECK
-  } else
-    /* information for 'post' */
-    if (newsgroup)
-      Header->newsgroups = XtNewString(newsgroup->name);
-    else
-      Header->newsgroups = XtNewString("");
-
-  /*
-   * since I'm lazy down below, I'm going to replace NIL pointers with ""
-   */
-  if (Header->newsgroups == NIL(char))
-    Header->newsgroups = XtNewString("");
-  if (Header->subject == NIL(char))
-    Header->subject = XtNewString("");
-  if (Header->id == NIL(char))
-    Header->id = XtNewString("");
-  if (Header->followupTo == NIL(char))
-    Header->followupTo = XtNewString("");
-  if (Header->references == NIL(char))
-    Header->references = XtNewString("");
-  if (Header->from == NIL(char))
-    Header->from = XtNewString("");
-  if (Header->sender == NIL(char))
-    Header->sender = XtNewString("");
-  if (Header->replyTo == NIL(char))
-    Header->replyTo = XtNewString("");
-  if (Header->distribution == NIL(char))
-    Header->distribution = XtNewString("");
-  if (Header->keywords == NIL(char))
-    Header->keywords = XtNewString("");
-
-  real_host[0] = '\0';
-  real_host[sizeof(real_host)-1] = '\0';
+    real_host[0] = '\0';
+    real_host[sizeof(real_host)-1] = '\0';
 
 #ifndef INEWS
-  sender_host[0] = '\0';
-  sender_host[sizeof(sender_host)-1] = '\0';
+    sender_host[0] = '\0';
+    sender_host[sizeof(sender_host)-1] = '\0';
 #endif
 
-  host[0] = '\0';
-  host[sizeof(host)-1] = '\0';
+    host[0] = '\0';
+    host[sizeof(host)-1] = '\0';
 
-  path[0] = '\0';
-  path[sizeof(path)-1] = '\0';
+#ifndef INN
+    path[0] = '\0';
+    path[sizeof(path)-1] = '\0';
+#endif
 
 #ifdef	UUCPNAME
-  {
-    FILE * uup;
+    {
+        FILE * uup;
     
-    if ((uup = fopen(UUCPNAME, "r")) != NULL) {
-      char   *p;
-      char    xbuf[BUFSIZ];
+        if ((uup = fopen(UUCPNAME, "r")) != NULL) {
+    		char   *p;
+    		char    xbuf[BUFSIZ];
     
-      while (fgets(xbuf, sizeof(xbuf), uup) != NULL) {
-	if (*xbuf <= ' ' || *xbuf == '#') {
-	  continue;
-	}
-	break;
-      }
-      if (p = index(xbuf, '\n')) {
-	*p = 0;
-      }
-      (void) strncpy(real_host, xbuf, sizeof(real_host)-1);
-      (void) fclose(uup);
+    		while (fgets(xbuf, sizeof(xbuf), uup) != NULL) {
+    		    if (*xbuf <= ' ' || *xbuf == '#') {
+    			continue;
+		    }
+    		    break;
+    		}
+    		if (p = index(xbuf, '\n')) {
+    		    *p = 0;
+		}
+    		(void) strncpy(real_host, xbuf, sizeof(real_host)-1);
+    		(void) fclose(uup);
+        }
     }
-  }
 #endif
 
 #ifdef REAL_HOST
-  if (! real_host[0])
-    (void) strncpy(real_host, REAL_HOST, sizeof(real_host)-1);
+    if (! real_host[0])
+	(void) strncpy(real_host, REAL_HOST, sizeof(real_host)-1);
 #endif
 
-  if (! real_host[0]) {
+    if (! real_host[0]) {
 # ifdef RESOLVER
-    struct hostent *hent;
+	struct hostent *hent;
 # endif
-    (void) gethostname(real_host, sizeof(real_host));
+	(void) gethostname(real_host, sizeof(real_host));
 # ifdef RESOLVER
-    if ((hent = gethostbyname(real_host)))
-      (void) strncpy(real_host, hent->h_name, sizeof(real_host)-1);
+	if ((hent = gethostbyname(real_host)))
+	    (void) strncpy(real_host, hent->h_name, sizeof(real_host)-1);
 # endif
-  }
+    }
 
 #ifndef INEWS
 #ifdef SENDER_HOST
-  if (! sender_host[0])
-    (void) strncpy(sender_host, SENDER_HOST, sizeof(sender_host)-1);
+    if (! sender_host[0])
+	(void) strncpy(sender_host, SENDER_HOST, sizeof(sender_host)-1);
 #endif
 
-  if (! sender_host[0])
-    strcpy(sender_host, real_host);
+    if (! sender_host[0])
+	strcpy(sender_host, real_host);
 #endif /* ! INEWS */
 
-  if (! host[0])
-    if ((ptr = getenv("HIDDENHOST")))
-      (void) strncpy(host, ptr, sizeof(host)-1);
+    if (! host[0])
+	if ((ptr = getenv("HIDDENHOST")))
+	    (void) strncpy(host, ptr, sizeof(host)-1);
 
-  if ((! host[0]) && app_resources.hiddenHost && *app_resources.hiddenHost)
-    (void) strncpy(host, app_resources.hiddenHost, sizeof(host)-1);
+#ifdef INN
+    if (! host[0]) {
+	/* always let values in inn.conf take precedence */
+	char *inn_fromhost = GetConfigValue("fromhost");
+	if (inn_fromhost)
+	    (void) strncpy(host, inn_fromhost, sizeof(host)-1);
+    }
+#endif /* INN */
 
 #ifdef HIDDEN_FILE
-  if (! host[0])
-    if (ptr = getinfofromfile(HIDDEN_FILE))
-      (void) strncpy(host, ptr, sizeof(host)-1);
+    if (! host[0])
+	if (ptr = getinfofromfile(HIDDEN_FILE))
+	    (void) strncpy(host, ptr, sizeof(host)-1);
 #endif /* HIDDEN_FILE */
 
 #ifdef RETURN_HOST
-  if (! host[0])
-    (void) strncpy(host, RETURN_HOST, sizeof(host)-1);
+    if (! host[0])
+	(void) strncpy(host, RETURN_HOST, sizeof(host)-1);
 #endif
 
-  if (! host[0])
-    (void) strcpy(host, real_host);
+    if (! host[0])
+	(void) strcpy(host, real_host);
 
-  if (! path[0])
-    if ((ptr = getenv("HIDDENPATH")))
-      (void) strncpy(path, ptr, sizeof(path)-1);
+#ifndef INN
+    if (! path[0])
+	if ((ptr = getenv("HIDDENPATH")))
+	    (void) strncpy(path, ptr, sizeof(path)-1);
 # ifdef PATH_FILE
-  if (! path[0])
-    if (ptr = getinfofromfile(PATH_FILE))
-      (void) strncpy(path, ptr, sizeof(path)-1);
+    if (! path[0])
+	if (ptr = getinfofromfile(PATH_FILE))
+	    (void) strncpy(path, ptr, sizeof(path)-1);
 # endif
-  if (! path[0])
-    (void) strcpy(path, real_host);
+    if (! path[0])
+	(void) strcpy(path, real_host);
+#endif /* ! INN */
     
-  /* If the host name is not a full domain name, put in the domain */
-  if (index (host, '.') == NIL(char)) {
-    char *domain = app_resources.domainName;
+    /* If the host name is not a full domain name, put in the domain */
+    if (index (host, '.') == NIL(char)) {
+        char *domain = app_resources.domainName;
 
-    if (! domain)
-      domain = getenv("DOMAIN");
-#ifdef HAVE_CONFIGDATA_H
-    if (! domain)
-      domain = GetFileConfigValue("domain");
+	if (! domain)
+	    domain = getenv("DOMAIN");
+#ifdef INN
+	if (! domain)
+	    domain = GetFileConfigValue("domain");
 #endif
 #ifdef DOMAIN_FILE
-    if (! domain)
-      domain = getinfofromfile(DOMAIN_FILE);
+	if (! domain)
+	    domain = getinfofromfile(DOMAIN_FILE);
 #endif
 #ifdef DOMAIN_NAME
-    if (! domain)
-      domain = DOMAIN_NAME;
+	if (! domain)
+	    domain = DOMAIN_NAME;
 #endif
 
-    if (! domain) {
-      mesgPane(XRN_SERIOUS, 0, NO_DOMAIN_MSG);
-      freeHeader(Header);
-      return XRN_ERROR;
+	if (! domain) {
+	    mesgPane(XRN_SERIOUS, 0, NO_DOMAIN_MSG);
+	    freeHeader(Header);
+	    return XRN_ERROR;
+	}
+
+	(void) strncat(host, domain, sizeof(host) - strlen(host));
     }
 
-    (void) strncat(host, domain, sizeof(host) - strlen(host));
-  }
-
-  Header->host = XtNewString(host);
-  Header->real_host = XtNewString(real_host);
+    Header->host = XtNewString(host);
+    Header->real_host = XtNewString(real_host);
 #ifndef INEWS
-  Header->sender_host = XtNewString(sender_host);
+    Header->sender_host = XtNewString(sender_host);
 #endif
-  Header->path = XtNewString(path);
+#ifndef INN    
+    Header->path = XtNewString(path);
+#endif /* INN */
 
-  if (app_resources.organization != NIL(char)) {
-    Header->organization = XtNewString(app_resources.organization);
+    if (app_resources.organization != NIL(char)) {
+	Header->organization = XtNewString(app_resources.organization);
 #ifndef apollo
-  } else if ((ptr = getenv ("ORGANIZATION")) != NIL(char)) {
+    } else if ((ptr = getenv ("ORGANIZATION")) != NIL(char)) {
 #else
-  } else if ((ptr = getenv ("NEWSORG")) != NIL(char)) {
+    } else if ((ptr = getenv ("NEWSORG")) != NIL(char)) {
 #endif
-    Header->organization = XtNewString(ptr);
+	Header->organization = XtNewString(ptr);
+#ifdef INN
+    } else if ((inn_org = GetConfigValue("organization"))) {
+	Header->organization = XtNewString(inn_org);
+#endif /* INN */    
 #ifdef ORG_FILE
-  } else if ((ptr = getinfofromfile(ORG_FILE)) != NULL) {
-    Header->organization = XtNewString(ptr);
+    } else if ((ptr = getinfofromfile(ORG_FILE)) != NULL) {
+	Header->organization = XtNewString(ptr);
 #endif /* ORG_FILE */
-  } else {
+    } else {
 #ifdef ORG_NAME
-    Header->organization = XtNewString(ORG_NAME);
+	Header->organization = XtNewString(ORG_NAME);
 #else
-    Header->organization = XtNewString("");
+	Header->organization = XtNewString("");
 #endif /* ORG_NAME */
-  }
-
-  Header->user = getUser();
-
-  pwd = getpwuid(getuid());
-
-  if ((Header->real_user = pwd->pw_name)) {
-    Header->real_user = XtNewString(Header->real_user);
-  } else {
-    Header->real_user = XtNewString("");
-  }
-
-  if ((Header->fullname = getenv("FULLNAME"))) {
-    Header->fullname = XtNewString(Header->fullname);
-  } else if ((Header->fullname = pwd->pw_gecos)) {
-    Header->fullname = XtNewString(Header->fullname);
-
-    ptr = index(Header->fullname, ',');
-    if (ptr != NIL(char)) {
-      *ptr = '\0';
     }
+
+    Header->user = getUser();
+
+    pwd = getpwuid(getuid());
+
+    if ((Header->real_user = pwd->pw_name)) {
+	Header->real_user = XtNewString(Header->real_user);
+    } else {
+	Header->real_user = XtNewString("");
+    }
+
+    if ((Header->fullname = getenv("FULLNAME"))) {
+	Header->fullname = XtNewString(Header->fullname);
+    } else if ((Header->fullname = pwd->pw_gecos)) {
+	Header->fullname = XtNewString(Header->fullname);
+
+	ptr = index(Header->fullname, ',');
+	if (ptr != NIL(char)) {
+	    *ptr = '\0';
+	}
     
-    /* & expansion */
-    ptr = index(Header->fullname, '&');
-    if (ptr != NIL(char)) {
-      char *p = buffer + (ptr - Header->fullname);
+	/* & expansion */
+	ptr = index(Header->fullname, '&');
+	if (ptr != NIL(char)) {
+	    char *p = buffer + (ptr - Header->fullname);
 
-      buffer[0] = '\0';
-      *ptr = '\0';
-      (void) strcpy(buffer, Header->fullname);
-      (void) strcat(buffer, Header->user);
-      if (isascii(*p)) {
-	*p = toupper(*p);
-      }
-      ptr++;
-      (void) strcat(buffer, ptr);
-      FREE(Header->fullname);
-      Header->fullname = XtNewString(buffer);
+	    buffer[0] = '\0';
+	    *ptr = '\0';
+	    (void) strcpy(buffer, Header->fullname);
+	    (void) strcat(buffer, Header->user);
+	    if (isascii(*p)) {
+		*p = toupper(*p);
+	    }
+	    ptr++;
+	    (void) strcat(buffer, ptr);
+	    FREE(Header->fullname);
+	    Header->fullname = XtNewString(buffer);
+	}
+    } else {
+	Header->fullname = XtNewString("");
     }
-  } else {
-    Header->fullname = XtNewString("");
-  }
-  return XRN_OKAY;
+    return XRN_OKAY;
 }
 
 /*
@@ -707,15 +688,12 @@ static void stripField(fieldName)
 	TextReplace(ComposeText, "", 0, left, right);
 }
 
-#define CHECK_SIZE_EXTENDED(ptr,size,total,incr) \
-     size += (incr); \
-     while (size >= total) { \
-	  total += BUFFER_SIZE; \
-	  ptr = XtRealloc(ptr, total); \
+#define CHECK_SIZE(s) \
+     message_size += (s); \
+     while (message_size >= message_total_size) { \
+	  message_total_size += BUFFER_SIZE; \
+	  message = XtRealloc(message, message_total_size); \
      }
-
-#define CHECK_SIZE(s) CHECK_SIZE_EXTENDED(message,message_size,\
-					  message_total_size,s)
 			    
 /*
  * Return the characters from any one of the fields in the header
@@ -771,14 +749,13 @@ Boolean pendingCompositionP()
 static void freeHeader(Header)
     struct header *Header;
 {
-    file_cache_file_release(FileCache, Header->artFile);
+    FREE(Header->artFile);
     FREE(Header->newsgroups);
     FREE(Header->subject);
-    FREE(Header->id);
+    FREE(Header->messageId);
     FREE(Header->followupTo);
     FREE(Header->references);
     FREE(Header->from);
-    FREE(Header->sender);
     FREE(Header->replyTo);
     FREE(Header->distribution);
     FREE(Header->keywords);
@@ -790,7 +767,9 @@ static void freeHeader(Header)
 #ifndef INEWS
     FREE(Header->sender_host);
 #endif
+#ifndef INN	
     FREE(Header->path);
+#endif /* INN */	
     FREE(Header->organization);
     return;
 }
@@ -846,23 +825,14 @@ static void buildFrom(Header, msg, msg_size, msg_total_size)
 #define buildSender(Header,msg,msg_size,msg_total_size) \
 	_buildFrom(Header,(msg), True, True, (msg_size), (msg_total_size))
 
-static void _buildFrom _ARGUMENTS((struct header *, char **, Boolean,
-				   Boolean, int *, int *));
+static void _buildFrom _ARGUMENTS((struct header *, char **, /* Boolean */ int,
+				  /* Boolean */ int, int *, int *));
 
-static void _buildFrom(
-		       _ANSIDECL(struct header *,	Header),
-		       _ANSIDECL(char **,		msg),
-		       _ANSIDECL(Boolean,		real_addr),
-		       _ANSIDECL(Boolean,		sender),
-		       _ANSIDECL(int *,			msg_size),
-		       _ANSIDECL(int *,			msg_total_size)
-		       )
-     _KNRDECL(struct header *,	Header)
-     _KNRDECL(char **,		msg)
-     _KNRDECL(Boolean,		real_addr)
-     _KNRDECL(Boolean,		sender)
-     _KNRDECL(int *,		msg_size)
-     _KNRDECL(int *,		msg_total_size)
+static void _buildFrom(Header, msg, real_addr, sender, msg_size, msg_total_size)
+    struct header *Header;
+    char **msg;
+    Boolean real_addr, sender;
+    int *msg_size, *msg_total_size;
 #endif /* INEWS */
 {
     char *message = *msg;
@@ -936,16 +906,11 @@ static void buildReferences(Header, msg, msg_size, msg_total_size)
     char *message = *msg;
     int message_size = *msg_size;
     int message_total_size = *msg_total_size;
-    int msg_len, ref_len, new_ref_len;
 
     CHECK_SIZE(sizeof("References:  \n") - 1 + strlen(Header->references) +
-	       strlen(Header->id));
-    (void) sprintf(&message[(msg_len = strlen(message))], "References: %s %s\n",
-		   Header->references, Header->id);
-
-    ref_len = strlen(&message[msg_len]);
-    new_ref_len = trim_references(&message[msg_len]);
-    message_size -= (ref_len - new_ref_len);
+	       strlen(Header->messageId));
+    (void) sprintf(&message[strlen(message)], "References: %s %s\n",
+		   Header->references, Header->messageId);
 
     *msg = message;
     *msg_size = message_size;
@@ -965,6 +930,7 @@ static void buildPath(Header, msg, msg_size, msg_total_size)
     int message_size = *msg_size;
     int message_total_size = *msg_total_size;
 
+#ifndef INN
 #if defined(INEWS) || defined(HIDE_PATH)
     CHECK_SIZE(sizeof("Path: \n") - 1 + strlen(Header->user));
     (void) sprintf(&message[strlen(message)], "Path: %s\n", Header->user);
@@ -974,6 +940,7 @@ static void buildPath(Header, msg, msg_size, msg_total_size)
     (void) sprintf(&message[strlen(message)], "Path: %s!%s\n",
 		   Header->path, Header->user);
 #endif /* INEWS or HIDE_PATH */
+#endif /* INN */
 
     *msg = message;
     *msg_size = message_size;
@@ -982,9 +949,10 @@ static void buildPath(Header, msg, msg_size, msg_total_size)
     return;
 }
 
-static int buildNewsgroups _ARGUMENTS((struct header *, char **, int *, int *));
+static Boolean buildNewsgroups _ARGUMENTS((struct header *, char **,
+					   int *, int *));
 
-static int buildNewsgroups(Header, msg, msg_size, msg_total_size)
+static Boolean buildNewsgroups(Header, msg, msg_size, msg_total_size)
     struct header *Header;
     char **msg;
     int *msg_size, *msg_total_size;
@@ -994,7 +962,6 @@ static int buildNewsgroups(Header, msg, msg_size, msg_total_size)
     int message_total_size = *msg_total_size;
 
     char *ngptr;
-    int ng_count = 0;
 
     if (*Header->followupTo)
 	if (! strcmp(Header->followupTo, "poster"))
@@ -1013,12 +980,7 @@ static int buildNewsgroups(Header, msg, msg_size, msg_total_size)
     *msg_size = message_size;
     *msg_total_size = message_total_size;
 
-    if (*ngptr) {
-      for (message = ngptr; message; message = strchr(message + 1, ','))
-	ng_count++;
-    }
-	
-    return ng_count;
+    return(*ngptr ? True : False);
 }
 
 static void buildDistribution _ARGUMENTS((struct header *, char **,
@@ -1092,14 +1054,11 @@ static void buildExtraFields(msg, msg_size, msg_total_size)
 
 #endif /* GENERATE_EXTRA_FIELDS */
 
-static void compAbortUtil _ARGUMENTS((int, Boolean));
+static void compAbortUtil _ARGUMENTS((int, /* Boolean */ int));
 
-static void compAbortUtil(
-			  _ANSIDECL(int,	mesg_name),
-			  _ANSIDECL(Boolean,	save)
-			  )
-     _KNRDECL(int,	mesg_name)
-     _KNRDECL(Boolean,	save)
+static void compAbortUtil(mesg_name, save)
+    int mesg_name;
+    Boolean save;
 {
     char *ptr;
     char *msg WALL(= 0);
@@ -1153,7 +1112,7 @@ static void saveMessage(fname, msg)
 {
     FILE *fp;
     char *file = utTildeExpand(fname);
-#if defined(__osf__) || defined(__hpux)
+#ifdef __osf__
     time_t clock;
 #else
     long clock;
@@ -1276,10 +1235,18 @@ void compSendFunction(widget, event, string, count)
     char *ErrMessage;
     int mesg_name = newMesgPaneName();
 
-    char *ptr, *ptr2;
+    /*
+     * I am loathe to use buffers that are 1024 bytes long for the old
+     * from line, new from line and sender line, since they are almost
+     * certainly going to be much shorter than this, but this seems to
+     * be the way things are done elsewhere in this file, so I'll
+     * stick with it.
+     */
+    char *ptr;
     int mode, i, j, comma;
     unsigned long newsgroups_status WALL(= 0);
-    int tries = 1, saved = 0;
+    int tries = 1;
+    int retry_editing = 0;
     int saved_dead = 0;
 
     TextDisableRedisplay(ComposeText);
@@ -1293,7 +1260,7 @@ void compSendFunction(widget, event, string, count)
 	    XBell(XtDisplay(TopLevel), 0);
 	    mesgPane(XRN_SERIOUS, mesg_name, MULTI_MSG, "Subject");
 	    if (app_resources.editorCommand)
-		Call_Editor(True, False);
+		Call_Editor(True);
 	    TextEnableRedisplay(ComposeText);
 	    CLEANUP(); return;
 	}
@@ -1307,7 +1274,7 @@ void compSendFunction(widget, event, string, count)
 		mesgPane(XRN_SERIOUS | XRN_SAME_LINE, mesg_name,
 			 FILL_IN_RESEND_MSG);
 		if (app_resources.editorCommand)
-		    Call_Editor(True, False);
+		    Call_Editor(True);
 		TextEnableRedisplay(ComposeText);
 		CLEANUP(); return;
 	    }
@@ -1318,7 +1285,6 @@ void compSendFunction(widget, event, string, count)
 	}
 
  	/* Let's be more strict, since inews doesn't see empty headers.  */
-	buffer_size = 0;
  	returnField("Subject:", &buffer, &buffer_size, &buffer_total_size);
 	ptr = buffer + sizeof("Subject:") - 1;
 	while ((*ptr == ' ') || (*ptr == '\t') || (*ptr == '\n'))
@@ -1328,18 +1294,14 @@ void compSendFunction(widget, event, string, count)
 	    mesgPane(XRN_SERIOUS, mesg_name, EMPTY_SUBJECT_MSG);
 	    mesgPane(XRN_SERIOUS | XRN_SAME_LINE, mesg_name, FILL_IN_RESEND_MSG);
 	    if (app_resources.editorCommand)
-		Call_Editor(False, False);
+		Call_Editor(False);
 	    TextEnableRedisplay(ComposeText);
 	    CLEANUP(); return;
  	}
 
 	if ((PostingMode == FOLLOWUP) || (PostingMode == FOLLOWUP_REPLY)) {
 	    if (fieldExists("References:", 0) < 0) {
-		buffer_size = 0;
-		CHECK_SIZE_EXTENDED(buffer, buffer_size, buffer_total_size,
-				    sizeof("References: \n") +
-				    strlen(Header.id));
-		(void) sprintf(buffer, "References: %s\n", Header.id);
+		(void) sprintf(buffer, "References: %s\n", Header.messageId);
 		addField(buffer);
 	    }
 	}
@@ -1354,12 +1316,11 @@ void compSendFunction(widget, event, string, count)
 	    XBell(XtDisplay(TopLevel), 0);
 	    mesgPane(XRN_SERIOUS, mesg_name, MULTI_MSG, "From");
 	    if (app_resources.editorCommand)
-		Call_Editor(True, False);
+		Call_Editor(True);
 	    TextEnableRedisplay(ComposeText);
 	    CLEANUP(); return;
 	}
 
-	buffer_size = 0;
 	returnField("From:", &buffer, &buffer_size, &buffer_total_size);
 
 	if (! *buffer) {
@@ -1372,85 +1333,10 @@ void compSendFunction(widget, event, string, count)
 	    buffer2_size = 0;
 	    buildRealFrom(&Header, &buffer2, &buffer2_size, &buffer2_total_size);
 	    if (strcmp(buffer, buffer2)) {
-	      char *addr, *addr_buf, *end, *nl;
-
-	      addr = strchr(buffer, ':') + 1;
-	      addr_buf = addr = XtNewString(addr);
-
-	      /* Get rid of newlines */
-	      while ((nl = strchr(addr, '\n')))
-		*nl = ' ';
-
-	      /* Strip whitespace in front */
-	      while (isspace((unsigned char) *addr))
-		addr++;
-
-	      /* Strip whitespace at the end */
-	      for (end = strchr(addr, '\0') - 1;
-		   end > addr && isspace((unsigned char) *end);
-		   end--)
-		*end = '\0';
-
-	      /* Now make sure its basic syntax is correct */
-	      if (! IsValidAddressField(addr)) {
-		  XBell(XtDisplay(TopLevel), 0);
-		  mesgPane(XRN_SERIOUS, 0, BAD_FROM_MSG, addr);
-		  XtFree(addr_buf);
-		  if (app_resources.editorCommand)
-		    Call_Editor(True, False);
-		  TextEnableRedisplay(ComposeText);
-		  CLEANUP(); return;
-	      }
-
-#ifdef SENDMAIL_VERIFY
-	      if (app_resources.verifyFrom) {
-		char *verify_command, *ptr, *ptr2;
-		int cmd_length;
-
-		while (isspace((unsigned char)*addr))
-		  addr++;
-		if ((ptr = strchr(addr, '\n'))) {
-		  *ptr-- = '\0';
-		  while ((ptr >= addr) && isspace((unsigned char)*ptr))
-		    *ptr-- = '\0';
-		}
-
-		cmd_length = strlen(SENDMAIL_VERIFY) + strlen(addr) + 4;
-		for (ptr = strpbrk(addr, "\'\\"); ptr;
-		     ptr = strpbrk(ptr + 1, "\'\\"))
-		  cmd_length += 3;
-
-		verify_command = XtMalloc(cmd_length);
-		(void) strcpy(verify_command, SENDMAIL_VERIFY);
-		ptr = &verify_command[sizeof(SENDMAIL_VERIFY)-1];
-		*ptr++ = ' '; *ptr++ = '\'';
-		for (ptr2 = addr; *ptr2; ptr2++) {
-		  if (*ptr2 == '\'' || *ptr2 == '\\') {
-		    *ptr++ = '\''; *ptr++ = '\\'; *ptr++ = *ptr2; *ptr++ = '\'';
-		  }
-		  else {
-		    *ptr++ = *ptr2;
-		  }
-		}
-		*ptr++ = '\''; *ptr++ = '\0';
-
-		if (system(verify_command)) {
-		  XBell(XtDisplay(TopLevel), 0);
-		  mesgPane(XRN_SERIOUS, 0, BAD_FROM_MSG, addr);
-		  XtFree(addr_buf);
-		  if (app_resources.editorCommand)
-		    Call_Editor(True, False);
-		  TextEnableRedisplay(ComposeText);
-		  CLEANUP(); return;
-		}
-	      }
-#endif /* SENDMAIL_VERIFY */
-
-	      XtFree(addr_buf);
-	      *buffer = '\0';
-	      buffer_size = 0;
-	      buildSender(&Header, &buffer, &buffer_size, &buffer2_size);
-	      addField(buffer);
+		*buffer = '\0';
+		buffer_size = 0;
+		buildSender(&Header, &buffer, &buffer_size, &buffer2_size);
+		addField(buffer);
 	    }
 	}
 #endif /* ! INEWS */	
@@ -1459,13 +1345,13 @@ void compSendFunction(widget, event, string, count)
 	    XBell(XtDisplay(TopLevel), 0);
 	    mesgPane(XRN_SERIOUS, mesg_name, MULTI_MSG, "Newsgroups");
 	    if (app_resources.editorCommand)
-		Call_Editor(True, False);
+		Call_Editor(True);
 	    TextEnableRedisplay(ComposeText);
 	    CLEANUP(); return;
 	}
 	    
 	if (fieldExists("Newsgroups:", 0) < 0) {
-	    int got_groups;
+	    Boolean got_groups;
 
 	    buffer_size = 0;
 	    *buffer = '\0';
@@ -1484,22 +1370,17 @@ void compSendFunction(widget, event, string, count)
 			 FILL_IN_RESEND_MSG);
 	    }
 	    if (app_resources.editorCommand)
-		Call_Editor(True, False);
+		Call_Editor(True);
 	    TextEnableRedisplay(ComposeText);
 	    CLEANUP(); return;
 	}
 
-	buffer_size = 0;
 	returnField("Newsgroups:", &buffer, &buffer_size, &buffer_total_size);
-
-	/* "buffer" now contains the original "Newsgroups" field. */
 
 	XtFree(buffer2);
 	buffer2 = XtNewString(buffer);
 	buffer2_size = strlen(buffer2);
 	buffer2_total_size = buffer2_size + 1;
-
-	/* "buffer2" now contains the original "Newsgroups" field */
 
 	ptr = buffer;
 
@@ -1519,16 +1400,12 @@ void compSendFunction(widget, event, string, count)
 	}
 	ptr[j] = '\0';
 
-	/* "buffer" now contains the fixed-up "Newsgroups" field */
-
 	/* Need to preserve buffer because newsgroupsStatusUnion will
 	   modify it. */
 	XtFree(buffer3);
 	buffer3 = XtNewString(buffer);
 	buffer3_size = j;
 	buffer3_total_size = j + 1;
-
-	/* "buffer3" now contains the fixed-up "Newsgroups" field */
 
 	for (ptr = buffer + 11 /* skip "Newsgroups:" */; *ptr == ' ';
 	     ptr++) /* empty */;
@@ -1537,7 +1414,7 @@ void compSendFunction(widget, event, string, count)
 	if (! (newsgroups_status & NG_POSTABLE)) {
 	    mesgPane(XRN_ERROR, mesg_name, NO_POSTABLE_NG_MSG);
 	    if (app_resources.editorCommand)
-		Call_Editor(False, False);
+		Call_Editor(False);
 	    TextEnableRedisplay(ComposeText);
 	    CLEANUP(); return;
 	}
@@ -1547,104 +1424,27 @@ void compSendFunction(widget, event, string, count)
 	    addField(buffer3);
 	}
 
-	i = j = 0;
-
-#define COUNT_NEWSGROUPS(var, buffer, name) \
-	if (! var) { \
-	  ptr = buffer + sizeof(name); \
-	  while (*ptr && ((*ptr == ' ') || (*ptr == '\t') || \
-			  (*ptr == '\n'))) \
-	    ptr++; \
-	  if (! *ptr) \
-	    var = 0; \
-	  else \
-	    for ( ; ptr; ptr = strchr(ptr + 1, ',')) \
-	      var++; \
-	}
-
-#if CROSSPOST_PROHIBIT
-	COUNT_NEWSGROUPS(i, buffer3, "Newsgroups:");
-	if (i >= CROSSPOST_PROHIBIT) {
-	  char *buf = XtMalloc(strlen(CROSSPOST_PROHIBIT_MSG) + 20);
-
-	  sprintf(buf, CROSSPOST_PROHIBIT_MSG, i, CROSSPOST_PROHIBIT-1);
-
-	  XBell(XtDisplay(TopLevel), 0);
-	  ChoiceBox(TopLevel, buf, 1, OK_MSG);
-	  if (app_resources.editorCommand)
-	    Call_Editor(True, False);
-	  TextEnableRedisplay(ComposeText);
-	  CLEANUP(); XtFree(buf); return;
-	}
-#endif
-	if (app_resources.warnings.posting.crossPost) {
-	  char *buf = XtMalloc(strlen(CROSSPOST_CONFIRM_MSG) + 10);
-
-	  COUNT_NEWSGROUPS(i, buffer3, "Newsgroups:");
-	  if ((i >= app_resources.warnings.posting.crossPost) &&
-	      sprintf(buf, CROSSPOST_CONFIRM_MSG, i) &&
-	      (ChoiceBox(TopLevel, buf, 2, POST_MSG, EDIT_MSG) == 2)) {
-	    if (app_resources.editorCommand)
-	      Call_Editor(True, True);
-	    TextEnableRedisplay(ComposeText);
-	    CLEANUP(); XtFree(buf); return;
-	  }
-
-	  XtFree(buf);
-	}
-	if (app_resources.warnings.posting.followupTo) {
-	  COUNT_NEWSGROUPS(i, buffer3, "Newsgroups:");
-	  if (i >= app_resources.warnings.posting.followupTo) {
-	    buffer2_size = 0;
-	    returnField("Followup-To:", &buffer2, &buffer2_size,
-			&buffer2_total_size);
-	    if (*buffer2) {
-	      COUNT_NEWSGROUPS(j, buffer2, "Followup-To:");
-	    }
-	    if (j) {
-	      char *buf =
-		XtMalloc(strlen(FOLLOWUP_FOLLOWUPTO_CONFIRM_MSG) + 20);
-
-	      if ((j >= app_resources.warnings.posting.followupTo) &&
-		  sprintf(buf, FOLLOWUP_FOLLOWUPTO_CONFIRM_MSG, i, j) &&
-		  (ChoiceBox(TopLevel, buf, 2, POST_MSG, EDIT_MSG) == 2)) {
-		if (app_resources.editorCommand)
-		  Call_Editor(True, True);
-		TextEnableRedisplay(ComposeText);
-		CLEANUP(); XtFree(buf); return;
-	      }
-
-	      XtFree(buf);
-	    }
-	    else {
-	      char *buf = XtMalloc(strlen(FOLLOWUP_CONFIRM_MSG) + 10);
-
-	      sprintf(buf, FOLLOWUP_CONFIRM_MSG, i);
-	      if (ChoiceBox(TopLevel, buf, 2, POST_MSG, EDIT_MSG) == 2) {
-		if (app_resources.editorCommand)
-		  Call_Editor(True, True);
-		TextEnableRedisplay(ComposeText);
-		CLEANUP(); XtFree(buf); return;
-	      }
-	    }
-	  }
-	}
-
 	if (fieldIsMultiple("Path:")) {
 	    XBell(XtDisplay(TopLevel), 0);
 	    mesgPane(XRN_SERIOUS, mesg_name, MULTI_MSG, "Path");
 	    if (app_resources.editorCommand)
-		Call_Editor(True, False);
+		Call_Editor(True);
 	    TextEnableRedisplay(ComposeText);
 	    CLEANUP(); return;
 	}
 
+#ifndef INN
+	/* The inews in INN adds the Path: header for us, and has its own
+	 * idea of policy.  We don't bother creating it, freeing it, or
+	 * anything else in compose.c that has to do with it
+	 */
 	if (fieldExists("Path:", 0) < 0) {
 	    buffer_size = 0;
 	    *buffer = '\0';
 	    buildPath(&Header, &buffer, &buffer_size, &buffer_total_size);
 	    addField(buffer);
 	}
+#endif /* INN */
 	
 /*	stripField("Message-ID:");  .............we need this !!! */
 	stripField("Relay-Version:");
@@ -1653,12 +1453,7 @@ void compSendFunction(widget, event, string, count)
 #ifdef IDENTIFY_VERSION_IN_MESSAGES
 	/* Tell them who we are */
 	stripField("X-newsreader:");
-	buffer_size = 0;
-	CHECK_SIZE_EXTENDED(buffer, buffer_size, buffer_total_size,
-			    sizeof("X-newsreader: xrn \n") +
-			    sizeof(PACKAGE_VERSION) - 1); /* - 1 because we don't
-							 need both nulls */
-	(void) sprintf(buffer, "X-newsreader: xrn %s\n", PACKAGE_VERSION);
+	(void) sprintf(buffer, "X-newsreader: xrn %s\n", XRN_VERSION);
 	addField(buffer);
 #endif
     } else {
@@ -1667,59 +1462,12 @@ void compSendFunction(widget, event, string, count)
 #ifdef IDENTIFY_VERSION_IN_MESSAGES
 	/* Tell them who we are */
 	stripField("X-mailer:");
-	buffer_size = 0;
-	CHECK_SIZE_EXTENDED(buffer, buffer_size, buffer_total_size,
-			    sizeof("X-mailer: xrn \n") +
-			    sizeof(PACKAGE_VERSION) - 1);
-	(void) sprintf(buffer, "X-mailer: xrn %s\n", PACKAGE_VERSION);
+	(void) sprintf(buffer, "X-mailer: xrn %s\n", XRN_VERSION);
 	addField(buffer);
 #endif
     }
 
     ptr = TextGetString(ComposeText);
-
-    if ((ptr2 = strstr(ptr, "\n\n"))) {
-      ptr2 += 2;
-      while (*ptr2 && isspace((unsigned char)*ptr2))
-	ptr2++;
-    }
-
-    if (! (ptr2 && *ptr2 && strncmp(ptr2, SIG_PREFIX, sizeof(SIG_PREFIX)-1))) {
-      XBell(XtDisplay(TopLevel), 0);
-      mesgPane(XRN_SERIOUS, mesg_name, NO_BODY_MSG);
-      if (app_resources.editorCommand)
-	Call_Editor(True, False);
-      TextSetInsertionPoint(ComposeText, TextGetLength(ComposeText));
-      TextEnableRedisplay(ComposeText);
-      XtFree(ptr);
-      CLEANUP();
-      return;
-    }
-
-    if (! check_quoted_text(ptr) &&
-	(ConfirmationBox(ComposeTopLevel, ONLY_INCLUDED_MSG, YES_STRING,
-			 RE_EDIT_MSG, True) == XRN_CB_ABORT)) {
-      if (app_resources.editorCommand)
-	Call_Editor(True, True);
-      TextSetInsertionPoint(ComposeText, ptr2 - ptr);
-      TextEnableRedisplay(ComposeText);
-      XtFree(ptr);
-      CLEANUP();
-      return;
-    }
-
-    /* Strip empty Followup-To fields, since some NNTP servers choke
-       on them. */
-    buffer_size = 0;
-    returnField("Followup-To:", &buffer, &buffer_size, &buffer_total_size);
-    ptr2 = buffer + sizeof("Followup-To:") - 1;
-    while (*ptr2 && isspace(*ptr2))
-      ptr2++;
-    if (! *ptr2) {
-      stripField("Followup-To:");
-      FREE(ptr);
-      ptr = TextGetString(ComposeText);
-    }
 
     if ((PostingMode == FOLLOWUP_REPLY) || (PostingMode == POST_MAIL)) {
 	tries = 2;
@@ -1744,6 +1492,7 @@ void compSendFunction(widget, event, string, count)
 		saveDeadLetter(ptr);
 		saved_dead++;
 	    }
+	    retry_editing++;
 	    break;
 	
 	case POST_NOTALLOWED:
@@ -1756,36 +1505,17 @@ void compSendFunction(widget, event, string, count)
 	    }
 	    break;
 	
-	case POST_OKAY: 
-	  {
-	    char *file, *alt_file;
-
-	    if (mode == XRN_NEWS) {
-	      file = app_resources.saveSentPostings;
-	      alt_file = app_resources.saveSentMail;
-	    }
-	    else {
-	      file = app_resources.saveSentMail;
-	      alt_file = app_resources.saveSentPostings;
-	    }
-	    if (file && ((! alt_file) ||
-			 (strcmp(file, alt_file) != 0) ||
-			 (! saved))) {
-	      saveMessage(file, ptr);
-	      saved++;
-	    }
+	case POST_OKAY:
 	    mesgPane(XRN_INFO, mesg_name, (mode == XRN_NEWS) ?
 		     ((newsgroups_status & NG_MODERATED) ?
 		      MAILED_TO_MODERATOR_MSG : ARTICLE_POSTED_MSG) :
 		     MAIL_MESSAGE_SENT_MSG);
 	    break;
-	  }
 	}
 	tries--;
 	if ((mode == XRN_NEWS) &&
 	    ((PostingMode == FOLLOWUP_REPLY) || (PostingMode == POST_MAIL))) {
-	  ptr = insert_courtesy_tag(ptr);
-	  mode = XRN_MAIL;
+	    mode = XRN_MAIL;
 	}
     } while (tries > 0);
 
@@ -1812,16 +1542,19 @@ getIncludedArticleText()
 {
      char *text, *prefix, input[256];
      int size = BUFFER_SIZE, prefix_size, cur_size;
-     FILE *infile = NULL;
+     FILE *infile;
      
      text = XtMalloc(size);
 
      if (PostingMode == REPLY) {
-        (void) sprintf(text, REPLY_YOU_WRITE_MSG, Header.id);
+        (void) sprintf(text, REPLY_YOU_WRITE_MSG,
+			 Header.messageId );
      } else if (PostingMode == FORWARD) {
-        (void) sprintf(text, FORWARDED_ARTIKEL_MSG, Header.id, Header.from);
+        (void) sprintf(text, FORWARDED_ARTIKEL_MSG,
+			 Header.messageId, Header.from);
      } else {
-        (void) sprintf(text, FOLLOWUP_AUTHOR_WRITE_MSG, Header.id, Header.from);
+        (void) sprintf(text, FOLLOWUP_AUTHOR_WRITE_MSG,
+			 Header.messageId, Header.from);
      }
 
      cur_size = strlen(text);
@@ -1829,13 +1562,9 @@ getIncludedArticleText()
      if (app_resources.includeCommand && PostingMode != FORWARD) {
 	  char cmdbuf[1024];
 
-	  if (Header.artFile) {
-	    sprintf(cmdbuf, app_resources.includeCommand,
-		    app_resources.includePrefix,
-		    file_cache_file_name(FileCache, Header.artFile));
-	    infile = xrn_popen(cmdbuf, "r");
-	  }
-
+	  sprintf(cmdbuf, app_resources.includeCommand,
+		  app_resources.includePrefix, Header.artFile);
+	  infile = xrn_popen(cmdbuf, "r");
 	  if (! infile) {
 	       mesgPane(XRN_SERIOUS, 0, CANT_INCLUDE_CMD_MSG);
 	       FREE(text);
@@ -1846,8 +1575,7 @@ getIncludedArticleText()
 	  prefix_size = 0;
      }
      else {
-	  if (Header.artFile)
-	    infile = fopen(file_cache_file_name(FileCache, Header.artFile), "r");
+	  infile = fopen(Header.artFile, "r");
 	  if (! infile) {
 	      mesgPane(XRN_SERIOUS, 0, CANT_OPEN_ART_MSG, errmsg(errno));
 	       FREE(text);
@@ -1977,8 +1705,9 @@ void compIncludeArticleFunction(widget, event, string, count)
     String *string;
     Cardinal *count;
 {
-    if (! IS_RESPONSE(PostingMode))
-      return;
+    if (PostingMode == POST) {
+	return;
+    }
     includeArticleText();
     return;
 }
@@ -2073,59 +1802,34 @@ void processMessage(closure, source, id)
     FILE *filefp;
     struct stat buf;
     char buffer[10];
-    char *ptr, *confirms[5], *question;
-    int confirm_count = 0;
+    char *ptr, *msg_type, *confirm1, *confirm2;
     int mesg_name = newMesgPaneName();
-    int choice;
-    int mode1 = PostingMode, mode2 = PostingMode;
 
     read(inchannel,buffer,1);
     if(editing_status != Completed || EditorFileName == NIL(char)){
 	return;
     }
 
-    confirms[confirm_count++] = ABORT_STRING;
-
-    confirms[confirm_count++] = RE_EDIT_MSG;
-   
     switch (PostingMode) {
     case POST:
-      question = ASK_POST_ARTICLE_MSG;
-      break;
     case FOLLOWUP:
-      question = ASK_POST_ARTICLE_MSG;
-      confirms[confirm_count++] = AS_REPLY_MSG;
-      confirms[confirm_count++] = AS_FOLLOWUP_REPLY_MSG;
-      mode1 = REPLY;
-      mode2 = FOLLOWUP_REPLY;
-      break;
-    case REPLY:
-      question = ASK_SEND_MSG;
-      confirms[confirm_count++] = AS_FOLLOWUP_MSG;
-      confirms[confirm_count++] = AS_FOLLOWUP_REPLY_MSG;
-      mode1 = FOLLOWUP;
-      mode2 = FOLLOWUP_REPLY;
-      break;
-    case FORWARD:
-    case GRIPE:
-    case MAIL:
-      question = ASK_SEND_MSG;
-      break;
+      msg_type = POST_FOLLOWUP_MSG;
+      confirm1 = ASK_POST_ARTICLE_MSG ;
+      confirm2 = ASK_RE_EDIT_ARTCILE_MSG ;
+	break;
     case FOLLOWUP_REPLY:
-      question = ASK_POST_SEND_MSG;
-      confirms[confirm_count++] = AS_FOLLOWUP_MSG;
-      confirms[confirm_count++] = AS_REPLY_MSG;
-      mode1 = FOLLOWUP;
-      mode2 = REPLY;
-      break;
     case POST_MAIL:
+      msg_type = FOLLOWUP_REPLY_MSG;
+      confirm1 = ASK_POST_SEND_MSG;  /* ... and/or ... */
+      confirm2 = ASK_RE_EDIT_MSG;
+	break;
     default:
-      question = ASK_POST_SEND_MSG;
-      break;
+      msg_type= DEFAULT_MAIL_MSG;
+      confirm1 = ASK_POST_SEND_MSG; /* ... and/or ... */
+      confirm2 = ASK_RE_EDIT_MSG;
+	break;
     }
 
-    confirms[confirm_count++] = YES_STRING;
-      
     if ((filefp = fopen(EditorFileName, "r")) == NULL) {
 	mesgPane(XRN_SERIOUS, mesg_name, CANT_OPEN_TEMP_MSG, EditorFileName,
 		 errmsg(errno));
@@ -2145,7 +1849,7 @@ void processMessage(closure, source, id)
     }
 
     if (originalBuf.st_mtime == buf.st_mtime) {
-	mesgPane(XRN_SERIOUS, mesg_name, NO_CHANGE_MSG, EditorFileName);
+	mesgPane(XRN_INFO, mesg_name, NO_CHANGE_MSG, EditorFileName);
 	(void) fclose(filefp);
 	(void) unlink(EditorFileName);
 	editing_status = NoEdit;
@@ -2154,7 +1858,7 @@ void processMessage(closure, source, id)
     }
 
     if (buf.st_size == 0) {
-	mesgPane(XRN_SERIOUS, mesg_name, ZERO_SIZE_MSG, EditorFileName);
+	mesgPane(XRN_INFO, mesg_name, ZERO_SIZE_MSG, EditorFileName);
 	(void) fclose(filefp);
 	(void) unlink(EditorFileName);
 	editing_status = NoEdit;
@@ -2167,29 +1871,24 @@ void processMessage(closure, source, id)
     ptr[buf.st_size] = '\0';
     (void) fclose(filefp);
 
+    /* pop up a confirm box */
+
+    if (ConfirmationBox(TopLevel, confirm1, 0, 0) == XRN_CB_ABORT) {
+	if (ConfirmationBox(TopLevel, confirm2, 0, 0) == XRN_CB_ABORT) {
+	    compAbortUtil(mesg_name, True);
+	    (void) unlink(EditorFileName);
+	    editing_status = NoEdit;
+	} else {
+	    Call_Editor(False);
+	}
+	FREE(ptr);
+	return;
+    }
+
     TextSetString(ComposeText, ptr);
     FREE(ptr);
 
-    choice = ChoiceBox(TopLevel, question, confirm_count, confirms[0],
-		       confirms[1], confirms[2], confirms[3], confirms[4]);
-
-    if (choice == 1) {
-      compAbortUtil(mesg_name, True);
-      (void) unlink(EditorFileName);
-      editing_status = NoEdit;
-    }
-    else if (choice == 2) {
-      Call_Editor(False, False);
-    }
-    else if (choice == confirm_count) {
-      compSendFunction(0, 0, 0, 0);
-    }
-    else {
-      PostingMode = (choice == 3) ? mode1 : mode2;
-      switch_message_type(&Header);
-      Call_Editor(True, True);
-    }
-
+    compSendFunction(0, 0, 0, 0);
     return;
 }
 
@@ -2198,30 +1897,24 @@ static int forkpid;
 
 extern int outchannel;
 
-static RETSIGTYPE catch_sigchld _ARGUMENTS((int));
+static int catch_sigchld _ARGUMENTS((int));
 
-static RETSIGTYPE catch_sigchld(signo)
+static int catch_sigchld(signo)
     int signo;
 {
 
     if (signo != SIGCHLD) {
 	/* whoops! */
-#ifdef SIGFUNC_RETURNS
 	return 1;
-#endif
     }
     if (forkpid != wait(0)) {
 	/* whoops! */
-#ifdef SIGFUNC_RETURNS
 	return 1;
-#endif
     }
     (void) signal(SIGCHLD, SIG_DFL);
     editing_status = Completed;
     write(outchannel,"1",1);
-#ifdef SIGFUNC_RETURNS
     return 1;
-#endif
 }
 
 
@@ -2229,19 +1922,14 @@ static char *signatureFile _ARGUMENTS((void));
 
 
 static int
-Call_Editor(
-	    _ANSIDECL(Boolean,	save_message),
-	    _ANSIDECL(Boolean,	preserve_mtime)
-	    )
-     _KNRDECL(Boolean,	save_message)
-     _KNRDECL(Boolean,	preserve_mtime)
+Call_Editor(save_message)
+    Boolean save_message;
 {
     char *dsp, *file;
     char buffer[1024], buffer2[1024];
     FILE *filefp;
     char *header = 0;
     int mesg_name = newMesgPaneName();
-    struct stat statbuf1, statbuf2;
 
     if (save_message) {
 	header = TextGetString(ComposeText);
@@ -2249,14 +1937,10 @@ Call_Editor(
     
     if ((editing_status == NoEdit) || header) {
 	editing_status = InProgress;
-	if (EditorFileName) {
-	  if (preserve_mtime) {
-	    statbuf1.st_mtime = 0;
-	    (void) stat(EditorFileName, &statbuf1);
-	  }
-	  utTempnamFree(EditorFileName);
-	}
+	if(EditorFileName != NIL(char))
+	    FREE(EditorFileName);
 	EditorFileName = utTempnam(app_resources.tmpDir, "xrn");
+	EditorFileName = XtNewString(EditorFileName);
 	if ((filefp = fopen(EditorFileName, "w")) == NULL) {
 	    mesgPane(XRN_SERIOUS, mesg_name, CANT_OPEN_TEMP_MSG, EditorFileName,
 		     errmsg(errno));
@@ -2277,16 +1961,14 @@ Call_Editor(
 
 	(void) fclose(filefp);
 
-	if (stat(EditorFileName, &statbuf2) == -1) {
+	if (stat(EditorFileName, &originalBuf) == -1) {
 	    mesgPane(XRN_SERIOUS, mesg_name, CANT_STAT_TEMP_MSG, EditorFileName,
 		     errmsg(errno));
 	    editing_status = NoEdit;
 	    compAbortUtil(mesg_name, False);
 	    return (-1);
 	}
-	if (!preserve_mtime || !statbuf1.st_mtime ||
-	    (originalBuf.st_mtime == statbuf1.st_mtime))
-	  originalBuf = statbuf2;
+
     }
 
     /*
@@ -2352,7 +2034,7 @@ Call_Editor(
 	    return (-1);
 	}
 	else {
-	    signal(SIGCHLD, catch_sigchld);
+	    signal(SIGCHLD, (SIG_PF0) catch_sigchld);
 	}
 
    return (0);
@@ -2398,7 +2080,7 @@ static int composePane(titleString, header, point)
     long point;
 {
     char *signature;
-    Widget pane;
+    Widget pane, buttonBox, label;
     Dimension height_val;
     static char titleStorage[LABEL_SIZE];
     Dimension width_val;
@@ -2412,8 +2094,10 @@ static int composePane(titleString, header, point)
     };
 
     if ((PostingMode == FORWARD) ||
-	(app_resources.editorCommand && IS_RESPONSE(PostingMode)))
-      includeArticleText3(&header);
+	(app_resources.editorCommand &&
+	 (PostingMode != POST) && (PostingMode != GRIPE))) {
+	includeArticleText3(&header);
+    }
 
     if ((signature = signatureFile()) != NIL(char)) {
 	/* current header + '\n' + signature + '\0' */
@@ -2436,19 +2120,30 @@ static int composePane(titleString, header, point)
 
     (void) strcpy(titleStorage, titleString);
 
-    ComposeLabel = XtCreateManagedWidget("label", labelWidgetClass, pane,
-					 labelArgs, XtNumber(labelArgs));
+    label = XtCreateManagedWidget("label", labelWidgetClass, pane,
+				  labelArgs, XtNumber(labelArgs));
 
     ComposeText = TextCreate("text", False, pane);
     TextSetString(ComposeText, header);
     FREE(header);
  
-    ComposeButtonBox = ButtonBoxCreate("box", pane);
+    buttonBox = ButtonBoxCreate("box", pane);
 
-    compose_buttons(ComposeButtonBox, True);
-    
+    (void) ButtonBoxAddButton("compAbort", compAbortCallbacks, buttonBox);
+    (void) ButtonBoxAddButton("compSend", compSendCallbacks, buttonBox);
+    (void) ButtonBoxAddButton("compSave", compSaveCallbacks, buttonBox);
+
+    if ((PostingMode != POST) && 
+	(PostingMode != GRIPE) &&
+	(PostingMode != FORWARD)) {
+	(void) ButtonBoxAddButton("compIncludeArticle",
+				  compIncludeArticleCallbacks, buttonBox);
+    }
+    (void) ButtonBoxAddButton("compIncludeFile", compIncludeFileCallbacks,
+			      buttonBox);
+
     if (app_resources.editorCommand != NIL(char)) {
-	return(Call_Editor(True, False));
+	return(Call_Editor(True));
     }
     else {
 	XtRealizeWidget(ComposeTopLevel);
@@ -2456,16 +2151,16 @@ static int composePane(titleString, header, point)
 	  Needs to happen after widget is realized, so that the width
 	  of the button box is correct.
 	  */
-	ButtonBoxDoneAdding(ComposeButtonBox);
+	ButtonBoxDoneAdding(buttonBox);
 
 	XtSetKeyboardFocus(ComposeTopLevel, ComposeText);
 
-	XtVaGetValues(ComposeLabel,
+	XtVaGetValues(label,
 		      XtNheight, (XtPointer) &height_val,
 		      (char *) 0);
 
-	XawPanedSetMinMax(ComposeLabel, (int) height_val, (int) height_val);
-	XawPanedAllowResize(TEXT_PANE_CHILD(ComposeText), True);
+	XawPanedSetMinMax(label, (int) height_val, (int) height_val);
+	XawPanedAllowResize(ComposeText, True);
     
 	{
 	    static Cursor compCursor = (Cursor) 0;
@@ -2494,28 +2189,6 @@ static int composePane(titleString, header, point)
 
 	return(0);
     }
-}
-
-static void compose_buttons(box, first_time)
-     Widget box;
-     int first_time;
-{
-  int both, followup, reply;
-  
-  both = (PostingMode == FOLLOWUP_REPLY);
-  followup = both || (PostingMode == FOLLOWUP);
-  reply = both || (PostingMode == REPLY);
-
-  setButtonActive(CompButtonList, "compSwitchFollowup", reply);
-  setButtonActive(CompButtonList, "compSwitchReply", followup);
-  setButtonActive(CompButtonList, "compSwitchBoth",
-		  (followup || reply) && !both);
-  setButtonActive(CompButtonList, "compIncludeArticle", followup || reply);
-
-  doButtons(NULL, box, CompButtonList, &CompButtonListCount, BOTTOM);
-
-  if (! first_time)
-    ButtonBoxDoneAdding(box);
 }
 
 
@@ -2557,7 +2230,7 @@ static char *signatureFile()
     /* handle multiple signatures */
     /* find an appropriate sig */
 
-    if(!newsgroup) {
+    if(!CurrentGroup) {
 	sigfile = XtMalloc(strlen(file) + 10);
     } else {
 	/* signature according to group or hierarchy */
@@ -2634,11 +2307,9 @@ static char *signatureFile()
 	    }
 	    (void) sprintf(cmdbuf, "%s %s %s %s",
 			    sigfile,
-			    (newsgroup ? newsgroup->name : "NIL"),
+			    (CurrentGroup ? CurrentGroup->name : "NIL"),
 			    PostingModeStrings[PostingMode],
-			    (Header.artFile ?
-			     file_cache_file_name(FileCache, Header.artFile) :
-			     "NIL"));
+			    (Header.artFile ? Header.artFile : "NIL"));
 	    infofp = xrn_popen(cmdbuf, "r");
 	    close_func = xrn_pclose;
 	    if (!infofp) {
@@ -2661,7 +2332,7 @@ static char *signatureFile()
 	}
     }
 
-    (void) strcpy(info, SIG_PREFIX);
+    (void) strcpy(info, "-- \n");
     count = fread(&info[4], sizeof(char), sizeof(info) - 4, infofp);
     info[count + 4] = '\0';
 
@@ -2670,7 +2341,8 @@ static char *signatureFile()
 	mesgPane(XRN_SERIOUS, 0, SIGNATURE_TOO_BIG_MSG, sigfile);
 	retinfo = NIL(char);
     }
-    else if (strncmp(info + 4, SIG_PREFIX, 4) == 0) {
+    else if (strncmp(info + 4, "--\n", 3) == 0 ||
+	     strncmp(info + 4, "-- \n", 4) == 0) {
 	retinfo = info + 4;
     } else {
 	retinfo = info;
@@ -2682,144 +2354,6 @@ static char *signatureFile()
 }
 
 
-/*
-  Update the headers of a message so that it has all the appropriate
-  headers for either a followup, reply, or both.
-
-  If "first_time" is true, then assume that there is no current
-  message and all headers have to be created from scratch.  Otherwise,
-  check for headers in the current message and only create the ones
-  that need to be created; also, delete headers that are no longer
-  relevant.
-
-  Return an allocated string containing the headers to be added.
-*/
-static char *update_headers(Header, first_time, followup, reply)
-     struct header *Header;
-     int first_time, followup, reply;
-{
-  char *message = 0;
-  int message_size = 0, message_total_size = 0;
-
-  CHECK_SIZE(1);
-  message[0] = '\0';
-  message_size = 0;
-
-  if (first_time || (fieldExists("From:", NULL)  < 0))
-    buildFrom(Header, &message, &message_size, &message_total_size);
-  if (first_time || (fieldExists("Reply-To:", NULL) < 0))
-    buildReplyTo(&message, &message_size, &message_total_size);
-  if (first_time || (fieldExists("Subject:", NULL) < 0))
-    buildSubject(Header, &message, &message_size, &message_total_size);
-
-  if (followup) {
-    int num_groups;
-
-    if (first_time || (fieldExists("Path:", NULL) < 0))
-      buildPath(Header, &message, &message_size, &message_total_size);
-
-    if (first_time || (fieldExists("Newsgroups:", NULL) < 0)) {
-      num_groups = buildNewsgroups(Header, &message, &message_size,
-				   &message_total_size);
-      if (app_resources.warnings.followup.crossPost &&
-	  num_groups >= app_resources.warnings.followup.crossPost)
-	mesgPane(XRN_WARNING, 0, FOLLOWUP_MULTIPLE_NGS_MSG);
-      if (app_resources.warnings.followup.followupTo &&
-	  *Header->followupTo && strcmp(Header->followupTo, Header->newsgroups) &&
-	  strcmp(Header->followupTo, "poster"))
-	mesgPane(XRN_WARNING, 0, FOLLOWUP_FOLLOWUPTO_MSG);
-    }
-
-    if (first_time || (fieldExists("Distribution:", NULL) < 0))
-      buildDistribution(Header, &message, &message_size, &message_total_size);
-
-    if (first_time || (fieldExists("Followup-To:", NULL) < 0)) {
-      CHECK_SIZE(sizeof("Followup-To: \n") - 1);
-      (void) strcat(message, "Followup-To: \n");
-    }
-
-    if (first_time || (fieldExists("References:", NULL) < 0))
-      buildReferences(Header, &message, &message_size, &message_total_size);
-
-    if (first_time || (fieldExists("Organization:", NULL) < 0)) {
-      CHECK_SIZE(sizeof("Organization: \n") - 1 + strlen(Header->organization));
-      (void) sprintf(&message[strlen(message)], "Organization: %s\n",
-		     Header->organization);
-    }
-
-    if (first_time || (fieldExists("Keywords:", NULL) < 0)) {
-      CHECK_SIZE(sizeof("Keywords: \n") - 1);
-      (void) strcat(message, "Keywords: ");
-      if ((Header->keywords != NIL(char)) && (*Header->keywords != '\0')) {
-	CHECK_SIZE(strlen(Header->keywords));
-	(void) strcat(message, Header->keywords);
-      }
-      (void) strcat(message, "\n");
-    }
-  }
-  else if (! first_time) {
-    stripField("Path:");
-    stripField("Newsgroups:");
-    stripField("Distribution:");
-    stripField("Followup-To:");
-    stripField("References:");
-    stripField("Organization:");
-    stripField("Keywords:");
-  }
-
-  if (reply) {
-    if (first_time || (fieldExists("To:", NULL) < 0)) {
-      char *reply_addr = (Header->replyTo && *Header->replyTo)
-	? Header->replyTo : Header->from;
-      CHECK_SIZE(sizeof("To: \n") - 1 + strlen(reply_addr));
-      (void) sprintf(&message[strlen(message)], "To: %s\n", reply_addr);
-    }
-
-    if (app_resources.cc == True) {
-      if (first_time || (fieldExists("Cc:", NULL) < 0)) {
-	CHECK_SIZE(sizeof("Cc: \n") - 1 + strlen(Header->user));
-	sprintf(&message[strlen(message)], "Cc: %s\n", Header->user);
-      }
-    }
-
-    if (! followup) {
-      if (first_time || (fieldExists("X-Newsgroups:", NULL) < 0)) {
-	CHECK_SIZE(sizeof("X-Newsgroups: \n") - 1 +
-		   strlen(Header->newsgroups));
-	(void)sprintf(&message[strlen(message)],
-		      "X-Newsgroups: %s\n", Header->newsgroups);
-      }
-      if (first_time || (fieldExists("In-reply-to:", NULL) < 0)) {
-	CHECK_SIZE(sizeof("In-reply-to: \n") - 1 + strlen(Header->id));
-	(void) sprintf(&message[strlen(message)],
-		       "In-reply-to: %s\n", Header->id);
-      }
-    }
-  }
-  else if (! first_time) {
-    stripField("To:");
-    stripField("Cc:");
-    stripField("X-Newsgroups:");
-    stripField("In-reply-to:");
-  }
-  
-  return message;
-}
-
-static char *followup_or_reply_title(Header, followup, reply)
-     struct header *Header;
-     int followup, reply;
-{
-  struct newsgroup *newsgroup = Header->newsgroup;
-  art_num current = newsgroup->current;
-  static char title[LABEL_SIZE];
-
-  (void) sprintf(title, followup ? (reply ? FOLLOWUP_REPLY_TO_TITLE_MSG
-				    : FOLLOWUP_TO_TITLE_MSG) :
-		 REPLY_TO_TITLE_MSG, current, newsgroup->name);
-  return title;
-}
-
 static void followup_or_reply _ARGUMENTS((int, int));
 
 static void followup_or_reply(followup, reply)
@@ -2827,7 +2361,7 @@ static void followup_or_reply(followup, reply)
 {
     struct newsgroup *newsgroup = CurrentGroup;
     art_num current = newsgroup->current;
-    char *title;
+    char title[LABEL_SIZE];
     char *message = 0;
     int message_size = 0, message_total_size = 0;
     int OldPostingMode = PostingMode;
@@ -2839,51 +2373,110 @@ static void followup_or_reply(followup, reply)
 	return;
 
     art = artStructGet(newsgroup, current, False);
-    ART_STRUCT_UNLOCK;
-    if (art->file)
-      file_cache_file_copy(FileCache, *art->file, &Header.artFile);
+    Header.artFile = XtNewString(art->filename);
 
     if (followup) {
 	if (! strcmp(Header.followupTo, "poster")) {
+	    char *msg, *p1, *p2;
 	    int ret;
 
-	    ret = ChoiceBox(TopLevel,
-			    reply ? ASK_POSTER_FANDR_MSG : ASK_POSTER_REPLY_MSG,
-			    reply ? 2 : 3,
-			    POST_AND_SEND_MSG,
-			    reply ? SEND_MAIL_MSG : POST_MSG,
-			    SEND_MAIL_MSG);
-
-	    if (reply && (ret == 2))
-	      ret = 3;
-
-	    /*
-	      1 means post & mail
-	      2 means post
-	      3 means mail
-	      */
-
-	    followup = (ret < 3);
-	    reply = (ret != 2);
+	    if (reply) {
+              msg = ASK_POSTER_FANDR_MSG; 
+              p1 = POST_AND_SEND_MSG;
+              p2 = SEND_MAIL_MSG;
+	    }
+	    else {
+              msg = ASK_POSTER_REPLY_MSG;
+              p1 = POST_MSG;
+              p2 = SEND_MAIL_MSG;
+	    }
+	    ret = ConfirmationBox(TopLevel, msg, p1, p2);
+	    if (ret == XRN_CB_CONTINUE) {
+		followup = 0;
+		reply = 1;
+	    }
+	    else {
+		FREE(Header.followupTo);
+		Header.followupTo = XtNewString("");
+	    }
 	}
     }
 
-    title = followup_or_reply_title(&Header, followup, reply);
-
-    if (followup)
-	if (reply)
-	  PostingMode = FOLLOWUP_REPLY;
-	else
-	  PostingMode = FOLLOWUP;
-    else
-      PostingMode = REPLY;
-
-    message = update_headers(&Header, True, followup, reply);
-    message_size = strlen(message);
-    message_total_size = message_size;
+    if (followup) {
+	if (reply) {
+	    PostingMode = FOLLOWUP_REPLY;
+          (void) sprintf(title, FOLLOWUP_REPLY_TO_TITLE_MSG,
+                           current, newsgroup->name);
+	}
+	else {
+	    PostingMode = FOLLOWUP;
+          (void) sprintf(title, FOLLOWUP_TO_TITLE_MSG,
+                           current, newsgroup->name);
+	}
+    }
+    else {
+	PostingMode = REPLY;
+          (void) sprintf(title, REPLY_TO_TITLE_MSG,
+                           current, newsgroup->name);
+    }
     
-    buildExtraFields(&message, &message_size, &message_total_size);
+    CHECK_SIZE(1);
+    message[0] = '\0';
+    message_size = 0;
+    
+    buildFrom(&Header, &message, &message_size, &message_total_size);
+    buildReplyTo(&message, &message_size, &message_total_size);
+    buildSubject(&Header, &message, &message_size, &message_total_size);
 
+    if (followup) {
+	buildPath(&Header, &message, &message_size, &message_total_size);
+	(void) buildNewsgroups(&Header, &message, &message_size,
+			       &message_total_size);
+	buildDistribution(&Header, &message, &message_size,
+			  &message_total_size);
+
+	CHECK_SIZE(sizeof("Followup-To: \n") - 1);
+	(void) strcat(message, "Followup-To: \n");
+
+	buildReferences(&Header, &message, &message_size, &message_total_size);
+	
+	buildExtraFields(&message, &message_size, &message_total_size);
+	
+	CHECK_SIZE(sizeof("Organization: \n") - 1 + strlen(Header.organization));
+	(void) sprintf(&message[strlen(message)], "Organization: %s\n",
+		       Header.organization);
+
+	CHECK_SIZE(sizeof("Keywords: \n") - 1);
+	(void) strcat(message, "Keywords: ");
+	if ((Header.keywords != NIL(char)) && (*Header.keywords != '\0')) {
+	    CHECK_SIZE(strlen(Header.keywords));
+	    (void) strcat(message, Header.keywords);
+	}
+	(void) strcat(message, "\n");
+    }
+
+    if (reply) {
+	char *reply_addr;
+
+	reply_addr = ((Header.replyTo != NIL(char)) &&
+		      (*Header.replyTo != '\0')) ? Header.replyTo : Header.from;
+	CHECK_SIZE(sizeof("To: \n") - 1 + strlen(reply_addr));
+	(void) sprintf(&message[strlen(message)], "To: %s\n", reply_addr);
+
+        if (app_resources.cc == True) {
+	    CHECK_SIZE(sizeof("Cc: \n") - 1 + strlen(Header.user));
+	    sprintf(&message[strlen(message)], "Cc: %s\n", Header.user);
+	}
+
+	if (! followup) {
+	    CHECK_SIZE(sizeof("X-Newsgroups: \nIn-reply-to: %s\n") - 1 +
+		       strlen(Header.newsgroups) + strlen(Header.messageId));
+	    (void) sprintf(&message[strlen(message)],
+			   "X-Newsgroups: %s\nIn-reply-to: %s\n",
+			   Header.newsgroups, Header.messageId);
+	}
+    }
+	
     CHECK_SIZE(1);
     (void) strcat(message, "\n");
 
@@ -2892,35 +2485,6 @@ static void followup_or_reply(followup, reply)
     }
 
     return;
-}
-
-static void switch_message_type(Header)
-     struct header *Header;
-{
-  int both, followup, reply;
-  char *title;
-  char *headers;
-
- if (! ComposeTopLevel)
-   return;
-
-  both = (PostingMode == FOLLOWUP_REPLY);
-  followup = both || (PostingMode == FOLLOWUP);
-  reply = both || (PostingMode == REPLY);
-
-  if (! (followup || reply))
-    return;
-
-  title = followup_or_reply_title(Header, followup, reply);
-  XtVaSetValues(ComposeLabel, XtNlabel, title, 0);
-
-  headers = update_headers(Header, False, followup, reply);
-  addField(headers);
-  XtFree(headers);
-
-  compose_buttons(ComposeButtonBox, False);
-
-  TextSetInsertionPoint(ComposeText, TextGetLength(ComposeText));
 }
 
 
@@ -2976,10 +2540,10 @@ void gripe()
     buildReplyTo(&message, &message_size, &message_total_size);
 
     CHECK_SIZE(sizeof("To: \nSubject: GRIPE about XRN \n") - 1 +
-	       sizeof(GRIPES) - 1 + sizeof(PACKAGE_VERSION) - 1);
+	       sizeof(GRIPES) - 1 + sizeof(XRN_VERSION) - 1);
     (void) sprintf(&message[strlen(message)],
 		   "To: %s\nSubject: GRIPE about XRN %s\n",
-		   GRIPES, PACKAGE_VERSION);
+		   GRIPES, XRN_VERSION);
 
     CHECK_SIZE(sizeof(bugTemplate) - 1 + 2);
     (void) strcat(message, "\n");
@@ -3015,9 +2579,7 @@ void forward()
 	return;
 
     art = artStructGet(newsgroup, current, False);
-    ART_STRUCT_UNLOCK;
-    if (art->file)
-      file_cache_file_copy(FileCache, *art->file, &Header.artFile);
+    Header.artFile = XtNewString(art->filename);
 
     PostingMode = FORWARD;
     
@@ -3036,12 +2598,12 @@ void forward()
 
     point = strlen(message) - 1;
 
-    CHECK_SIZE(sizeof("Subject:   []\n") - 1 +
+    CHECK_SIZE(sizeof("Subject:   [ #]\n") - 1 +
 	       strlen(Header.subject) + strlen(newsgroup->name) +
 	       (int) (current / 10) + 1);
     (void) sprintf(&message[strlen(message)],
-		   "Subject: %s  [%s]\n", Header.subject,
-		   newsgroup->name);
+		   "Subject: %s  [%s #%ld]\n", Header.subject,
+		   newsgroup->name, current);
 
     if (app_resources.ccForward == True) {
 	CHECK_SIZE(sizeof("Cc: \n") - 1 + strlen(Header.user));
@@ -3106,7 +2668,7 @@ void post_or_mail(ingroupp, post, mail)
     int message_size = 0, message_total_size = 0;
     int OldPostingMode = PostingMode;
     long point = 0;
-    int got_groups;
+    Boolean got_groups;
 
     CHECK_COMPOSE_PANE();
     
@@ -3200,10 +2762,8 @@ void post_or_mail(ingroupp, post, mail)
 }
 
 
-void post(
-	  _ANSIDECL(Boolean,	ingroupp)
-	  )
-     _KNRDECL(Boolean,	ingroupp)
+void post(ingroupp)
+    Boolean ingroupp;
 {
     post_or_mail(ingroupp, True, False);
 }
@@ -3213,43 +2773,33 @@ void mail()
     post_or_mail(False, False, True);
 }
 
-void post_and_mail(
-		   _ANSIDECL(Boolean,	ingroupp)
-		   )
-     _KNRDECL(Boolean,	ingroupp)
+void post_and_mail(ingroupp)
+    Boolean ingroupp;
 {
     post_or_mail(ingroupp, True, True);
 }
 
-static Boolean addressMatches(art_line, user, host)
-     char *art_line, *user, *host;
-{
-  char *at, *line_user, *line_host;
 
-  assert(art_line && user && host);
-
-  for (at = strchr(art_line, '@'); at; at = strchr(at + 1, '@')) {
-    line_user = at - 1;
-    while ((line_user > art_line) &&
-	   !isspace((unsigned char)*line_user) && (*line_user != '<'))
-      line_user--;
-    line_host = at + 1;
-    if (! ((strncmp(line_user, user, at - line_user) &&
-	    strncmp(line_user, "root", at - line_user)) ||
-	   strncmp(line_host, host, strlen(host))))
-      return True;
-  }
-  return False;
-}
-
-			      
 static Boolean _canCancelArticle()
 {
-  return(addressMatches(CancelHeader.from,
-			CancelHeader.real_user, CancelHeader.real_host) ||
-	 addressMatches(CancelHeader.sender,
-			CancelHeader.real_user, CancelHeader.real_host));
+    char buffer[BUFFER_SIZE], *bufptr;
+
+    /* verify that the user can cancel the article */
+    if ((bufptr = index(CancelHeader.from, '@'))) {
+	bufptr++;
+	(void) strcpy(buffer, bufptr);
+	if ((bufptr = index(buffer, ' ')))
+	    *bufptr = '\0';
+	if (strncmp(CancelHeader.host, buffer, utStrlen(CancelHeader.host))
+	   || (strncmp(CancelHeader.user, CancelHeader.from,
+		       utStrlen(CancelHeader.user)) 
+	      && strcmp(CancelHeader.user, "root")))
+	    return False;
+    }
+
+    return True;
 }
+
 
 Boolean canCancelArticle()
 {
@@ -3280,7 +2830,6 @@ void cancelArticle()
     /* verify that the user can cancel the article */
     if (! _canCancelArticle()) {
 	freeHeader(&CancelHeader);
-	mesgPane(XRN_SERIOUS, mesg_name, USER_CANT_CANCEL_MSG);
 	return;
     }
 
@@ -3289,31 +2838,16 @@ void cancelArticle()
     message_size = 0;
 
     buildFrom(&CancelHeader, &message, &message_size, &message_total_size);
-#ifndef INEWS
-    {
-      char *buf = 0;
-      int buf_size = 0, buf_total_size = 0;
-
-      CHECK_SIZE_EXTENDED(buf, buf_size, buf_total_size, 1);
-      *buf = '\0';
-      buf_size = 0;
-
-      buildRealFrom(&CancelHeader, &buf, &buf_size, &buf_total_size);
-      if (strcmp(message, buf))
-	buildSender(&CancelHeader, &message, &message_size, &message_total_size);
-    }
-#endif /* ! INEWS */
-
     buildReplyTo(&message, &message_size, &message_total_size);
     buildPath(&CancelHeader, &message, &message_size, &message_total_size);
 
-    CHECK_SIZE(sizeof("Subject: cancel \n") - 1 + strlen(CancelHeader.id));
+    CHECK_SIZE(sizeof("Subject: cancel \n") - 1 + strlen(CancelHeader.messageId));
     (void) sprintf(&message[strlen(message)], "Subject: cancel %s\n",
-		   CancelHeader.id);
+		   CancelHeader.messageId);
 
-    CHECK_SIZE(sizeof("Newsgroups: \n") - 1 +
+    CHECK_SIZE(sizeof("Newsgroups: ,control\n") - 1 +
 	       strlen(CancelHeader.newsgroups));
-    (void) sprintf(&message[strlen(message)], "Newsgroups: %s\n",
+    (void) sprintf(&message[strlen(message)], "Newsgroups: %s,control\n",
 		   CancelHeader.newsgroups);
 
     buildReferences(&CancelHeader, &message, &message_size, &message_total_size);
@@ -3324,13 +2858,11 @@ void cancelArticle()
 		       CancelHeader.distribution);
     }
 
-    CHECK_SIZE(sizeof("Control: cancel \n") - 1 + strlen(CancelHeader.id));
+    CHECK_SIZE(sizeof("Control: cancel \n") - 1 + strlen(CancelHeader.messageId));
     (void) sprintf(&message[strlen(message)], "Control: cancel %s\n",
-		   CancelHeader.id);
+		   CancelHeader.messageId);
 
-    CHECK_SIZE(sizeof("\nCancel message from XRN .\n") + sizeof(PACKAGE_VERSION) - 2);
-    (void) sprintf(&message[strlen(message)], "\nCancel message from XRN %s.\n",
-		   PACKAGE_VERSION);
+    freeHeader(&CancelHeader);
 
     switch (postArticle(message, XRN_NEWS,&ErrMessage)) {
     case POST_FAILED:
@@ -3350,428 +2882,13 @@ void cancelArticle()
 	mesgPane(XRN_SERIOUS | XRN_SAME_LINE, mesg_name, CANCEL_ABORTED_MSG);
 	break;
 	    
-    case POST_OKAY: {
-	char *groups = XtNewString(CancelHeader.newsgroups);
-	unsigned long status = newsgroupsStatusUnion(groups);
-
-	XtFree(groups);
-
-	if (status & NG_MODERATED)
-	  mesgPane(XRN_INFO, mesg_name, CANCEL_TO_MODERATOR_MSG);
-	else
-	  mesgPane(XRN_INFO, mesg_name, CANCELLED_ART_MSG);
-
+    case POST_OKAY:
+	mesgPane(XRN_INFO, mesg_name, CANCELLED_ART_MSG);
 	break;
-      }
     }
 
-    freeHeader(&CancelHeader);
     FREE(message);
 
     return;
-}
 
-/*
-  Reformat and trim the "References:" line.  Separate the IDs from the
-  field name with a single space, and separate all IDs with a single
-  space.  Remove corrupted IDs, and make sure the length of the whole
-  thing including the final newline is MAXREFSIZE or less characters
-  when done.  When trimming because there are too many IDs, preserve
-  the first ID and then as many as possible at the end while remaining
-  within the length limit.
-
-  Returns the length of the reformatted line, not including the final
-  null.
-*/
-#define MAXREFSIZE 510 /* Includes the final newline but not the trailing null */
-
-static int trim_references(refs)
-     char *refs;
-{
-  char *inptr = XtNewString(refs), *inbuf = inptr;
-  char *outptr = XtMalloc(strlen(inptr)+1), *outbuf = outptr;
-  char *ptr, **ids;
-  int id_count = 0, id_count_size = 1, start_at;
-  int total_length = 1; /* the final newline */
-  
-  ids = (char **) XtMalloc(id_count_size * sizeof(*ids));
-
-  /* Copy field name */
-  while (*inptr != ':') {
-    *outptr++ = *inptr++;
-    total_length++;
-  }
-  *outptr++ = *inptr++;
-  total_length++;
-
-  /* Skip beginning whitespace */
-  while (isspace((unsigned char)*inptr))
-    inptr++;
-
-  /* Tokenize */
-  for (ptr = strtok(inptr, " \t\n"); ptr; ptr = strtok(NULL, " \t\n")) {
-    int len;
-
-    if ((*ptr != '<') /* No opening brace */
-	|| strchr(ptr + 1, '<') /* An extra opening brace */
-	|| (ptr[(len = strlen(ptr)) - 1] != '>') /* No closing brace */
-	|| (strchr(ptr, '>') - ptr != len - 1)) /* An extra closing brace */
-      continue;
-
-    if (id_count == id_count_size) {
-      id_count_size *= 2;
-      ids = (char **) XtRealloc((char *)ids, id_count_size * sizeof(*ids));
-    }
-
-    ids[id_count++] = ptr;
-    total_length += 1 + len;	/* space and then message ID */
-  }
-
-  /* Always include the first Message ID.  Other than that, figure out
-     how many we can include at the end while still remaining within
-     the line length limit.
-
-     The GNKSA says that we should always include message IDs that are
-     mentioned in the body of the message.  We're not doing that
-     explicitly right now.
-  */
-
-  for (start_at = 1; (start_at < id_count) && (total_length > MAXREFSIZE);
-       start_at++) {
-    total_length -= 1 + strlen(ids[start_at]);
-  }
-
-  /* Copy the first ID */
-  *outptr++ = ' ';
-  if (! id_count) {
-    goto done;
-  }
-  strcpy(outptr, ids[0]);
-  outptr += strlen(ids[0]);
-
-  /* Copy remaining IDs */
-  while (start_at < id_count) {
-    *outptr++ = ' ';
-    strcpy(outptr, ids[start_at]);
-    outptr += strlen(ids[start_at]);
-    start_at++;
-  }
-
- done:
-  *outptr++ = '\n';
-  *outptr++ = '\0';
-  (void) strcpy(refs, outbuf);
-  XtFree(inbuf);
-  XtFree(outbuf);
-  XtFree((char *)ids);
-  return(total_length);
-}
-
-void compSwitchFollowupFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-  PostingMode = FOLLOWUP;
-  switch_message_type(&Header);
-}
-
-void compSwitchReplyFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-  PostingMode = REPLY;
-  switch_message_type(&Header);
-}
-
-void compSwitchBothFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-  PostingMode = FOLLOWUP_REPLY;
-  switch_message_type(&Header);
-}
-
-/*
-  Check if the article appears to contain only quoted text.  If so,
-  return False; else, return True.  That is, the return value of this
-  function indicates whether the article "should be posted," given its
-  included-text content.
-
-  Does this as follows:
-
-  1) Skip past the header and any whitespace following it.
-  2) If the first line doesn't start with "I" (as in "In article..."),
-     return True.
-  3) If the next line doesn't start with whitespace, return True.
-  4) If, before the end of the message or a line containing the
-     signature prefix, we encounter a line containing something other
-     than whitespace that doesn't start with the include prefix,
-     return True.
-  5) Else, return false.
-*/
-  
-static int check_quoted_text(article)
-     char *article;
-{
-  char *ptr;
-  int prefix_len = strlen(app_resources.includePrefix);
-
-  /* 1) */
-  if (! (ptr = strstr(article, "\n\n")))
-    return True;
-  ptr += 2;
-  while (*ptr && isspace((unsigned char)*ptr))
-    ptr++;
-
-  /* 2) */
-  if (*ptr != 'I')
-    return True;
-
-  /* 3) */
-  if (! (ptr = strchr(ptr, '\n')))
-    return True;
-  ptr++;
-  if (! isspace((unsigned char)*ptr))
-    return True;
-
-  /* 4) */
-  for (article = strchr(ptr, '\n');
-       article && strncmp(article + 1, SIG_PREFIX, sizeof(SIG_PREFIX)-1);
-       article = ptr) {
-    article++;
-    ptr = strchr(article, '\n');
-    if (*article && ! strncmp(article, app_resources.includePrefix, prefix_len))
-      continue;
-    while (*article && isspace((unsigned char)*article) &&
-	   (!ptr || article < ptr))
-      article++;
-    if (*article && !isspace((unsigned char)*article))
-      return True;
-  }
-
-  return False;
-}
-
-static char *insert_courtesy_tag(message)
-     char *message;
-{
-  char *header, *note, *body, *new_message;
-  int note_len;
-
-  if (! (note = app_resources.courtesyCopyMessage))
-    note = COURTESY_COPY_MSG;
-  if (! *note)
-    return message;
-
-  header = message;
-
-  body = strstr(message, "\n\n");
-  body += 2;
-
-  new_message = XtMalloc(strlen(message) + strlen(note) + 3);
-
-  strncpy(new_message, header, body - header);
-  new_message[body - header] = '\0';
-
-  strcat(new_message, note);
-  if (note[(note_len = strlen(note))-1] != '\n') {
-    strcat(new_message, "\n\n");
-  }
-  else if ((note_len == 1) || note[note_len-2] != '\n') {
-    strcat(new_message, "\n");
-  }
-
-  strcat(new_message, body);
-
-  XtFree(message);
-  return(new_message);
-}
-
-/*
-  Converts address fields as follows:
-
-  From			To
-  ----			--
-  address		address
-  stuff1 <address>	address
-  address (stuff2)	address
-
-  Makes sure that "address" contains '@', contains only valid
-  characters after the '@', and is quoted if it contains characters
-  before the '@' that need quoting.  Makes sure that "stuff1" either
-  is quoted or doesn't contain a period or comma.  Makes sure that
-  "stuff1" and "stuff2" don't contain parentheses or angle brackets.
-  Returns true if all this is OK or false otherwise.
-*/
-
-static Boolean check_address _ARGUMENTS((CONST char *));
-static Boolean check_stuff _ARGUMENTS((CONST char *, Boolean));
-
-static Boolean IsValidAddressField(value_in)
-     CONST char *value_in;
-{
-  char *value, *value_buf, *address, *stuff, *ptr, *end;
-  Boolean retval = True;
-
-  value_buf = value = XtNewString(value_in);
-  address = stuff = NULL;
-
-  while ((ptr = strchr(value, '\n')))
-    *ptr = ' ';
-  while (isspace((unsigned char) *value))
-    value++;
-  for (end = strchr(value, '\0'), ptr = end - 1;
-       ptr > value && isspace((unsigned char) *ptr);
-       ptr--, end--)
-    *ptr = '\0';
-
-  /* Is it stuff1 <address>? */
-  ptr = end - 1;
-  if (ptr > value && *ptr == '>') {
-    *ptr-- = '\0';
-    for (ptr = value; *ptr && *ptr != '<'; ptr++)
-      /* empty */;
-    if (*ptr != '<') {
-      retval = False;
-      goto finished;
-    }
-    address = ptr + 1;
-    stuff = value;
-    *ptr-- = '\0';
-    while (ptr > stuff && isspace((unsigned char) *ptr))
-      *ptr-- = '\0';
-    if (! (retval = check_address(address)))
-      goto finished;
-    if (! (retval = check_stuff(stuff, True)))
-      goto finished;
-  }
-  /* Is it address (stuff2)? */
-  else if (ptr > value && *ptr == ')') {
-    *ptr-- = '\0';
-    while (ptr > value && *ptr != '(')
-      ptr--;
-    if (*ptr != '(') {
-      retval = False;
-      goto finished;
-    }
-    address = value;
-    stuff = ptr + 1;
-    *ptr-- = '\0';
-    while (ptr > address && isspace((unsigned char) *ptr))
-      *ptr-- = '\0';
-    if (! (retval = check_address(address)))
-      goto finished;
-    if (! (retval = check_stuff(stuff, False)))
-      goto finished;
-  }
-  /* Otherwise, it's just an address */
-  else {
-    retval = check_address(value);
-  }
-
- finished:
-  XtFree(value_buf);
-  return retval;
-}
-
-/*
-  Make sure the address is in the form local-part@domain.  If
-  local-part contains characters that need quoting, make sure that it
-  is surrounded by quotation marks.  Returns True if the address is OK
-  or False otherwise.
-*/
-
-static Boolean check_address(address)
-     CONST char *address;
-{
-  static char special_chars[] = "()<>@,;:\\\"[] ";
-  Boolean in_quotes, in_quoted_pair, in_local_part, found_dot;
-  CONST char *ptr;
-
-  in_quotes = in_quoted_pair = found_dot = False;
-  in_local_part = True;
-
-  for (ptr = address; *ptr; ptr++) {
-    if (in_local_part) {
-      if (in_quoted_pair) {
-	in_quoted_pair = False;
-	continue;
-      }
-      if (*ptr == '\\') {
-	in_quoted_pair = True;
-	continue;
-      }
-      if (in_quotes) {
-	if (*ptr == '"')
-	  in_quotes = False;
-	continue;
-      }
-      if (*ptr == '"') {
-	in_quotes = True;
-	continue;
-      }
-      if (*ptr == '@') {
-	if (ptr == address) /* No local part! */
-	  return False;
-	in_local_part = False;
-	continue;
-      }
-    }
-    if (strchr(special_chars, *ptr))
-      return False;
-    if (in_local_part)
-      continue;
-    if (*ptr == '.')
-      found_dot++;
-  }
-
-  if (found_dot)
-    return True;
-
-  return False;
-}
-
-/*
-  Make sure that "stuff" doesn't contain parentheses, angle
-  brackets, or internal quotation marks.  Furthermore, if
-  "needs_quoting" is true, make sure that it is enclosed in quotation
-  marks if it contains periods or commas.
-*/
-
-static Boolean check_stuff(
-			   _ANSIDECL(CONST char *,	stuff),
-			   _ANSIDECL(Boolean,		needs_quoting)
-			   )
-     _KNRDECL(CONST char *,	stuff)
-     _KNRDECL(Boolean,		needs_quoting)
-{
-  static char specials[] = "()<>\"";
-  static char quoted_specials[] = ".,";
-
-  CONST char *ptr, *end;
-  Boolean is_quoted = False;
-
-  end = strchr(stuff, '\0');
-
-  if (*stuff == '"') {
-    if (*--end != '"')
-      return False;
-    stuff++;
-    is_quoted = True;
-  }
-
-  for (ptr = stuff; ptr < end; ptr++) {
-    if (strchr(specials, *ptr))
-      return False;
-    if (needs_quoting && !is_quoted && strchr(quoted_specials, *ptr))
-      return False;
-  }
-
-  return True;
 }
