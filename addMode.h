@@ -6,12 +6,10 @@
 #include "butdefs.h"
 
 BUTDECL(addQuit);
-BUTDECL(addIgnoreRest);
 BUTDECL(addFirst);
 BUTDECL(addLast);
 BUTDECL(addAfter);
 BUTDECL(addUnsub);
-BUTDECL(addIgnore);
 
 extern XtActionsRec AddActions[];
 extern int AddActionsCount;

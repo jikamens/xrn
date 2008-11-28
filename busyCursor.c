@@ -29,7 +29,6 @@
 
 #include "busyCursor.h"
 #ifdef XRN
-#include "config.h"
 #include "utils.h"
 #ifndef TEST
 #include "resources.h"
@@ -118,12 +117,9 @@ static Cursor get_cursor(root)
 }
 
 
-void BusyCursor(
-		_ANSIDECL(Widget,	root),
-		_ANSIDECL(Boolean,	do_popups)
-		)
-     _KNRDECL(Widget,	root)
-     _KNRDECL(Boolean,	do_popups)
+void BusyCursor(root, do_popups)
+    Widget root;
+    Boolean do_popups;
 {
     static Cursor the_cursor = 0;
     cursor_info *info_p;
@@ -131,7 +127,7 @@ void BusyCursor(
     Cardinal num_children = 0;
     static int in_busy = 0;
     int i;
-    CorePart *core;
+    CorePart *core = &((WidgetRec *)root)->core;
 
     if (! the_cursor)
 	the_cursor = get_cursor(root);
@@ -157,11 +153,9 @@ void BusyCursor(
     for (i = 0; i < num_children; i++)
 	BusyCursor(children[i], do_popups);
 
-    if (do_popups && XtIsSubclass(root, coreWidgetClass)) {
-	core =  &((WidgetRec *)root)->core;
+    if (do_popups && core->popup_list)
 	for (i = 0; i < core->num_popups; i++)
 	    BusyCursor(core->popup_list[i], do_popups);
-    }
 
     in_busy--;
 
@@ -169,19 +163,16 @@ void BusyCursor(
 	XFlush(XtDisplay(root));
 }
 
-void UnbusyCursor(
-		  _ANSIDECL(Widget,	root),
-		  _ANSIDECL(Boolean,	do_popups)
-		  )
-     _KNRDECL(Widget,	root)
-     _KNRDECL(Boolean,	do_popups)
+void UnbusyCursor(root, do_popups)
+    Widget root;
+    Boolean do_popups;
 {
     cursor_info *info_p;
     static int in_unbusy = 0;
     WidgetList children;
     Cardinal num_children = 0;
     int i;
-    CorePart *core;
+    CorePart *core = &((WidgetRec *)root)->core;
 
     if (! (info_p = find_info(root)))
 	/* It's not busy'd. */
@@ -203,11 +194,9 @@ void UnbusyCursor(
     for (i = 0; i < num_children; i++)
 	UnbusyCursor(children[i], do_popups);
 
-    if (do_popups && XtIsSubclass(root, coreWidgetClass)) {
-	core =  &((WidgetRec *)root)->core;
+    if (do_popups && core->popup_list)
 	for (i = 0; i < core->num_popups; i++)
 	    UnbusyCursor(core->popup_list[i], do_popups);
-    }
 
     in_unbusy--;
 
