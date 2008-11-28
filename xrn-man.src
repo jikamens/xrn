@@ -1,5 +1,5 @@
-.TH XRN 1 "$Date: 2008-11-28 17:57:52 $" "X"
-.\" $Id: xrn-man.src,v 1.246 2008-11-28 17:57:52 jik Exp $
+.TH XRN 1 "$Date: 1997-06-30 03:01:51 $" "X"
+.\" $Id: xrn-man.src,v 1.190 1997-06-30 03:01:51 jik Exp $
 .\"
 .\" xrn - an X-based NNTP news reader
 .\"
@@ -25,7 +25,7 @@
 .\" CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
 .ds XR \fIxrn\fP
-.ds NS .newsrc
+.ds NS ".newsrc"
 .ds NG \fBNewsgroup\fP
 .ds AR \fBArticle\fP
 .ds AL \fBAll\fP
@@ -42,7 +42,7 @@ and articles on an NNTP server, thus allowing
 users to read news from personal workstations
 by accessing a central news
 repository.
-This manual page applies to version 9.03-beta-15.
+This manual page applies to version 8.03-beta-30.
 .\"
 .SH DESCRIPTION
 .PP
@@ -235,6 +235,9 @@ the \fBnntpServer\fP X resource;
 xSERVER_FILE_STARTx
 the contents of the file "xSERVER_FILEx"
 xSERVER_FILE_ENDx
+xINN_STARTx
+the NNTP server configured into INN
+xINN_ENDx
 (these are listed in the order in which they are checked).
 The name can be either a host name
 (e.g., shambhala.berkeley.edu) or an internet number (e.g.,
@@ -687,10 +690,6 @@ The "artNext", "artPrev", "artSubNext", "artSubPrev",
 "artThreadParent" and "artSubSearch" commands will all display
 articles that are marked unread as they encounter them, but
 "artNextUnread" will not.
-.IP "artSub (`+')"
-Subscribe to the current group.  This comment is used if you enter an
-unsubscribed newsgroup from \*(AL mode and decide while reading it
-that you wish to subscribe to it.
 .IP "artUnsub * (`u')"
 Unsubscribe from the current group; exit from \*(AR mode (or go to the
 next newsgroup, if "stayInArticleMode" is set).
@@ -898,8 +897,7 @@ xXLATE_ENDx
 Toggle between showing all header lines in the article and showing a
 limited set of header lines.  This command is ineffective (and
 therefore its button is insensitive) if you have not set the
-"stripHeaders", "leaveHeaders", or "displayLocalTime" option (see
-below).
+"stripHeaders" or "leaveHeaders" option (see below).
 .IP "artPrint *"
 Print the article (see the "printCommand" option below).
 .\"
@@ -1025,9 +1023,9 @@ even if they appear in your button list or in the default button list.
 For example, if you are not allowed to post articles to the news
 server, then none of the buttons which cause articles to be posted
 will be displayed.  Similarly, if you have not specified any value for
-the "leaveHeaders", "stripHeaders", or "displayLocalTime" option, then
-header stripping is not active, so the "artHeader" button will not be
-displayed in \*(AR mode.
+the "leaveHeaders" or "stripHeaders" option, then header stripping is
+not active, so the "artHeader" button will not be displayed in \*(AR
+mode.
 .TP 10
 .B \-allButtonList list
 Use the given list of buttons for \*(AL mode.  The format of "list"
@@ -1152,10 +1150,7 @@ in the article index in \*(AR mode.  Set by default.
 .TP 10
 .B +/\-displayLocalTime
 Display the "Date:" field of the article using the local time zone
-(instead of the time zone in the article itself).  When this option is
-enabled, you may view the article's actual "Date:" field instead of
-the date converted into the local time zone by executing the
-"artHeader" command (see above).
+(instead of GMT).
 .TP 10
 .B -distribution dist
 Set the default distribution to "dist".
@@ -1253,10 +1248,8 @@ matched against the server's list of newsgroups.  Any newsgroup which
 matches one of the specified regular expressions is treated as an
 invalid group.  For example, specifying a list containing "^talk\\. ^rec\\."
 would cause all newsgroups in the "talk" and "rec" hierarchies to be
-ignored. 
-
-Note that if you specify
-.B \-ignoreNewsgroups
+ignored.  Note that if you specify
+.B \-ignoreNewsgropus
 on the command line, you should enclose your list in single quotes to
 prevent any backslashes and other special characters in it from being
 interpreted by the shell.  If, on the other hand, you specify it in
@@ -1293,12 +1286,12 @@ The default is to not include the header.
 .TP 10
 .B \-includePrefix "prefix text"
 Change the standard prefix for each line of included text from the
-default, ">", to the given text string.
+default, "|> ", to the given text string.
 .TP 10
 .B +/\-includeSep
-Include or do not include the prefix text (">") in front of included
+Include or do not include the prefix text ("|> ") in front of included
 articles.
-The default is to include the prefix text (">").
+The default is to include the prefix text ("|> ").
 .TP 10
 .B +/\-info
 Display all informative messages in the message pane.
@@ -1334,10 +1327,7 @@ a posting in news.software.readers, \*(XR will look for
 "~/News/SIGNATURE", in that order, and use the first one it finds.
 .TP 10
 .B \-lockFile file
-Set the XRN lock file name to "file".  Defaults to "~/.xrnlock".  If
-the \*(NS file has the server name appended to it, then the server
-name is also appended to the lock file name (e.g.,
-"~/.xrnlock-hostname").
+Set the XRN lock file name to "file".  Defaults to "~/.xrnlock".
 .TP 10
 .B \-mailer mailer
 The command to use for mailing replies.
@@ -1480,11 +1470,10 @@ separating articles), or "normal"; "headers" or "noheaders"; and
 "onedir" or "subdirs".  The default is "normal,headers,onedir".
 .TP 10
 .B \-saveNewsrcFile file
-The saved \*(NS filename.  Before the \*(NS file is modified on
-startup, it is saved in a backup file.  Defaults to "~/.oldnewsrc".
-If the real \*(NS file has the server name appended to it, then the
-server name is also appended to the save file name (e.g.,
-"~/.oldnewsrc-hostname").
+The saved \*(NS filename.
+Before the \*(NS file is modified on startup,
+it is saved in a backup file.
+Defaults to "~/.oldnewsrc".
 .TP 10
 .B \-savePostings file
 The name of the file in which to save postings and messages (via the
@@ -1576,7 +1565,7 @@ every newsgroup is read.
 .TP 10
 .B \-verboseKill actions
 By default, when processing kill files, the subject of each article
-that is marked read, marked unread, saved, or thread-killed is displayed, and a
+that is marked read, marked unread, or saved is displayed, and a
 summary of all such articles is displayed when done processing the
 kill file.  This option allows you to select which subjects and
 summaries to display.  The
@@ -1584,9 +1573,8 @@ summaries to display.  The
 specified should contain one or more of `l', `j', `m' and `s'.  `l'
 means to display each kill-file pattern as it is processed.  `j' means
 to display articles that are marked read, `m' means to display
-articles that are marked unread, `s' means to display articles that
-are saved, and `t' means to display articles whose subthreads or
-threads are added to the kill file.  If
+articles that are marked unread, and `s' means to display articles
+that are saved.  If
 .B actions
 is empty, then no information is displayed when processing kill files.
 .TP 10
@@ -1689,17 +1677,14 @@ below) so that your \*(XR kill files are stored separately from your
 .I ir
 kill files.
 .IP command
-One of `j' (mark the article read), `m' (mark the article unread), or
-`s' (save the article in the default save file for the newsgroup), `t'
-(insert a kill-file entry for this subthread in the local kill file),
-or `T' (insert a kill-file entry for this thread in the local kill
-file).
+A single letter, either `j' (mark the article read), `m' (mark the
+article unread), or `s' (save the article in the default save file for
+the newsgroup).
 .PP
 If the first character in the options field is `h', then \*(XR will
 check to see if the regular expression starts with "^From:",
 "^Subject:", "^Newsgroups:", "^Date:", "^Message-ID:", "^References:",
-"^Xref:", or "Approved:".  If it does, then the pattern will be
-matched against the
+or "^Xref:".  If it does, then the pattern will be matched against the
 corresponding header field in the article.  The comparison will be
 "anchored", that is, the pattern must match from the beginning of the
 field value in order to be considered a match.
@@ -1716,7 +1701,7 @@ start with one of the field names mentioned above, then it will be
 compared against all of the fields mentioned above.
 
 Note that normally, \*(XR doesn't fetch the "Newsgroups", "Date",
-"Message-ID", "References", "Xref", or "Approved" fields of articles; it fetches
+"Message-ID", "References", or "Xref" fields of articles; it fetches
 them only when it notices while processing a kill file entry that they
 are needed.  Therefore, specifying kill file entries which must be
 matched against one of those fields may cause \*(XR to take longer to
@@ -1726,16 +1711,6 @@ fields, as described in the documentation below for the
 "sortedSubjects" resource, then the fields being used for sorting are
 already being fetched and no additional data need be fetched in order
 to match kill file entries against them.
-
-Note, furthermore, that some NNTP servers do not allow queries for
-some header fields, usually "Newsgroups" and "Approved" and possibly
-others as well.  When \*(XR is talking to such a server and it
-encounters such a header field while processing the kill file entries
-for a newsgroup, it must ask the NNTP server for the entire header of
-every unread message in the newsgroup.  This can cause a significant
-delay when you try to enter the newsgroup.  You should keep this in
-mind when creating kill file entries which examine these header
-fields.
 
 Any line not in one of the already mentioned formats will cause \*(XR
 to display an error.
@@ -1749,17 +1724,6 @@ command line argument in
 .BR X (1)
 for information about setting any X
 resource from the command line):
-.TP 10
-.B authenticateOnConnect
-Some News servers expect you to send your authentication information
-when you connect, even though they don't explicitly ask for it like
-they're supposed to.  If you are trying to use authentication as
-described above (see the "authenticatorCommand" option), and \*(XR
-never prompts for your authentication information (e.g., your username
-and password) or you can't see all of the newsgroups that you're
-supposed to see, try setting this resource to true, and \*(XR will
-always do authentication immediately after connecting to the News
-server.
 .TP 10
 .B buttonsOnTop
 By default, \*(XR arranges its window in such a way that button boxes
@@ -1810,17 +1774,6 @@ described above, it will not by default limit the total size of the
 cache.  If you specify this resource, \*(XR will attempt to keep the
 total size of the cache lower than the specified number of bytes.
 .TP 10
-.B complainAboutBadDates (class "Debug")
-See "sortedSubjects", below.
-.TP 10
-.B courtesyCopyMessage
-When you both post and mail an article, the mailed copy of the article
-will have a message at the top indicating that it is a courtesy copy
-of an article which was also posted.  The default message depends on
-the language for which XRN was compiled.  You may change the message
-by setting this resource, or you may set this resource to an empty
-string to disable the message entirely.
-.TP 10
 .B domainName
 Your internet domain (e.g., ".Berkeley.EDU", ".orst.edu").  Equivalent
 to setting the DOMAIN environment variable.  You probably don't have
@@ -1835,10 +1788,6 @@ messages, regardless of what you specify for this resource.
 
 This resource is overridden by the "HIDDENHOST" environment variable
 (see below).
-
-If the host name you specify here or with "HIDDENHOST" does not have a
-period in it, the domain name (either configured into the program or
-specified as described above) is appended to it.
 .TP 10
 .B killFileName
 Tells \*(XR to name each of its kill files as specified instead of
@@ -1899,14 +1848,6 @@ sorting by date may cause some degradation in performance, especially
 when talking to a server over a slow network connection.  Similarly,
 "Message-ID" and "References" fields must be retrieved from the server
 in order to do thread sorting.
-
-If you want \*(XR to tell you when it encounters a date that it can't
-parse (usually because it contains an invalid timezone or a new
-timezone that \*(XR's date-parsing routines don't know about), then
-set the "complainAboutBadDates" resource to true.  If you do this and
-\*(XR tells you that it can't parse a date, please forward the entire
-message about which it complains (including all of its headers) to the
-\*(XR bug address given below.
 .TP 10
 .B warnings.followup.followupTo (class warnings.Followup)
 By default, when you start composing a followup to a previous message,
@@ -1934,37 +1875,6 @@ This resource controls the number of newsgroups in the Newsgroups and
 Followup-To line of your posting at which \*(XR will suggest that you
 remove some.  The default is xFOLLOWUPTO_CONFIRMx.  See "COMPOSING
 MESSAGES", above, for more information.
-.TP 10
-.B validNewsgroups
-A comma- or whitespace-separated list of regular expressions to be
-matched against the server's list of newsgroups.  Any newsgroup which
-does not match one of the specified regular expressions is treated as an
-invalid group.  For example, specifying a list containing "^talk\\. ^rec\\."
-would cause only the newsgroups in the "talk" and "rec" hierarchies to be
-considered valid, while all others would be ignored.
-
-"validNewsgroups" and "ignoreNewsgroups" (described above) can be used
-together, in which case the latter takes precedence over the
-former. For example, specifying "validNewsgroups" as above and
-"ignoreNewsgroups" as "^rec\\.games\\." would cause all "talk" and
-"rec" groups except for the "rec.games" groups to be considered valid.
-"validNewsgroups" is empty by default, which causes all groups (except
-for those that match "ignoreNewsgroups" to be considered valid.
-
-When specifying "validNewsgroups" in your X resources, you should put
-two backslashes whenever you want a single backslash to appear in a
-regular expression, because the backslash is interpreted as a quoting
-character when X resources are parsed.
-xSENDMAIL_VERIFY_STARTx
-.TP 10
-.B verifyFrom
-By default, \*(XR will verify that the address in the "From" line of
-each outgoing posting is valid (according to sendmail).  You can set
-this resource to false to disable the check.  Note, however, that the
-use of invalid addresses in "From" lines is strongly discouraged.
-Furthermore, note that even if you change your "From" line, \*(XR will
-still insert a "Sender" line with your real address in it.
-xSENDMAIL_VERIFY_ENDx
 .PP
 Furthermore, \*(XR takes a number of specifications for colors, fonts,
 border widths, and other program options.
@@ -1989,56 +1899,93 @@ that default for all items from that point down in the hierarchy.
 A higher level default can be overridden by specifying
 a default at a lower level directly.
 .sp
-The \*(XR widget hierarchy is as follows:
+XRN widget hierarchy:
 .nf
-xrn (Shell)
-  ngFrame for \*(NG mode (Paned)
-    newsgroups (Text)
-    info (Label)
-    buttons (Box)
-      button names listed above, e.g., ngQuit (Command)
-    grip (Grip, not usually visible)
-  artFrame for \*(AR mode (Paned)
-    subjects (Text)
-    info (Label)
-    buttons (Box)
-      button names listed above, e.g., artQuit (Command)
+...xrn (Shell)
+vpane (Paned)
+  titlebar (Label)  (optional)
+  index (Text)
+  indexinfo (Label)
+  indexbuttons (Box)
+      buttonName (Command)
+  articleText (Text)
+  textinfo (Label)
+  textbuttons (Box)
+      buttonName (Command)
+
+Composition (Shell)
+  vpane (Paned)
+    label (Label)
     text (Text)
-    artInfo (Label)
-    artButtons (Box)
-      button names listed above, e.g., artSave (Command)
-    grip (Grip, two of them, with the one on bottom not usually visible)
-  allFrame for \*(AL mode (Paned)
-    list (Text)
-    info (Label)
-    buttons (Box)
-      button names listed above, e.g., allQuit (Command)
-      grip (Grip, not usually visible)
-  addFrame for \*(AD mode (Paned)
-    list (Text)
-    info (Label)
-    buttons (Box)
-      button names listed above, e.g., addQuit (Command)
-      grip (Grip, not usually visible)
+    box (Box)
+       abort (Command)
+       send (Command)
+       save (Command)
+       includeArticle (Command)
+       includeFile (Command)
 
-  Composition (TopLevelShell, separate window)
-    pane (Paned)
-      label (Label)
-      text (Text)
-      box (Box)
-        compAbort (Command)
-        compSend (Command)
-        compSave (Command)
-        compIncludeFile (Command)
-        compIncludeArticle (Command)
-      grip (Grip, two of them, not usually visible)
-
-  Various dialogs
+dialogs...
 .fi
 .sp
-For example \*(XR resources, see the application-defaults file
-included in the \*(XR distribution and installed with \*(XR (probably
-in xXRNAPPDIRx).
+Examples of defaults are:
+.in +0.3i
+.nf
+#
+xrn.newsrcFile:		~/.newsrc
+xrn.nntpServer:		pasteur
+xrn.organization:	UC Berkeley XRN Design Team
+xrn.replyTo:		user@machine.domain
+xrn.iconGeometry:	+64+521
+xrn.leaveHeaders:	subject,from
+xrn.includeHeader:	off
+xrn.signatureFile:	~/.signature
+xrn.geometry:		=750x770+10+10
+xrn.deadLetters:	~/dead.letter
+xrn.savePostings:	~/Articles
+xrn.topLines:		9
+xrn.saveMode:		mailbox,headers,onedir
+xrn.minLines:		3
+xrn.maxLines:		6
+xrn.tmpDir:		/tmp
+xrn.mailer:		/usr/lib/sendmail \-oi \-t
+#
+xrn.Gripe.geometry:	+50+50
+#
+xrn.ngButtonList: ngQuit,ngRead,ngCatchUp,ngRescan,ngSubscribe,ngPost
+xrn.artButtonList: artQuit,artNextUnread,artCatchUp,artPost,artNextGroup
+#
+xrn*background:		plum
+xrn*foreground:		red
+xrn*font:		9x15
+xrn*border:		LightGray
+#
+xrn*Text*Background:	DarkSlateGray
+xrn*Text*Foreground:	yellow
+xrn*ScrollBarMgr.thickness: 22
+xrn*ScrollBar.background: DarkSlateGray
+xrn*ScrollBar.foreground: yellow
+xrn*ScrollBar.border: White
+xrn*Label.background:		cyan
+xrn*Label.foreground:		blue
+xrn*Command.foreground:		White
+xrn*Command.background:		coral
+#
+xrn*Box.ngQuit.foreground:	Black
+xrn*Box.ngQuit.background:	red
+#
+xrn*dialog*font:		9x15
+xrn*dialog*background:		LimeGreen
+xrn*dialog*foreground:		CornflowerBlue
+xrn*dialog*Label.foreground:	NavyBlue
+xrn*dialog*Command.foreground:	Black
+xrn*dialog*Command.background:	yellow
+xrn*dialog*Text.background:	Wheat
+xrn*dialog*Text.foreground:	SteelBlue
+xrn*dialog*borderWidth:		2
+#
+.fi
+.in -0.3i
+
 .SH FILES
 .TP 15
 ~/.newsrc[-hostname]
@@ -2048,7 +1995,7 @@ description of the groups and the articles read in each group
 internal cache containing \*(XR variable settings and/or cached
 newsgroup data
 .TP 15
-~/.oldnewsrc[-hostname]
+~/.oldnewsrc
 backup of ~/.newsrc (created at startup)
 .TP 15
 ~/.signature*
@@ -2063,7 +2010,7 @@ where saved postings and messages are stored
 ~/dead.letter
 where failed postings and messages are stored
 .TP 15
-~/.xrnlock[-hostname]
+~/.xrnlock
 lock file
 xSERVER_FILE_STARTx
 .TP 15
@@ -2102,7 +2049,7 @@ DOMAIN
 name of your internet domain (".Berkeley.EDU", ".orst.edu")
 .TP 11
 HIDDENHOST
-name of the host that you want your return path to
+full domain-style name of the host that you want your return path to
 be from (e.g., "decvax.dec.com", "Berkeley.EDU")
 .TP 11
 HIDDENPATH
@@ -2169,7 +2116,7 @@ of the timeout error message changes.
 .sp
 \*(XR notices that the \*(NS file has been updated by another program while
 \*(XR is running and informs the user (and gives the user the option to quit
-without updating the \*(NS or to continue on).
+without updating the "\*(NS or to continue on).
 .sp
 Article temporary files can be removed and \*(XR will recover.
 .sp
@@ -2196,16 +2143,16 @@ on problems that may exist in your version of the X11 toolkit and widgets.
 See COMMON-PROBLMS for a list of common problems and solutions to the
 problems.
 .sp
-Report bugs and requests for features to "bug\-xrn@kamens.brookline.ma.us".
+Report bugs and requests for features to "bug\-xrn@cam.ov.com".
 .sp
 Requests to be placed on the \*(XR users mailing list should be sent to
-"xrn\-users\-request@kamens.brookline.ma.us".  The only thing that comes
+"xrn\-users\-request@cam.ov.com".  The only thing that comes
 across this mailing list is announcements of new releases and
 patches for serious problems so don't expect very much traffic.
 .\"
 .SH "AUTHORS"
 .PP
-Jonathan Kamens (American Internet Corp., jik@kamens.brookline.ma.us)
+Jonathan Kamens (OpenVision Technologies, jik@cam.ov.com)
 .PP
 Ellen M Sentovich (UC Berkeley, ellen@ic.berkeley.edu)
 .PP

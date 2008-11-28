@@ -2,7 +2,7 @@
 #define SERVER_H
 
 /*
- * $Id: server.h,v 1.37 2006-01-03 16:16:43 jik Exp $
+ * $Id: server.h,v 1.30 1997-06-30 02:53:25 jik Exp $
  */
 
 /*
@@ -64,13 +64,14 @@ extern void badActiveFileCheck _ARGUMENTS((void));
 
 /* get a single article in the current group from the news server */
 extern file_cache_file *getarticle _ARGUMENTS((struct newsgroup *, art_num,
-					       long *, int));
+					       long *, int, int, int));
 
-#define FULL_HEADER   (1<<0)
-#define XLATED        (1<<1)
-#define ROTATED       (1<<2)
-#define PAGEBREAKS    (1<<3)
-#define BACKSPACES    (1<<4)
+#define FULL_HEADER   1
+#define NORMAL_HEADER 2
+#define NOT_ROTATED   1
+#define XLATED        2
+#define NOT_XLATED    1
+#define ROTATED       2
 
 /*
  * tell the server that the next set of article requests will be for this group
@@ -81,23 +82,21 @@ extern int getgroup _ARGUMENTS((struct newsgroup *,art_num *,art_num *,
 
 /* get a list of subject lines for a range of articles in the current group from the server */
 extern Boolean getsubjectlist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-					  Boolean, int *));
+					  Boolean, int));
 extern Boolean getnewsgroupslist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-					     Boolean, int *));
+					     Boolean, int));
 extern Boolean getauthorlist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-					 Boolean, int *));
+					 Boolean, int));
 extern Boolean getlineslist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-					Boolean, int *));
+					Boolean, int));
 extern Boolean getdatelist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-				       Boolean, int *));
+				       Boolean, int));
 extern Boolean getidlist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-				     Boolean, int *));
+				     Boolean, int));
 extern Boolean getreflist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-				      Boolean, int *));
+				      Boolean, int));
 extern Boolean getxreflist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-				       Boolean, int *));
-extern Boolean getapprovedlist _ARGUMENTS((struct newsgroup *,art_num,art_num,
-					   Boolean, int *));
+				       Boolean, int));
 
 
 /* xhdr commands */
@@ -128,11 +127,5 @@ extern int parse_active_line _ARGUMENTS((char *, unsigned char,
 					 struct newsgroup **));
 extern char *unparse_active_line _ARGUMENTS((struct newsgroup *));
 extern int active_read;
-
-/* If the server returns code 502, it could mean one of two things --
-   either the user's authentication failed, or the user was denied
-   access to a specific resource.  This boolean is true in the former
-   case and false in the latter. */
-extern Boolean authentication_failure;
 
 #endif /* SERVER_H */

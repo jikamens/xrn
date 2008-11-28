@@ -13,47 +13,6 @@
 /* SUPPRESS 287 on yaccpar_sccsid *//* Unusd static variable */
 /* SUPPRESS 288 on yyerrlab *//* Label unused */
 
-     #define yymaxdepth getdate_maxdepth
-     #define yyparse getdate_parse
-     #define yylex   getdate_lex
-     #define yyerror getdate_error
-     #define yylval  getdate_lval
-     #define yychar  getdate_char
-     #define yydebug getdate_debug
-     #define yypact  getdate_pact
-     #define yyr1    getdate_r1
-     #define yyr2    getdate_r2
-     #define yydef   getdate_def
-     #define yychk   getdate_chk
-     #define yypgo   getdate_pgo
-     #define yyact   getdate_act
-     #define yyexca  getdate_exca
-     #define yyerrflag getdate_errflag
-     #define yynerrs getdate_nerrs
-     #define yyps    getdate_ps
-     #define yypv    getdate_pv
-     #define yys     getdate_s
-     #define yy_yys  getdate_yys
-     #define yystate getdate_state
-     #define yytmp   getdate_tmp
-     #define yyv     getdate_v
-     #define yy_yyv  getdate_yyv
-     #define yyval   getdate_val
-     #define yylloc  getdate_lloc
-     #define yyreds  getdate_reds
-     #define yytoks  getdate_toks
-     #define yylhs   getdate_yylhs
-     #define yylen   getdate_yylen
-     #define yydefred getdate_yydefred
-     #define yydgoto getdate_yydgoto
-     #define yysindex getdate_yysindex
-     #define yyrindex getdate_yyrindex
-     #define yygindex getdate_yygindex
-     #define yytable  getdate_yytable
-     #define yycheck  getdate_yycheck
-     #define yyname   getdate_yyname
-     #define yyrule   getdate_yyrule
-
 #include <sys/types.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -61,6 +20,7 @@
 
 #include "config.h"
 #include "utils.h"
+#include "getdate.h"
 
 static int yylex ();
 static int yyerror ();
@@ -613,11 +573,11 @@ Convert(Month, Day, Year, Hours, Minutes, Seconds, Meridian, DSTmode)
 
     if (Year < 0)
 	Year = -Year;
-    if (Year < 1000)
+    if (Year < 100)
 	Year += 1900;
     DaysInMonth[1] = Year % 4 == 0 && (Year % 100 != 0 || Year % 400 == 0)
 		    ? 29 : 28;
-    if (Year < EPOCH || Year > 2999
+    if (Year < EPOCH || Year > 1999
      || Month < 1 || Month > 12
      /* Lint fluff:  "conversion from long may lose accuracy" */
      || Day < 1 || Day > DaysInMonth[(int)--Month])
@@ -704,7 +664,7 @@ LookupWord(buff)
 
     /* Make it lowercase. */
     for (p = buff; *p; p++)
-	if (isupper((unsigned char)*p))
+	if (isupper(*p))
 	    *p = tolower(*p);
 
     if (strcmp(buff, "am") == 0 || strcmp(buff, "a.m.") == 0) {
@@ -773,7 +733,7 @@ LookupWord(buff)
 	}
 
     /* Military timezones. */
-    if (buff[1] == '\0' && isalpha((unsigned char)*buff)) {
+    if (buff[1] == '\0' && isalpha(*buff)) {
 	for (tp = MilitaryTable; tp->name; tp++)
 	    if (strcmp(buff, tp->name) == 0) {
 		yylval.Number = tp->value;
@@ -809,13 +769,13 @@ yylex()
     int			sign;
 
     for ( ; ; ) {
-	while (isspace((unsigned char)*yyInput))
+	while (isspace(*yyInput))
 	    yyInput++;
 
 	if (isdigit(c = *yyInput) || c == '-' || c == '+') {
 	    if (c == '-' || c == '+') {
 		sign = c == '-' ? -1 : 1;
-		if (!isdigit((unsigned char)*++yyInput))
+		if (!isdigit(*++yyInput))
 		    /* skip the '-' sign */
 		    continue;
 	    }

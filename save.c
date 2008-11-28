@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: save.c,v 1.32 2001-09-03 21:22:15 jik Exp $";
+static char XRNrcsid[] = "$Id: save.c,v 1.29 1997-06-30 02:52:56 jik Exp $";
 #endif
 
 /*
@@ -239,7 +239,8 @@ int saveArticle(
     file_cache_file *artfile;
     char *fullName;
     FILE *fpart, *fpsave;
-    int xlation = 0, rotation = 0;
+    int xlation = 0;
+    int rotation;
     char mode[2], string[256];
     int c;
     struct stat buf;
@@ -251,20 +252,16 @@ int saveArticle(
 
     /* get the FULL article */
 
-    if (IS_ROTATED(art))
-      rotation = ROTATED;
+    rotation = (IS_ROTATED(art) ? ROTATED : NOT_ROTATED);
 #ifdef XLATE
-    if (IS_XLATED(art))
-      xlation = XLATED;
+    xlation = (IS_XLATED(art) ? XLATED : NOT_XLATED);
 #endif
-    ART_STRUCT_UNLOCK;
-    artfile = getarticle(newsgroup, artnum, &pos,
-			 FULL_HEADER | rotation | xlation);
+    artfile = utGetarticle(newsgroup, artnum, &pos, FULL_HEADER, rotation,
+			   xlation);
     if (! artfile) {
       mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, artnum);
       return(0);
     }
-    art = artStructGet(newsgroup, artnum, True);
 
     /* 
      * check a few special cases before actually saving the article
@@ -348,8 +345,7 @@ int saveArticle(
 	return(status);
     }
     
-    if ((fullName = buildFileName(filename, app_resources.saveDir,
-				  newsgroup->name)) == NIL(char)) {
+    if ((fullName = buildFileName(filename, app_resources.saveDir, newsgroup->name)) == NIL(char)) {
 	mesgPane(XRN_SERIOUS, 0, CANT_FIGURE_FILE_NAME_MSG, filename);
 	file_cache_file_release(FileCache, *artfile);
 	FREE(artfile);
@@ -412,7 +408,7 @@ int saveArticle(
 	}
 	(void) rewind(fpart);
     } else if ((*mode == 'a') && (app_resources.saveMode & FORMFEED_SAVE) &&
-	       (fputc('\f', fpsave) == EOF)) {
+	       (fputc('\014', fpsave) == EOF)) {
       error++;
       goto finished;
     }
