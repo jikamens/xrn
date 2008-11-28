@@ -2,7 +2,7 @@
 #define RESOURCES_H
 
 /*
- * $Id: resources.h,v 1.39 1998-07-05 15:08:33 jik Exp $
+ * $Id: resources.h,v 1.38 1998-03-23 03:17:04 jik Exp $
  */
 
 /*
@@ -130,7 +130,6 @@ typedef struct {
     char *ignoreNewsgroups;
     char *validNewsgroups;
     char *domainName;
-    Boolean authenticateOnConnect;
     char *authenticatorCommand;
     char *authenticator;
     Boolean rescanOnEnter, stayInArticleMode, subjectScrollBack, discardOld;

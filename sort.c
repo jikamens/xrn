@@ -37,12 +37,11 @@
 #include "sort.h"
 #include "artstruct.h"
 #include "internals.h"
+#include "getdate.h"
 #include "mesg.h"
 #include "mesg_strings.h"
 #include "hash.h"
 #include "resources.h"
-
-extern time_t get_date _ARGUMENTS((char *));
 
 #define SUB_SORT_WIDTH 24
 
@@ -145,7 +144,6 @@ void *art_sort_init(
     struct article *art = artStructGet(newsgroup, i, False);
     if (IS_LISTED(art))
       count++;
-    ART_STRUCT_UNLOCK;
   }
 
   data->articles = (struct sort_article *)
@@ -159,7 +157,6 @@ void *art_sort_init(
       data->articles[count].num = i;
       data->articles[count++].art = art;
     }
-    ART_STRUCT_UNLOCK;
   }
 
   return (void *) data;
@@ -303,7 +300,7 @@ void art_sort_by_subject(data_p)
 
   for (i = 0; i < data->count; i++) {
     hash_reference = HASH_NO_VALUE;
-    if ((void *)(hash_return =
+    if ((hash_return =
 	 hash_table_retrieve(hash_table,
 			     (void *)data->articles[i].sort_key,
 			     &hash_reference)) == HASH_NO_VALUE) {
@@ -455,8 +452,7 @@ void art_sort_by_thread(data_p)
       if (! hash_table_insert(done_table, (void *) art->parent, (void *)1, 1))
 	break;
       this_art = art->parent;
-      art = artStructGet(data->newsgroup, this_art, False);
-      ART_STRUCT_UNLOCK;
+      art = artStructGet(data->newsgroup, art->parent, False);
       assert(art);
     }
     do_art_thread(data, table, this_art, tmp_articles, &tmp_pos);
