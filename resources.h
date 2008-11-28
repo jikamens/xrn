@@ -2,7 +2,7 @@
 #define RESOURCES_H
 
 /*
- * $Id: resources.h,v 1.39 1998-07-05 15:08:33 jik Exp $
+ * $Id: resources.h,v 1.36 1997-12-17 03:04:19 jik Exp $
  */
 
 /*
@@ -130,7 +130,6 @@ typedef struct {
     char *ignoreNewsgroups;
     char *validNewsgroups;
     char *domainName;
-    Boolean authenticateOnConnect;
     char *authenticatorCommand;
     char *authenticator;
     Boolean rescanOnEnter, stayInArticleMode, subjectScrollBack, discardOld;
@@ -146,8 +145,6 @@ typedef struct {
       int followupTo, crossPost;
     } posting;
   } warnings;
-  Boolean verifyFrom;
-  String courtesyCopyMessage;
 } app_resourceRec, *app_res;
 
 extern app_resourceRec app_resources;

@@ -37,7 +37,6 @@
 #endif /* XRN else */
 
 #include "file_cache.h"
-#include <errno.h>
 
 #define MAX_FILES 100	/* if not specified, use this as the maximum
 			   number of files in the cache by default */
@@ -451,68 +450,58 @@ int file_cache_free_space(cache, space_needed)
   Copy a file in the file cache to another file, so that the second
   one will be preserved even if the first one is destroyed.
   */
-void file_cache_file_copy(cache, file, new_file)
+file_cache_file file_cache_file_copy(cache, file)
      file_cache cache;
      file_cache_file file;
-     file_cache_file *new_file;
 {
   FILE *fp;
   char *old_name, *new_name;
   char old_flags;
+  file_cache_file new_file;
 
-  /* This function doesn't copy the "size" field from the old cache
-    file to the new one because that would cause the space taken up by
-    the file in the cache to be counted twice; in fact, a hard-linked
-    file only takes up space once.
-  */
-    
   assert(cache);
 
   if (! (file && (old_name = file->name))) {
 #ifdef DEBUG
     fprintf(stderr, "file_cache_file_copy: attempt to copy null file!\n");
 #endif
-    *new_file = NULL;
-    return;
+    return NULL;
   }
 
   old_flags = file->flags;
 
   file->flags |= FILE_LOCKED;
 
-  if (! (fp = file_cache_file_open(cache, new_file))) {
+  if (! (fp = file_cache_file_open(cache, &new_file))) {
     file->flags = old_flags;
-    *new_file = NULL;
-    return;
+    return NULL;
   }
 
   file->flags = old_flags;
 
-  new_name = (*new_file)->name;
+  new_name = new_file->name;
 
   (void) fclose(fp);
   (void) unlink(new_name);
 
   if (link(old_name, new_name) < 0) {
-    file_cache_file_destroy(cache, *new_file);
-    *new_file = NULL;
-    return;
+    file_cache_file_destroy(cache, new_file);
+    return NULL;
   }
 
-  if (! file_cache_file_close(cache, *new_file)) {
-    file_cache_file_destroy(cache, *new_file);
-    *new_file = NULL;
-    return;
+  if (! file_cache_file_close(cache, new_file)) {
+    file_cache_file_destroy(cache, new_file);
+    return NULL;
   }
 
 #ifdef DEBUG
   fprintf(stderr, "file_cache_file_copy: copied file %s in slot %d (0x%x) "
 	  "into file %s in slot %d (0x%x)\n",
 	  file->name, file - cache->files, (unsigned) file,
-	  (*new_file)->name, *new_file - cache->files, (unsigned) *new_file);
+	  new_file->name, new_file - cache->files, (unsigned) new_file);
 #endif
 
-  return;
+  return new_file;
 }
 
 char *file_cache_dir_get(cache)

@@ -37,12 +37,11 @@
 #include "sort.h"
 #include "artstruct.h"
 #include "internals.h"
+#include "getdate.h"
 #include "mesg.h"
 #include "mesg_strings.h"
 #include "hash.h"
 #include "resources.h"
-
-extern time_t get_date _ARGUMENTS((char *));
 
 #define SUB_SORT_WIDTH 24
 
@@ -145,7 +144,6 @@ void *art_sort_init(
     struct article *art = artStructGet(newsgroup, i, False);
     if (IS_LISTED(art))
       count++;
-    ART_STRUCT_UNLOCK;
   }
 
   data->articles = (struct sort_article *)
@@ -159,7 +157,6 @@ void *art_sort_init(
       data->articles[count].num = i;
       data->articles[count++].art = art;
     }
-    ART_STRUCT_UNLOCK;
   }
 
   return (void *) data;
@@ -253,7 +250,7 @@ static void generate_subject_keys(data)
 		   SUB_SORT_WIDTH);
     ((char *)data->articles[i].sort_key)[SUB_SORT_WIDTH] = '\0';
     for (ptr = data->articles[i].sort_key; *ptr; ptr++)
-      if (isupper((unsigned char)*ptr))
+      if (isupper(*ptr))
 	*ptr = tolower(*ptr);
   }
 }
@@ -303,7 +300,7 @@ void art_sort_by_subject(data_p)
 
   for (i = 0; i < data->count; i++) {
     hash_reference = HASH_NO_VALUE;
-    if ((void *)(hash_return =
+    if ((hash_return =
 	 hash_table_retrieve(hash_table,
 			     (void *)data->articles[i].sort_key,
 			     &hash_reference)) == HASH_NO_VALUE) {
@@ -397,10 +394,6 @@ static void do_art_thread(data, table, this_art, artlist, artpos)
   i = (int)hash_table_retrieve(table, (void *)this_art, 0);
   assert(i != (int)HASH_NO_VALUE);
 
-  /* Circular article references are bogus, but unfortunately possible */
-  if (! data->articles[i].sort_key)
-    return;
-
   artlist[(*artpos)++] = data->articles[i];
   data->articles[i].sort_key = (void *)0;
 
@@ -417,8 +410,8 @@ void art_sort_by_thread(data_p)
 {
   struct sort_data *data = (struct sort_data *)data_p;
   struct article *art;
-  int i, ret;
-  hash_table_object table, done_table;
+  int i;
+  hash_table_object table;
   struct sort_article *tmp_articles;
   int tmp_pos = 0;
   art_num this_art;
@@ -429,9 +422,7 @@ void art_sort_by_thread(data_p)
   table = hash_table_create(data->count, hash_int_calc,
 			    hash_int_compare, hash_int_compare,
 			    0, 0);
-  done_table = hash_table_create(data->count, hash_int_calc,
-				 hash_int_compare, hash_int_compare, 0, 0);
-
+			    
   for (i = 0; i < data->count; i++) {
     int ret;
 
@@ -446,24 +437,15 @@ void art_sort_by_thread(data_p)
       continue;
     art = data->articles[i].art;
     this_art = data->articles[i].num;
-    /* We are keeping track of which articles we've already done so
-       that we can detect (and avoid) circular "References"
-       dependencies. */
-    ret = hash_table_insert(done_table, (void *)this_art, (void *)1, 1);
-    assert(ret);
     while (art->parent) {
-      if (! hash_table_insert(done_table, (void *) art->parent, (void *)1, 1))
-	break;
       this_art = art->parent;
-      art = artStructGet(data->newsgroup, this_art, False);
-      ART_STRUCT_UNLOCK;
+      art = artStructGet(data->newsgroup, art->parent, False);
       assert(art);
     }
     do_art_thread(data, table, this_art, tmp_articles, &tmp_pos);
   }
 
   hash_table_destroy(table);
-  hash_table_destroy(done_table);
   XtFree((char *)data->articles);
   data->articles = tmp_articles;
   data->last_sort = art_sort_by_thread;
