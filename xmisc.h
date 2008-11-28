@@ -2,7 +2,7 @@
 #define XMISC_H
 
 /*
- * $Id: xmisc.h,v 1.6 1995-05-10 02:20:01 jik Exp $
+ * $Header: /d/src/cvsroot/xrn/xmisc.h,v 1.2 1994-10-10 18:46:30 jik Exp $
  */
 
 /*
@@ -36,20 +36,20 @@
  */
 
 /* create the icon and the handlers for it */
-extern void xmIconCreate _ARGUMENTS((void));
+extern void xmIconCreate _ARGUMENTS(());
 
 /* set icon name and pixmap */
 typedef enum {InitIcon, ReadIcon, UnreadIcon, BusyIcon, PrevIcon} IconType;
 extern void xmSetIconAndName _ARGUMENTS((IconType));
 
-extern void xrnUnbusyCursor _ARGUMENTS((void));
-extern void xrnBusyCursor _ARGUMENTS((void));
+extern void unbusyCursor _ARGUMENTS((void));
+extern void busyCursor _ARGUMENTS((void));
 
 /* suitable for call back use */
 extern void CBunbusyCursor _ARGUMENTS((Widget,XtPointer,XtPointer));
 extern void CBbusyCursor _ARGUMENTS((Widget,XtPointer,XtPointer));
 
-/* Modify a button's borders so it is visibly the default */
-extern void makeDefaultButton _ARGUMENTS((Widget));
+/* find out the number of lines in the article display */
+extern int articleLines _ARGUMENTS(());
 
 #endif /* XMISC_H */

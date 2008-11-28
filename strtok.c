@@ -1,7 +1,13 @@
-#include "utils.h"
 #include "config.h"
+#include <stdio.h>
 
 #ifdef NEED_STRTOK
+
+#ifndef __STDC__
+#define CONST
+#else
+#define CONST const
+#endif
 
 /*
  * Get next token from string s (NULL on 2nd, 3rd, etc. calls),

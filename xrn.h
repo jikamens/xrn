@@ -1,10 +1,8 @@
 #ifndef XRN_H
 #define XRN_H
 
-#include "file_cache.h"
-
 /*
- * $Id: xrn.h,v 1.30 1997-06-30 02:52:46 jik Exp $
+ * $Header: /d/src/cvsroot/xrn/xrn.h,v 1.4 1994-10-11 16:22:40 jik Exp $
  */
 
 /*
@@ -32,6 +30,12 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifndef MOTIF
+#define XRN_VERSION "7.00 beta 2"
+#else
+#define XRN_VERSION "7.00 beta 2 (Motif)"
+#endif
+
 #include <X11/Intrinsic.h>
 
 /*
@@ -42,28 +46,31 @@
 /* global variables that represent the widgets that are dynamically changed */
 
 extern Widget TopLevel;
-extern XtAppContext TopContext;
+extern Widget Frame;
+extern Widget TopButtonBox;    /* button box containing the command buttons */
+extern Widget BottomButtonBox; /* button box containing the article specific buttons */
 extern Widget TopInfoLine;      /* top button info line                      */
 extern Widget BottomInfoLine;   /* bottom button info line                   */
+extern Widget Text;             /* scrollable text window                    */
+extern Widget ArticleText;
 
 extern int XRNState;
 
-extern int inCommand, inSubCommand;	/* executing a button function	     */
-
-extern file_cache FileCache;
+extern int inCommand;		/* executing a button function		     */
 
 #define XRN_X_UP    0x01
 #define XRN_NEWS_UP 0x10
 
 #define LABEL_SIZE 128
-#define HOST_NAME_SIZE 1024
 
-#if XtSpecificationRelease < 6
-extern XEvent *XtLastEventProcessed _ARGUMENTS((Display *));
-extern void MyMainLoop _ARGUMENTS((XtAppContext));
-extern Boolean MyDispatchEvent _ARGUMENTS((XEvent *));
+#ifndef MOTIF
+#define MyNcallback XtNcallback
 #else
-#define MyDispatchEvent(ev) XtDispatchEvent(ev)
+extern Widget ArticleTextText;	/* Motif text widget used for article text */
+extern Widget ArticleTextList;	/* Motif list widget used for all groups */
+extern Widget ArticleContainer;	/* Container for the above, only one shows */
+
+#define MyNcallback XmNactivateCallback
 #endif
 
 #endif /* XRN_H */

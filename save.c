@@ -1,6 +1,6 @@
 
-#if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: save.c,v 1.32 2001-09-03 21:22:15 jik Exp $";
+#if !defined(lint) && !defined(SABER)
+static char XRNrcsid[] = "$Header: /d/src/cvsroot/xrn/save.c,v 1.5 1994-10-10 18:46:30 jik Exp $";
 #endif
 
 /*
@@ -38,9 +38,22 @@ static char XRNrcsid[] = "$Id: save.c,v 1.32 2001-09-03 21:22:15 jik Exp $";
 #include <X11/Xos.h>
 #include <ctype.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#ifndef VMS
+#include <sys/param.h>
+#else
+#define MAXPATHLEN 512
+#ifndef R_OK
+#define F_OK            0       /* does file exist */
+#define X_OK            1       /* is it executable by caller */
+#define W_OK            2       /* writable by caller */
+#define R_OK            4       /* readable by caller */
+#endif /* R_OK */
+#define index strchr
+#endif /* VMS */
 
 #include "news.h"
-#include "artstruct.h"
 #include "resources.h"
 #include "error_hnds.h"
 #include "server.h"
@@ -48,7 +61,6 @@ static char XRNrcsid[] = "$Id: save.c,v 1.32 2001-09-03 21:22:15 jik Exp $";
 #include "save.h"
 #include "mesg_strings.h"
 #include "refile.h"
-#include "file_cache.h"
 
 extern int errno;
 
@@ -64,6 +76,7 @@ extern int errno;
  *   returns: the exit status of the command
  *
  */
+#ifndef VMS
 static int processArticle _ARGUMENTS((char *, char *));
 
 static int processArticle(command, artfile)
@@ -74,12 +87,12 @@ static int processArticle(command, artfile)
     int c, status;
 
     if ((fromfp = fopen(artfile, "r")) == NULL) {
-	mesgPane(XRN_SERIOUS, 0, CANT_OPEN_ART_MSG, artfile, errmsg(errno));
+	mesgPane(XRN_SERIOUS, CANT_OPEN_ART_MSG, artfile, errmsg(errno));
 	return(0);
     }
     
-    if ((process = xrn_popen(command, "w")) == NULL) {
-	mesgPane(XRN_SERIOUS, 0, CANT_EXECUTE_CMD_POPEN_MSG, command);
+    if ((process = popen(command, "w")) == NULL) {
+	mesgPane(XRN_SERIOUS, CANT_EXECUTE_CMD_POPEN_MSG, command);
 	(void) fclose(fromfp);
 	return(0);
     }
@@ -88,11 +101,12 @@ static int processArticle(command, artfile)
 	(void) putc((char) c, process);
     }
 
-    status = xrn_pclose(process);
+    status = pclose(process);
     (void) fclose(fromfp);
 
     return(status);
 }
+#endif /* VMS */
 
 /*
  * make sure that the news directory exists before trying to update it
@@ -109,7 +123,7 @@ int createNewsDir()
 	return(1);
     }
     if ((newdir = utTildeExpand(app_resources.saveDir)) == NIL(char)) {
-	mesgPane(XRN_SERIOUS, 0, CANT_EXPAND_DIR_MSG, app_resources.saveDir);
+	mesgPane(XRN_SERIOUS, CANT_EXPAND_SAVE_DIR_MSG, app_resources.saveDir);
 	return(0);
     }
     /*
@@ -134,7 +148,7 @@ int createNewsDir()
 
     if (! ((stat(newdir, &statbuf) == 0) && S_ISDIR(statbuf.st_mode))) {
 	if ((mkdir(newdir, 0777) == -1) && (errno != EEXIST)) {
-	    mesgPane(XRN_SERIOUS, 0, CANT_CREATE_SAVE_DIR_MSG,
+	    mesgPane(XRN_SERIOUS, CANT_CREATE_SAVE_DIR_MSG,
 		     app_resources.saveDir, errmsg(errno));
 	    return(0);
 	}
@@ -146,6 +160,26 @@ int createNewsDir()
     return(1);
 }
 
+#ifdef VMS
+static void VmxMakeDirName _ARGUMENTS((char *, char *, char *));
+
+static void VmsMakeDirName(dummy, savedir, Group)
+    char *dummy;
+    char *savedir;
+    char *Group;
+{
+    int temp;
+    (void) strcpy(dummy, savedir);	/* Copy save directory name */
+    temp = strlen(dummy);		/* Fetch the length */
+    if (dummy[temp-1] == ']') {		/* If a directory spec, */
+        dummy[temp-1] = '.';		/*  Convert to a .  */
+    } else {
+	(void) strcat(dummy, "[.");	/* Else, start directory */
+    }
+    (void) strcat(dummy, Group);	/* Add the group name */
+    (void) strcat(dummy, "]");		/* Now terminate the string */
+}
+#endif /* VMS */
 
 /*
  * expand a file name for 'saving' a file
@@ -162,88 +196,125 @@ static char * buildFileName(filename, savedir, group)
     char *savedir;     /* save directory                 */
     char *group;       /* name of the news group         */
 {
+    char Group[GROUP_NAME_SIZE];
 #ifdef aiws
     static char dummy[MAXPATH];
 #else
     static char dummy[MAXPATHLEN];
 #endif /* aiws */
+#ifdef VMS
+    char *dot;	   /* Pointer to dots to convert to underscores */
+#endif
+
+#ifndef VMS
+    /* Make a local copy of the group name for modification */
+    (void) strncpy(Group, group, sizeof(Group));
+    /* upcase the first letter of the group name (same as 'rn') */
+    if (islower(Group[0])) {
+	Group[0] = toupper(Group[0]);
+    }
+#else /* VMS */
+    /* First, use the generic group to filename conversion routine and
+       convert the group name to a filename */
+    (void) utGroupToVmsFilename(Group, group);
+
+    /* If we are in ONEDIR_SAVE mode, find the first underscore character
+       and convert it (back) to a dot.  This is done for compatibility with
+       VNEWS. */
+    if (app_resources.saveMode & ONEDIR_SAVE) {
+	if (dot = index(Group, '_')) {
+	    *dot = '.';
+	}
+    }
+#endif
 
     if ((filename == NIL(char)) || (*filename == '\0')) {
-	int len;
 	if (app_resources.saveMode & ONEDIR_SAVE){
-	    len = strlen(savedir) + 1;
-	    (void) sprintf(dummy, "%s/%s", savedir, group);
-	    if (islower(dummy[len]))
-		dummy[len] = toupper(dummy[len]);
+#ifndef VMS
+	    (void) sprintf(dummy, "%s/%s", savedir, Group);
+#else
+	    (void) sprintf(dummy, "%s%s", savedir, Group);
+#endif
 	} else {
 	    /* use "saveDir/group" */
+#ifndef VMS
 	    (void) sprintf(dummy, "%s/%s", savedir, group);
+#else
+	    VmsMakeDirName(dummy, savedir, Group);
+#endif /* VMS */
 	    (void) mkdir(utTildeExpand(dummy), 0777);
+#ifndef VMS
 	    (void) strcat(dummy, "/");
-	    len = strlen(dummy);
-	    (void) strcat(dummy, group);
-	    if (islower(dummy[len]))
-		dummy[len] = toupper(dummy[len]);
+#endif /* VMS */
+	    (void) strcat(dummy, Group);
+#ifdef VMS
+	    if (!(app_resources.saveMode & ONEDIR_SAVE)) {
+		(void) strcat(dummy, ".ART");
+	    }
+#endif /* VMS */
 	}
 	return(utTildeExpand(dummy));
     }
 
+#ifndef VMS
     if ((filename[0] == '/') || (filename[0] == '~')) {
 	return(utTildeExpand(filename));
     }
+#else
+    if ((index(filename, ':')) || (index(filename, '['))
+		|| (index(filename, '<'))) {
+	return(utTildeExpand(filename));
+    }
+#endif /* VMS */
 
     if (app_resources.saveMode & ONEDIR_SAVE) {
+#ifndef VMS
 	(void) sprintf(dummy, "%s/%s", savedir, filename);
+#else /* VMS */
+	(void) sprintf(dummy, "%s%s", savedir, filename);
+#endif /* VMS */
     } else {
 	/* use "saveDir/group/filename" */
+#ifndef VMS
 	(void) sprintf(dummy, "%s/%s", savedir, group);
+#else /* VMS */
+	VmsMakeDirName(dummy, savedir, Group);
+#endif /* VMS */
 	(void) mkdir(utTildeExpand(dummy), 0777);
+#ifndef VMS
 	(void) strcat(dummy, "/");
+#endif /* VMS */
 	(void) strcat(dummy, filename);
     }
     return(utTildeExpand(dummy));
 }
 
-int saveArticleByNumber(
-			_ANSIDECL(char *,	filename),
-			_ANSIDECL(art_num,	art),
-			_ANSIDECL(Boolean,	printing)
-			)
-     _KNRDECL(char *,	filename)
-     _KNRDECL(art_num,	art)
-     _KNRDECL(Boolean,	printing)
+int saveArticleByNumber(filename, art)
+    char *filename;
+    art_num art;
 {
-    return saveArticle(filename, CurrentGroup, art, False, printing);
+    return saveArticle(filename, CurrentGroup, art);
 }
 
-int saveArticle(
-		_ANSIDECL(char *,		filename),
-		_ANSIDECL(struct newsgroup *,	newsgroup),
-		_ANSIDECL(art_num,		artnum),
-		_ANSIDECL(Boolean,		temporaryp),
-		_ANSIDECL(Boolean,		printing)
-		)
-     _KNRDECL(char *,			filename)
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artnum)
-     _KNRDECL(Boolean,			temporaryp)
-     _KNRDECL(Boolean,			printing)
+int saveArticle(filename, newsgroup, art)
+    char *filename;
+    struct newsgroup *newsgroup;
+    art_num art;
 {
     char timeString[BUFFER_SIZE];
     char inputbuf[BUFSIZ];
     int error = 0;
-    extern char *ctime _ARGUMENTS((CONST time_t *));
+    extern char *ctime _ARGUMENTS((const time_t *));
     extern time_t time _ARGUMENTS((time_t *));
     time_t clock;
     long pos;
-    file_cache_file *artfile;
-    char *fullName;
+    char *artfile, *fullName;
     FILE *fpart, *fpsave;
-    int xlation = 0, rotation = 0;
+    int xlation = 0;
+    int rotation;
     char mode[2], string[256];
     int c;
     struct stat buf;
-    struct article *art = artStructGet(newsgroup, artnum, True);
 
     if ((filename != NIL(char)) && (*filename != '\0')) {
 	filename = utTrimSpaces(filename);
@@ -251,21 +322,13 @@ int saveArticle(
 
     /* get the FULL article */
 
-    if (IS_ROTATED(art))
-      rotation = ROTATED;
+    rotation = (IS_ROTATED(newsgroup->articles[INDEX(art)]) ? ROTATED : NOT_ROTATED);
 #ifdef XLATE
-    if (IS_XLATED(art))
-      xlation = XLATED;
+    xlation = (IS_XLATED(newsgroup->articles[INDEX(art)]) ? XLATED : NOT_XLATED);
 #endif
-    ART_STRUCT_UNLOCK;
-    artfile = getarticle(newsgroup, artnum, &pos,
-			 FULL_HEADER | rotation | xlation);
-    if (! artfile) {
-      mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, artnum);
-      return(0);
-    }
-    art = artStructGet(newsgroup, artnum, True);
+    artfile = getarticle(newsgroup, art, &pos, FULL_HEADER, rotation, xlation);
 
+#ifndef VMS
     /* 
      * check a few special cases before actually saving the article
      * to a plain text file:
@@ -278,52 +341,35 @@ int saveArticle(
     /* see if the file name is actually a command specification */
     if ((filename != NIL(char)) && (filename[0] == '|')) {
 	int status;
-	(void) sprintf(error_buffer, SAVE_PIPE_TO_MSG ,
-		       artnum, &filename[1]);
+	(void) sprintf(error_buffer, "Piping article %ld into command `%s'...    ",
+		       art, &filename[1]);
 	infoNow(error_buffer);
-    	status = processArticle(utTrimSpaces(&filename[1]),
-				file_cache_file_name(FileCache, *artfile));
-	file_cache_file_release(FileCache, *artfile);
+    	status = processArticle(utTrimSpaces(&filename[1]), artfile);
+	(void) unlink(artfile);
 	FREE(artfile);
 	if (status) {
-	    (void) sprintf(error_buffer, ERROR_SAVE_PIPE_MSG ,
+	    (void) sprintf(error_buffer, "`%s' exited with status %d",
 				&filename[1], status);
 	} else {
-	    if (printing)
-		SET_PRINTED(art);
-	    else if (! temporaryp)
-		SET_SAVED(art);
-	    (void) strcat(error_buffer, " ");
-	    (void) strcat(error_buffer, DONE_MSG);
+	    (void) strcpy(&error_buffer[strlen(error_buffer) - 4], "done");
 	}
-	INFO(error_buffer);
-	artStructSet(newsgroup, &art);
+	info(error_buffer);
 	return(status == 0);
     }
+#endif
 
     if ((filename != NIL(char)) && (filename[0] == '+')) {
-	int status = MHrefile(filename,
-			      file_cache_file_name(FileCache, *artfile));
-	file_cache_file_release(FileCache, *artfile);
+	int status = MHrefile(filename, artfile);
 	FREE(artfile);
-	(void) sprintf(error_buffer, SAVE_MH_REFILE_MSG, filename,
-		       status ? DONE_MSG : FAILED_MSG );
+	(void) sprintf(error_buffer, "MH refile to folder %s done", filename);
 	infoNow(error_buffer);
-	if (status) {
-	    if (printing)
-		SET_PRINTED(art);
-	    else if (! temporaryp)
-		SET_SAVED(art);
-	}
-	artStructSet(newsgroup, &art);
 	return(status);
     }
 
     /* XXX not quite right, don't want to try to create it if not used... */
     if (!createNewsDir()) {
-	file_cache_file_release(FileCache, *artfile);
+	(void) unlink(artfile);
 	FREE(artfile);
-	artStructSet(newsgroup, &art);
 	return(0);
     }
 
@@ -331,38 +377,31 @@ int saveArticle(
 	int status;
 	if ((fullName = buildFileName(filename+1, app_resources.saveDir,
 				      newsgroup->name)) == NIL(char)) {
-	    mesgPane(XRN_SERIOUS, 0, CANT_FIGURE_FILE_NAME_MSG, filename+1);
-	    file_cache_file_release(FileCache, *artfile);
+	    mesgPane(XRN_SERIOUS, CANT_FIGURE_FILE_NAME_MSG, filename+1);
+	    (void) unlink(artfile);
 	    FREE(artfile);
-	    artStructSet(newsgroup, &art);
 	    return(0);
 	}
-	status = RMAILrefile(fullName, filename+1,
-			     file_cache_file_name(FileCache, *artfile), pos);
-	(void) sprintf(error_buffer, SAVE_RMAIL_REFILE_MSG ,
-			filename+1, status ? DONE_MSG : FAILED_MSG );
+	status = RMAILrefile(fullName, filename+1, artfile, pos);
+	(void) sprintf(error_buffer, "RMAIL refile to folder %s done",
+			filename+1);
 	infoNow(error_buffer);
-	file_cache_file_release(FileCache, *artfile);
+	(void) unlink(artfile);
 	FREE(artfile);
-	artStructSet(newsgroup, &art);
 	return(status);
     }
     
-    if ((fullName = buildFileName(filename, app_resources.saveDir,
-				  newsgroup->name)) == NIL(char)) {
-	mesgPane(XRN_SERIOUS, 0, CANT_FIGURE_FILE_NAME_MSG, filename);
-	file_cache_file_release(FileCache, *artfile);
+    if ((fullName = buildFileName(filename, app_resources.saveDir, newsgroup->name)) == NIL(char)) {
+	mesgPane(XRN_SERIOUS, CANT_FIGURE_FILE_NAME_MSG, filename);
+	(void) unlink(artfile);
 	FREE(artfile);
-	artStructSet(newsgroup, &art);
 	return(0);
     }
 
-    if ((fpart = fopen(file_cache_file_name(FileCache, *artfile), "r")) == NULL) {
-	mesgPane(XRN_SERIOUS, 0, CANT_OPEN_ART_MSG,
-		 file_cache_file_name(FileCache, *artfile), errmsg(errno));
-	file_cache_file_release(FileCache, *artfile);
+    if ((fpart = fopen(artfile, "r")) == NULL) {
+	mesgPane(XRN_SERIOUS, CANT_OPEN_ART_MSG, artfile, errmsg(errno));
+	(void) unlink(artfile);
 	FREE(artfile);
-	artStructSet(newsgroup, &art);
 	return(0);
     }
 
@@ -374,22 +413,20 @@ int saveArticle(
     
     if ((fpsave = fopen(fullName, mode)) == NULL) {
 	(void) fclose(fpart);
-	file_cache_file_release(FileCache, *artfile);
+	(void) unlink(artfile);
 	FREE(artfile);
-	mesgPane(XRN_SERIOUS, 0, CANT_CREAT_APPEND_SAVE_FILE_MSG,
-		 (mode[0] == 'w') ? CREATE_MSG : APPEND_MSG,
+	mesgPane(XRN_SERIOUS, CANT_CREAT_APPEND_SAVE_FILE_MSG,
+		 (mode[0] == 'w') ? "create" : "append to",
 		 fullName, errmsg(errno));
-	artStructSet(newsgroup, &art);
 	return(0);
     }
 
-    if (temporaryp)
-	do_chmod(fpsave, fullName, 0600);
-
     if (mode[0] == 'w') {
-	(void) sprintf(error_buffer, SAVE_OK_MSG, artnum, fullName);
+	(void) sprintf(error_buffer, "Saving article %ld in file `%s'...     ",
+			   art, fullName);
     } else {
-	(void) sprintf(error_buffer, SAVE_APPEND_OK_MSG, artnum, fullName);
+	(void) sprintf(error_buffer, "Appending article %ld to file `%s'...     ",
+		       art, fullName);
     }	
      
     infoNow(error_buffer);
@@ -411,13 +448,9 @@ int saveArticle(
 	    }
 	}
 	(void) rewind(fpart);
-    } else if ((*mode == 'a') && (app_resources.saveMode & FORMFEED_SAVE) &&
-	       (fputc('\f', fpsave) == EOF)) {
-      error++;
-      goto finished;
     }
 
-    if (fprintf(fpsave, SAVE_ARTICLE_MSG , artnum, newsgroup->name) == EOF) {
+    if (fprintf(fpsave, "Article: %ld of %s\n", art, newsgroup->name) == EOF) {
 	 error++;
 	 goto finished;
     }
@@ -440,7 +473,7 @@ int saveArticle(
 	    }
 	}
     } else {
-	while ((c = fread(inputbuf, sizeof(char), BUFSIZ, fpart))) {
+	while (c = fread(inputbuf, sizeof(char), BUFSIZ, fpart)) {
 	    if (! fwrite(inputbuf, sizeof(char), c, fpsave)) {
 		error++;
 		goto finished;
@@ -455,27 +488,37 @@ int saveArticle(
 
 finished:
     (void) fclose(fpart);
-    file_cache_file_release(FileCache, *artfile);
+    (void) unlink(artfile);
     FREE(artfile);
 
     if (fclose(fpsave) == EOF) {
 	error++;
     }
 
-    (void) strcat(error_buffer, " ");
-    (void) strcat(error_buffer, error ? ABORTED_MSG : DONE_MSG);
-    INFO(error_buffer);
+    (void) strcpy(&error_buffer[strlen(error_buffer) - 4], 
+		    error ? "aborted" : "done");
     if (error) {
-	mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG, fullName,
+	info(error_buffer);
+	mesgPane(XRN_SERIOUS, ERROR_WRITING_SAVE_FILE_MSG, fullName,
 		 errmsg(errno));
-	artStructSet(newsgroup, &art);
 	return 0;
     } else {
-	if (printing)
-	    SET_PRINTED(art);
-	else if (! temporaryp)
-	    SET_SAVED(art);
-	artStructSet(newsgroup, &art);
+	info(error_buffer);
+	SET_SAVED(newsgroup->articles[INDEX(art)]);
 	return 1;
     }
+}
+
+/*
+ * save the current article in 'filename' (if it begins with '|', send it to
+ *   a process)
+ *
+ *   returns: 1 for OKAY, 0 for FAILURE
+ *
+ */
+int saveCurrentArticle(filename)
+    char *filename;
+{
+     struct newsgroup *newsgroup = CurrentGroup;
+     return saveArticle(filename, newsgroup, CurrentGroup->current);
 }

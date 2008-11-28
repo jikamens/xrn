@@ -6,45 +6,22 @@ files), and the NNTP server must support the XHDR command (most
 servers nowadays do; if yours doesn't, XRN will complain when you try
 to run it).
 
-  XRN is currently maintained by Jonathan Kamens.  Bug reports or
-comments about it should be sent to bug-xrn@kamens.brookline.ma.us.
+  Versions of XRN prior to 7.00 were maintained by Ellen Santovich and
+Rick Spickelmier.  XRN is currently maintained by Jonathan Kamens.
+But reports or comments about it should be sent to bug-xrn@cam.ov.com.
 Please do *not* write to that address with basic questions about
 compiling the program; if you are unfamiliar with compiling X
 applications and the instructions below are not sufficient, you should
 seek help at your site.
 
-  Versions of XRN prior to 7.00 were maintained by Ellen Santovich and
-Rick Spickelmier.
-
-
-		XRN is a Usenet-friendly News reader!
-
-  I have striven to make XRN adhere to all relevant standards and to
-help users avoid the common pitfalls of participation in the Usenet.
-To that end, all releases of XRN starting with 9.02 are compliant with
-the Good Net-Keeping Seal of Approval (GNKSA), a standard which
-defines how News readers should behave to make the Usenet a better
-place for everyone.  See <URL:http://www.xs4all.nl/~js/gnksa/> for
-more information about the GNKSA.  XRN's GNKSA review can be viewed at
-<URL:http://www.xs4all.nl/~js/gnksa/Evaluations/xrn-9.02beta4.txt>.
-
 
 			   Where to get XRN
 
-  The XRN home page is <http://www.mit.edu/people/jik/software/xrn.html>.
-
-  Source code for the most recent production release of XRN can always
-be found at <ftp://sipb.mit.edu/pub/xrn/xrn.tgz>.  The most recent
-beta-test release of XRN (if there is a beta release more recent than
-the last production release) can be retrieved from
-<ftp://sipb.mit.edu/pub/xrn/beta.tgz>.  The file
-<ftp://sipb.mit.edu/pub/xrn/xrn-linux.tgz> contains a binary XRN
-release for Linux, based on the most recent production release.  These
-files are GNU tar archives compressed with GNU zip.
-
-  The current production release and the current Linux binary release
-are also available in the X Consortium's contributed software archive,
-in the directory <ftp://ftp.x.org/contrib/applications/xrn>.
+  The most recent production release of XRN can always be retrieved
+from <ftp://remote-access.cam.ov.com/pub/xrn/xrn.tgz>.  The most
+recent beta-test release of XRN can always be retried from
+<ftp://remote-access.cam.ov.com/pub/xrn/beta.tgz>.  These files are
+GNU tar archives compressed with GNU zip.
 
 
 	      Interesting files in the XRN distribution
@@ -58,7 +35,7 @@ asterisks indicate files which I have tried to keep up-to-date (this
 more files may be updated in future releases, especially if people
 send me feedback about the out-of-date ones):
 
-COMMON-PROBLMS		A list of common problems and questions about
+COMMON-PROBLEMS		A list of common problems and questions about
 			the program, with explanations and solutions.
 COPYRIGHT		Describes the copyright restrictions on XRN.
 			I have left the University of California
@@ -68,25 +45,27 @@ COPYRIGHT		Describes the copyright restrictions on XRN.
 			that's the easiest thing to do and it doesn't
 			do any harm.
 * ChangeLog		A list of changes from previous releases of
-			XRN.
-* README		This file.
-* README.*		Notes about compiling XRN in specific
-			environments.  For example, README.Linux
-			contains notes about compiling XRN on Linux
-			systems.
-* TODO			A list of pending bug fixes and improvements
+			XRN.  Note that because the last release of
+			XRN was so long ago, and because the new
+			release is so different from the previous
+			release, I have not included ChangeLog entries
+			for the new release.  I.e., the file is empty
+			right now, but will contain entries in future
+			releases.
+* FIXERS		A list of people who have contributed to XRN.
+			If you submit fixes, enhancements, etc., you
+			will be added to this list unless you're
+			already on it or you explicitly ask not to be
+			put on the list.
+* README		This file
+TODO			A list of pending bug fixes and improvements
 			to XRN.  If you're interested in helping to
 			develop XRN, picking one of the items in this
 			list and digging around in the source code to
 			see what you can do about it is a good way to
 			start.
-
-			This file is sort of "half up-to-date,"
-			because I've been adding new items to the
-			beginning of it, but the items at the end of
-			it are left over from before I took over
-			maintenance of XRN, and some of them may be
-			inaccurate.
+Xresources.sample	A sample of how you might customize XRN in
+			your own X resources.
 contrib/*		Various scripts, hints, etc. contributed by
 			XRN users and not "officially" part of XRN.
 * doc/rfc977.txt	The Internet RFC governing NNTP, the Network
@@ -106,64 +85,39 @@ still-to-do/*		Various bug fixes that have not yet been
 			with them.
 
 
-		      Supported/tested platforms
+		      Supported/Tested Platforms
 
-  XRN has been compiled and run on a large variety of platforms; it
-should compile pretty easily on most platforms.  The maintainer uses
-Linux (ELF gcc and C libraries) with X11R6 libraries (XFree86 3.1.2).
-Other successful platforms reported by users include SunOS 4.1.3,
-OSF/1, HP-UX, AIX, Solaris 2.x, BSD/386, and SGI.
+  This release has been compiled and run on SunOS 4.1.3, using gcc
+2.4.5, with both X11R5 and X11R6 libraries.  Environments reported by
+XRN testers include:
 
-  XRN probably won't work with X11R4.  R4 is a very old and obsolete
-release, and I do not have the resources to continue to support it
-while doing on-going development which takes advantage of features
-found only in newer X releases.  Therefore, please do not send me bug
-reports about XRN compiled with X11R4; if you want to use XRN, you'll
-have to get a newer version of X with which to compile it.
+	SunOS 4.1.3, SunPro SPARCompiler C 2.0.1
+	SunOS 4.1.3, gcc 2.5.8, X11R5
+	SGI
+	BSD/386 V1.1
+
+If you compile and run the program in a different environment, please
+let me know so that I can list it here.
+
+  The Motif support in XRN was implemented by Mike Yang, and he does
+most of its maintenance.  If you send me a bug report that is specific
+to the Motif version, I'll probably forward it to him rather than
+fixing it myself.  Feel free to send such bug reports to me, though --
+I like to keep track of bugs even if I can't fix them.
+
+  The source code for XRN claims to support VMS.  However, I haaven't
+tested the VMS code, and I suspect it hasn't actually been compiled or
+used in a very long time, so I make no claims about its correctness or
+reliability.  Furthermore, I cannot maintain the VMS code as
+assiduously as the UNIX/Athena widget set code; i.e., if you send a
+bug report about the VMS code, I'm unlikely to fix it.  It's much more
+likely to be fixed if you send a patch.  In any case, if you do use
+the the VMS code, I'd like to hear about it.
 
   Rick Murphy <murphy@ufp.dco.dec.com> has a version of XRN that runs
-on VMS, available as <ftp://gatekeeper.dec.com/pub/DEC/dxrn.tar.Z>.
-His version of XRN also will compile with a DECwindows interface on
-UNIX, as well as with a Motif interface with some "bells and whistles"
-that this version of XRN does not have.  Integrating DXRN into the
-code base of XRN (i.e., this package) is on my TODO list, but I doubt
-it'll get done in the short term.
-
-
-		What happened to the Motif interface?
-
-  Previous versions of XRN, up to and including version 7.00, included
-support for building XRN with Motif instead of the Athena widget set
-("Xaw").  However, the Motif support has been removed (temporarily, I
-hope) in later releases.  There are two primary reasons for this:
-
-1) The implementation of Motif support was not parallel to the Xaw
-   implementation.  As a result, the Motif interface behaved
-   differently (and in some cases incorrectly) from the Xaw interface,
-   and furthermore, it was extremely difficult to keep the Motif
-   interface in sync with the Xaw interface when changes were made.
-
-2) Newer releases of XRN include a significant clean-up of the XRN
-   code base.  This clean-up was necessary in order to introduce much
-   of the new functionality that is included in new releases.  It was
-   also necessary because, to be honest, the code base was disgusting.
-   The bits of Motif code scattered all over the XRN code base were
-   making it virtually impossible to do the code clean-up, so they had
-   to be removed.
-
-A volunteer is in the process of restoring the Motif support to XRN,
-and in fact, current beta releases have rudimentary Motif support in
-it.  However, this support is not yet complete or supported, and I do
-not suggest that people use it at this time.  Furthermore, the
-volunteer has run into some problems and currently does not anticipate
-being able to finish the work.  If you are interested in helping to
-finish it, please contact me.
-
-  If you must have a Motif interface, XRN release 7.00 is available in
-<ftp://sipb.mit.edu/pub/xrn/unsupported/xrn-motif.tgz>.  However,
-release 7.00 is unspported, and I will reject any bug reports or
-enhancement requests pertaining to it.  I do not recommend that you
-use XRN 7.00.
+on VMS.  If you want to run XRN on VMS, you might want to get his
+version instead of trying to compile this distribution on VMS.  Rick's
+version is available as <ftp://gatekeeper.dec.com/pub/DEC/dxrn.tar.Z>.
 
 
 		     Compiling and installing XRN
@@ -173,18 +127,15 @@ XRN.  The last few steps are the standard method for compiling and
 installing an X program; if you need more help with them, you should
 look for it at your site.
 
-1. Check if there is a README.* file for the platform you are trying
-   to compile on, and if so, read it.
+1. Edit the Imakefile for your local configuration.  The comments in
+   the file explain what needs to be edited.  Pay particular attention
+   to "UseMotif" and "INN", which enable the Motif version of XRN and
+   support for InterNetNews (INN).
 
-2. Edit the Imakefile (after making it writeable with chmod) for your
-   local configuration.  The comments in the file explain what needs
-   to be edited.
-
-3. Edit config.h (after making it writeable with chmod) for your local
-   configuration.  The file is (sort of) arranged from most
-   significant to least significant parameters, so if you get part-way
-   through it and start to feel like you can just leave the rest
-   as-is, you probably can.
+2. Edit config.h for your local configuration.  The file is (sort of)
+   arranged from most significant to least significant parameters, so
+   if you get part-way through it and start to feel like you can just
+   leave the rest as-is, you probably can.
 
    If you don't define a parameter that needs to be defined, you'll
    get an error during compilation.
@@ -203,22 +154,9 @@ look for it at your site.
    editing config.h.  However, if you do that, make sure to put
    "-DCONFIG_H_IS_OK" in SITE_DEFINES.
 
-4. Run "xmkmf" and then "make".
+3. Run "xmkmf".
 
-   If you don't have xmkmf at your site, or if it doesn't work or
-   produces a Makefile that doesn't work, you can try configuring by
-   hand, by editing the Makefile included in the distribution (note
-   that if you ran xmkmf, it probably renamed the distributed Makefile
-   to Makefile.bak).  It's generated using xmkmf at my site, and
-   almost certainly will require editing to be correct for yours.  If
-   you have to do this and you have trouble, please get help from
-   someone at your site rather than contacting me about it; I don't
-   have time to support sites that don't have xmkmf installed
-   properly.
-
-   If you get an error about a missing header file "mesg_strings.h"
-   when you run "make", then run "make mesg_strings.h" and then run
-   "make" again.
+4. Run "make".
 
 5. Run "make install" to install the program and its application
    defaults file, and/or "make install.man" to install the man page.
@@ -227,52 +165,20 @@ look for it at your site.
    defaults file installed.
 
 
-		       If you have problems...
-
-  If you have problems compiling or running XRN, you should check the
-COMMON-PROBLMS file in the XRN distribution to see if your problem is
-documented there.  If not, write to bug-xrn@kamens.brookline.ma.us for
-assistance.
-
-  If you write to me about a problem which is documented in
-COMMON-PROBLMS, and I do not see any sign that you have read it, then
-I *will* response tersely, telling you to read it before contacting
-me.  In short, please don't waste my time asking me how to solve
-problems whose solutions are already documented.
-
-
 			 The XRN mailing list
 
   If you would like to be informed of new releases of XRN and of any
 major bugs that are discovered in between releases, you can subscribe
-to the xrn-users@kamens.brookline.ma.us mailing list.  It's an
-announcement list, not a discussion list, so the traffic on it is very
-low.  Send mail to xrn-users-request@kamens.brookline.ma.us to ask to
-be added to the list.
-
-
-			  The future of XRN
-
-  Release 9.00 of XRN is the first general-availability release in
-over a year and a half.  The next major release may take just as long,
-or even longer.  I have not had as much time as I would have liked to
-work on XRN, and I will probably have even less in the future.
-
-  However, I do not want XRN to be orphaned or to deteriorate.
-Therefore, I will continue to make bug-fix releases as necessary, and
-I will devote as much time as I can to making enhancements.
-
-  If you are interested in volunteering to take over, I'd love to hear
-from you, but I'm only going to hand off XRN to someone whom I'm
-convinced will do a good job, because I've invested a lot of effort
-into it, and because the folks who maintained it before me allowed it
-to stagnate for years; I do not want that to happen again.
+to the xrn-users@cam.ov.com mailing list.  It's an announcement list,
+not a discussion list, so the traffic on it is very low.  If you're
+interested, send mail to xrn-users-request@cam.ov.com and ask to be
+added to the list.
 
 
 
 I hope you find XRN useful!
 
   Jonathan Kamens
-  jik@kamens.brookline.ma.us
+  jik@cam.ov.com
 
-# $Id: README,v 1.51 2006-01-03 16:17:06 jik Exp $
+# $Header: /d/src/cvsroot/xrn/README,v 1.8 1994-10-11 15:18:35 jik Exp $

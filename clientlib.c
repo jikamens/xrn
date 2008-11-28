@@ -1,6 +1,6 @@
 
-#if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: clientlib.c,v 1.21 2006-01-03 16:17:02 jik Exp $";
+#if !defined(lint) && !defined(SABER)
+static char XRNrcsid[] = "$Header: /d/src/cvsroot/xrn/clientlib.c,v 1.3 1994-10-10 18:46:30 jik Exp $";
 #endif
 
 /* #define DEBUG */
@@ -33,10 +33,16 @@ static char XRNrcsid[] = "$Id: clientlib.c,v 1.21 2006-01-03 16:17:02 jik Exp $"
 #include "config.h"
 #include "utils.h"
 #include <X11/Xos.h>
+#ifndef VMS
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
 #include <netdb.h>
+#else
+#include <unixio.h>
+#include <file.h>
+#define NNTPobject "::\"0=NNTP\""
+#define index strchr
+#endif /* VMS */
 
 #ifdef notdef
 #if defined(AF_DECnet) && defined(ultrix)
@@ -57,18 +63,18 @@ static char XRNrcsid[] = "$Id: clientlib.c,v 1.21 2006-01-03 16:17:02 jik Exp $"
 #include "internals.h"
 #include "clientlib.h"
 
+#ifdef BSD_BFUNCS
+#define memset(_Str_, _Chr_, _Len_) bzero(_Str_, _Len_)
+#define memcpy(_To_, _From_, _Len_) bcopy(_From_, _To_, _Len_)
+#endif
+
 FILE	*ser_rd_fp = NULL;
 FILE	*ser_wr_fp = NULL;
 
 char	*server_init_msg = NULL;
-char	*nntp_port = NULL;
 
-#ifdef DECNET
 static int get_dnet_socket _ARGUMENTS((char *));
-#endif
-
 static int get_tcp_socket _ARGUMENTS((char *));
-int get_server_init_msg _ARGUMENTS((char **));
 
 /*
  * getserverbyfile	Get the name of a server from a named file.
@@ -119,17 +125,8 @@ char * getserverbyfile(file)
 int server_init(machine)
     char *machine;
 {
-#ifdef NNTPVIATIP
 	char	line[256];
-#else
-	int	sockt_rd, sockt_wr;
-#endif
-	int 	retval, retval2;
-	char 	*mode_init_msg;
-#ifdef DECNET
-	char	*cp;
-#endif /* DECNET */
-
+ 	int	server_length;
 #ifdef NNTPVIATIP
 	ser_rd_fp = fdopen(3, "r"); /* 3 is dictated by tip(1) ~C command */
 	ser_wr_fp = fdopen(4, "r"); /* 4 is dictated by tip(1) ~C command */
@@ -139,9 +136,17 @@ int server_init(machine)
 	get_server(line, sizeof(line)); /* Connected to ... */
 	get_server(line, sizeof(line)); /* Escape character is ... */
 #else /* NNTPVIATIP */
+	int	sockt_rd, sockt_wr;
+#ifdef VMS
+	char	*in_buffer, *out_buffer;
+
+	sockt_rd = get_dnet_socket(machine);
+#else
+#ifdef DECNET
+	char	*cp;
+#endif /* DECNET */
 
 #ifdef DECNET
-
 	cp = index(machine, ':');
 
 	if (cp && cp[1] == ':') {
@@ -149,12 +154,10 @@ int server_init(machine)
 		sockt_rd = get_dnet_socket(machine);
 	} else
 		sockt_rd = get_tcp_socket(machine);
-
 #else  /* DECNET */
-
 	sockt_rd = get_tcp_socket(machine);
-
 #endif /* DECNET */
+#endif /* VMS */
 
 	if (sockt_rd < 0)
 		return (-1);
@@ -166,6 +169,7 @@ int server_init(machine)
 	 * up two separate fp's, one for reading, one for writing.
 	 */
 
+#ifndef VMS
 	if ((ser_rd_fp = fdopen(sockt_rd, "r")) == NULL) {
 		perror("server_init: fdopen #1");
 		return (-1);
@@ -178,88 +182,90 @@ int server_init(machine)
 		ser_rd_fp = NULL;		/* from above */
 		return (-1);
 	}
-#endif /* NNTPVIATIP */
-
-	if (server_init_msg) {
-	    XtFree(server_init_msg);
-	    server_init_msg = 0;
+#else
+	if ((in_buffer = malloc(8192)) == NULL) {
+	    perror("malloc failed.");
+	    return (-1);
 	}
-
-	if ((retval = get_server_init_msg(&server_init_msg)) < 0) {
-	    return (retval);
+	if ((ser_rd_fp = fdopen(sockt_rd, "r")) == NULL) {
+		perror("server_init: fdopen #1");
+		return (-1);
 	}
-
-	put_server("MODE READER");
-
-	if ((retval2 = get_server_init_msg(&mode_init_msg)) < 0) {
-	    XtFree(server_init_msg);
-	    server_init_msg = 0;
-	    return (retval2);
+	if (setvbuf(ser_rd_fp, in_buffer, _IOLBF, 8192)) {
+	    perror("setvbuf");
+	    (void) fclose(ser_rd_fp);
+	    ser_rd_fp = NULL;
+	    return (-1);
 	}
-
-	if ((*mode_init_msg == CHAR_OK) || (retval2 == ERR_ACCESS)) {
-	    XtFree(server_init_msg);
-	    server_init_msg = mode_init_msg;
-	    return (retval2);
+	sockt_wr = dup(sockt_rd);
+	if ((out_buffer = malloc(8192)) == NULL) {
+	    perror("malloc failed.");
+	    (void) fclose(ser_rd_fp);
+	    ser_rd_fp = NULL;
+	    return (-1);
 	}
-	else {
-	    XtFree(mode_init_msg);
-	    return (retval);
+	if ((ser_wr_fp = fdopen(sockt_wr, "w")) == NULL) {
+		perror("server_init: fdopen #2");
+		(void) fclose(ser_rd_fp);
+		ser_rd_fp = NULL;		/* from above */
+		return (-1);
 	}
-}
-
-/*
- * get_server_init_msg - get a banner message from the server.
- *
- *	Parameters:	"msg" a pointer into which the message will be
- *			placed.  It should be freed when it is no
- *			longer needed.
- *
- *	Returns:	-1 on error or the server response code.
- *
- *	Side effects:	Reads data from server, closes server
- *			connection on error.
- *
- *	Errors:		Printed to stderr.
- */
-
-int get_server_init_msg(in_msg)
-    char **in_msg;
-{
-    char line[256];
-    int length;
-    char *msg;
-
-    msg = XtMalloc(1024);
-    *msg = '\0';
-    length = 1024;
-
-    do {
-	if (get_server(line, sizeof(line)) == -1) {
-	    if (feof(ser_rd_fp)) {
-		fprintf(stderr, "Unexpected EOF on NNTP server socket -- server is probably malfunctioning.\n");
-	    }
-	    else {
-		perror("reading from server");
-	    }
-	    XtFree(msg);
+	if (setvbuf(ser_wr_fp, out_buffer, _IOLBF, 8192)) {
+	    perror("setvbuf");
+	    close_server();
 	    (void) fclose(ser_rd_fp);
 	    (void) fclose(ser_wr_fp);
 	    ser_rd_fp = ser_wr_fp = NULL;
 	    return (-1);
 	}
-	while (strlen(line)+strlen(msg)+1 >= (unsigned) length) {
-	    length += 1024;
-	    msg = XtRealloc(msg, length);
-	}
-	strcat(msg, line);
-	strcat(msg, "\n");
-    } while (line[3] == '-');
+#endif
+#endif /* NNTPVIATIP */
 
-    *in_msg = msg;
-    return (atoi(line));
+	/* Now get the server's signon message */
+
+	if (server_init_msg)
+		free(server_init_msg);
+	if (! (server_init_msg = malloc(1024))) {
+	     perror("malloc failed.");
+	     (void) fclose(ser_rd_fp);
+	     (void) fclose(ser_wr_fp);
+	     ser_rd_fp = ser_wr_fp = NULL;
+	     return (-1);
+	}
+	*server_init_msg = '\0';
+	server_length = 1024;
+	do {
+		if (get_server(line, sizeof(line)) == -1) {
+			if (feof(ser_rd_fp)) {
+				fprintf(stderr, "Unexpected EOF on NNTP server socket -- server is probably malfunctioning.\n");
+			}
+			else {
+				perror("reading from server");
+			}
+			(void) fclose(ser_rd_fp);
+			(void) fclose(ser_wr_fp);
+			ser_rd_fp = ser_wr_fp = NULL;
+			return (-1);
+		}
+		while (strlen(line)+strlen(server_init_msg)+1 >= (unsigned) server_length) {
+			server_length += 1024;
+			if (! (server_init_msg = realloc(server_init_msg,
+							 server_length))) {
+				(void) fclose(ser_rd_fp);
+				(void) fclose(ser_wr_fp);
+				ser_rd_fp = ser_wr_fp = NULL;
+				perror("realloc failed.");
+				return (-1);
+			}
+		}
+		strcat(server_init_msg, line);
+		strcat(server_init_msg, "\n");
+	} while (line[3] == '-');
+		
+	return (atoi(line));
 }
 
+#ifndef VMS
 /*
  * get_tcp_socket -- get us a socket connected to the news server.
  *
@@ -284,27 +290,21 @@ static int get_tcp_socket(machine)
 #ifdef h_addr
 	register char **cp;
 #endif /* h_addr */
-	static int port = 0;
 	struct	sockaddr_in sin;
-	struct servent *getservbyname _ARGUMENTS((CONST char *, CONST char *));
+#ifdef SOLARIS
+	struct servent *getservbyname _ARGUMENTS((char *, char *));
+#else
+	struct servent *getservbyname _ARGUMENTS((const char *, const char *));
+#endif
         struct servent *sp;
-	struct hostent *gethostbyname _ARGUMENTS((CONST char *)), *hp;
+	struct hostent *gethostbyname _ARGUMENTS((const char *)), *hp;
 
 	(void) memset((char *) &sin, 0, sizeof(sin));
-
-	if (! port) {
-	  if (nntp_port)
-	    port = htons(atoi(nntp_port));
-	  else {
-	    if ((sp = getservbyname("nntp", "tcp")) ==  NULL) {
-	      (void) fprintf(stderr, "nntp/tcp: Unknown service.\n");
-	      return (-1);
-	    }
-	    port = sp->s_port;
-	  }
+	if ((sp = getservbyname("nntp", "tcp")) ==  NULL) {
+		(void) fprintf(stderr, "nntp/tcp: Unknown service.\n");
+		return (-1);
 	}
-	sin.sin_port = port;
-
+	sin.sin_port = sp->s_port;
 	if ((sin.sin_addr.s_addr = inet_addr(machine)) != -1) {
 	    sin.sin_family = AF_INET;
 	    return(get_tcp_socket1(&sin));
@@ -350,7 +350,7 @@ static int get_tcp_socket(machine)
 #endif
 }
 
-static int get_tcp_socket1(sp)
+static get_tcp_socket1(sp)
     struct sockaddr_in *sp;
 {
 	int s;
@@ -368,8 +368,9 @@ static int get_tcp_socket1(sp)
 	return(s);
 }
 
+#endif /* VMS */
 
-#ifdef DECNET
+#if defined(DECNET) || defined(VMS)
 /*
  * get_dnet_socket -- get us a socket connected to the news server.
  *
@@ -386,6 +387,27 @@ static int get_tcp_socket1(sp)
 static int get_dnet_socket(machine)
     char *machine;
 {
+#ifdef VMS
+	char *connect;
+	int	s,colon;
+
+	colon = ((char *) colon=index(machine, ':')) ? ((char *)colon)-machine :
+		strlen(machine);
+
+	connect = ARRAYALLOC(char, ((int) colon+sizeof NNTPobject+1));
+	(void) strncpy(connect, machine, colon);
+	(void) strcpy(&connect[colon], NNTPobject);
+	
+	if ((s = open(connect, O_RDWR, 0)) == -1) {
+	    perror("open");
+	    FREE(connect);
+	    return (-1);
+	}
+
+	FREE(connect);
+
+#else /* Not VMS */
+
 	int	s, area, node;
 	struct	sockaddr_dn sdn;
 	struct	nodeent *getnodebyname(), *np;
@@ -434,10 +456,11 @@ static int get_dnet_socket(machine)
 		close(s);
 		return (-1);
 	}
+#endif /* VMS */
 
 	return (s);
 }
-#endif /* DECNET */
+#endif /* DECNET or VMS */
 
 /*
  * handle_server_response
@@ -484,12 +507,12 @@ int handle_server_response(response, server)
 		       server);
 		fputs(server_init_msg, stdout);
 		return(-1);
+		break;
 
   	default:
-		printf("Unexpected response code from the %s news server.\n",
+		printf("Unexpected response code from the %s news server:\n\n",
 			server);
-		if (server_init_msg)
-		    printf("\n%s", server_init_msg);
+		fputs(server_init_msg, stdout);
 		return (-1);
     }
 	/*NOTREACHED*/
@@ -559,10 +582,10 @@ int get_server(string, size)
 	}
     }
 #endif
-
-    cp = &string[strlen(string)];
-    if ((cp >= &string[2]) && (cp[-2] == '\r') && (cp[-1] == '\n'))
-      cp[-2] = '\0';
+    if ((cp = index(string, '\r')) != NULL)
+	*cp = '\0';
+    else if ((cp = index(string, '\n')) != NULL)
+	*cp = '\0';
 #ifdef DEBUG
     (void) fprintf(stderr, "<<< %s\n", string);
 #endif
