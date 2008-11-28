@@ -37,7 +37,6 @@
 #endif /* XRN else */
 
 #include "file_cache.h"
-#include <errno.h>
 
 #define MAX_FILES 100	/* if not specified, use this as the maximum
 			   number of files in the cache by default */
@@ -509,7 +508,7 @@ void file_cache_file_copy(cache, file, new_file)
   fprintf(stderr, "file_cache_file_copy: copied file %s in slot %d (0x%x) "
 	  "into file %s in slot %d (0x%x)\n",
 	  file->name, file - cache->files, (unsigned) file,
-	  (*new_file)->name, *new_file - cache->files, (unsigned) *new_file);
+	  *new_file->name, *new_file - cache->files, (unsigned) *new_file);
 #endif
 
   return;
