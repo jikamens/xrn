@@ -82,16 +82,11 @@ char *filename;
 }
 
 
-int active_cache_write(
-		       _ANSIDECL(char *,		filename),
-		       _ANSIDECL(struct newsgroup **,	Newsrc),
-		       _ANSIDECL(ng_num,		num_groups),
-		       _ANSIDECL(Boolean,		write_entries)
-		       )
-     _KNRDECL(char *,			filename)
-     _KNRDECL(struct newsgroup **,	Newsrc)
-     _KNRDECL(ng_num,			num_groups)
-     _KNRDECL(Boolean,			write_entries)
+int active_cache_write(filename, Newsrc, num_groups, write_entries)
+char *filename;
+struct newsgroup **Newsrc;
+ng_num num_groups;
+Boolean write_entries;
 {
   FILE *input, *output;
   char *tmpfile;
