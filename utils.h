@@ -2,7 +2,7 @@
 #define UTILS_H
 
 /*
- * $Id: utils.h,v 1.58 1998-07-10 21:56:21 jik Exp $
+ * $Id: utils.h,v 1.54 1997-07-01 14:26:32 jik Exp $
  */
 
 /*
@@ -160,15 +160,11 @@ extern char *tempnam();
 #define SIG_RET_T int
 #endif
 
-#ifdef sgi
-typedef SIG_RET_T (*SIG_PF0) _ARGUMENTS((void));
-#else /* ! sgi */
-# if defined(_ANSI_C_SOURCE) || defined(linux) || defined(__bsdi__) || defined(SOLARIS) || defined(__hpux)
+#if defined(_ANSI_C_SOURCE) || defined(linux) || defined(__bsdi__) || defined(SOLARIS) || defined(__hpux)
 typedef SIG_RET_T	(*SIG_PF0) _ARGUMENTS((int));
-# else /* ! _ANSI_C_SOURCE */
+#else /* ! _ANSI_C_SOURCE */
 typedef SIG_RET_T	(*SIG_PF0) _VARARGUMENTS((int, ...));
-# endif /* _ANSI_C_SOURCE */
-#endif /* sgi */
+#endif /* _ANSI_C_SOURCE */
 
 #undef SIG_RET_T
 
@@ -224,7 +220,6 @@ extern int utSubjectCompare _ARGUMENTS((CONST char *, CONST char *));
 
 #ifdef NEED_TEMPNAM
 extern char *utTempnam _ARGUMENTS((char *, char *));
-#define utTempnamFree XtFree
 #else
 #ifdef TEMPFILE_DEBUG
 static char *tempfile_debug_ret;
@@ -232,7 +227,6 @@ static char *tempfile_debug_ret;
 #else
 #define utTempnam tempnam
 #endif /* TEMPFILE_DEBUG */
-#define utTempnamFree free
 #endif
 
 extern char *utTempFile _ARGUMENTS((char *));
@@ -304,7 +298,7 @@ char *nntpServer _ARGUMENTS((void));
 #define WALL(a)
 #endif
 
-char *findServerFile _ARGUMENTS((char *, Boolean, Boolean *));
+char *findServerFile _ARGUMENTS((char *, Boolean));
 
 #if defined(__osf__) || defined(_POSIX_SOURCE) || defined(SOLARIS) \
 	|| defined(sun)
@@ -316,18 +310,12 @@ typedef void * qsort_arg_type;
 int utDigits _ARGUMENTS((long int));
 
 #ifdef BSD_BFUNCS
-#ifndef memset
 #define memset(_Str_, _Chr_, _Len_) bzero(_Str_, _Len_)
-#endif
-#ifndef memcpy
 #define memcpy(_To_, _From_, _Len_) bcopy(_From_, _To_, _Len_)
-#endif
 #endif
 
 #if defined(BSD_BFUNCS) || defined(NO_MEMMOVE)
-#ifndef memmove
 #define memmove(_To_, _From_, _Len_) bcopy(_From_, _To_, _Len_)
-#endif
 #endif
 
 #endif /* UTILS_H */

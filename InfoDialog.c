@@ -110,24 +110,13 @@ void displayMesgString(new_string)
     char *new_string;
 {
     long newlen = strlen(new_string);
-    long nl_position;
 
     if (! MesgText)
 	return;
 
     TextReplace(MesgText, new_string, newlen, current_length, current_length);
     current_length += newlen;
-    /* Put the cursor immediately after the final newline, to make
-       sure that if any messages in the window are longer than its
-       width and the window has line wrapping and horizontal scroll
-       bars turned off, the text will still be lined up properly,
-       i.e., the window won't scroll right with no obvious way to get
-       back to the left margin. */
-    if ((nl_position = TextSearch(MesgText, current_length,
-				  TextSearchLeft, "\n")) > -1)
-      TextSetInsertionPoint(MesgText, nl_position + 1);
-    else
-      TextSetInsertionPoint(MesgText, 0);
+    TextSetInsertionPoint(MesgText, current_length);
 }
 
 /*ARGSUSED*/
