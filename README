@@ -6,41 +6,25 @@ files), and the NNTP server must support the XHDR command (most
 servers nowadays do; if yours doesn't, XRN will complain when you try
 to run it).
 
-  XRN is currently maintained by Jonathan Kamens.  Bug reports or
-comments about it should be sent to bug-xrn@kamens.brookline.ma.us.
-Please do *not* write to that address with basic questions about
-compiling the program; if you are unfamiliar with compiling X
-applications and the instructions below are not sufficient, you should
-seek help at your site.
-
   Versions of XRN prior to 7.00 were maintained by Ellen Santovich and
-Rick Spickelmier.
-
-
-		XRN is a Usenet-friendly News reader!
-
-  I have striven to make XRN adhere to all relevant standards and to
-help users avoid the common pitfalls of participation in the Usenet.
-To that end, all releases of XRN starting with 9.02 are compliant with
-the Good Net-Keeping Seal of Approval (GNKSA), a standard which
-defines how News readers should behave to make the Usenet a better
-place for everyone.  See <URL:http://www.xs4all.nl/~js/gnksa/> for
-more information about the GNKSA.  XRN's GNKSA review can be viewed at
-<URL:http://www.xs4all.nl/~js/gnksa/Evaluations/xrn-9.02beta4.txt>.
+Rick Spickelmier.  XRN is currently maintained by Jonathan Kamens.
+Bug reports or comments about it should be sent to
+bug-xrn@kamens.brookline.ma.us.  Please do *not* write to that address
+with basic questions about compiling the program; if you are
+unfamiliar with compiling X applications and the instructions below
+are not sufficient, you should seek help at your site.
 
 
 			   Where to get XRN
 
-  The XRN home page is <http://www.mit.edu/people/jik/software/xrn.html>.
-
   Source code for the most recent production release of XRN can always
-be found at <ftp://sipb.mit.edu/pub/xrn/xrn.tgz>.  The most recent
-beta-test release of XRN (if there is a beta release more recent than
-the last production release) can be retrieved from
-<ftp://sipb.mit.edu/pub/xrn/beta.tgz>.  The file
-<ftp://sipb.mit.edu/pub/xrn/xrn-linux.tgz> contains a binary XRN
-release for Linux, based on the most recent production release.  These
-files are GNU tar archives compressed with GNU zip.
+be found at <http://www.mit.edu/people/jik/software/xrn/xrn.tgz>.  The
+most recent beta-test release of XRN (if there is a beta release more
+recent than the last production release) can be retrieved from
+<http://www.mit.edu/people/jik/software/xrn/beta.tgz>.  The file
+<http://www.mit.edu/people/jik/software/xrn/xrn-linux.tgz> contains a
+binary XRN release for Linux, based on the most recent production
+release.  These files are GNU tar archives compressed with GNU zip.
 
   The current production release and the current Linux binary release
 are also available in the X Consortium's contributed software archive,
@@ -87,6 +71,8 @@ COPYRIGHT		Describes the copyright restrictions on XRN.
 			it are left over from before I took over
 			maintenance of XRN, and some of them may be
 			inaccurate.
+Xresources.sam		A sample of how you might customize XRN in
+			your own X resources.
 contrib/*		Various scripts, hints, etc. contributed by
 			XRN users and not "officially" part of XRN.
 * doc/rfc977.txt	The Internet RFC governing NNTP, the Network
@@ -154,15 +140,12 @@ hope) in later releases.  There are two primary reasons for this:
 A volunteer is in the process of restoring the Motif support to XRN,
 and in fact, current beta releases have rudimentary Motif support in
 it.  However, this support is not yet complete or supported, and I do
-not suggest that people use it at this time.  Furthermore, the
-volunteer has run into some problems and currently does not anticipate
-being able to finish the work.  If you are interested in helping to
-finish it, please contact me.
+not suggest that people use it at this time.
 
   If you must have a Motif interface, XRN release 7.00 is available in
-<ftp://sipb.mit.edu/pub/xrn/unsupported/xrn-motif.tgz>.  However,
-release 7.00 is unspported, and I will reject any bug reports or
-enhancement requests pertaining to it.  I do not recommend that you
+<http://www.mit.edu/people/jik/software/xrn/unsupported/xrn-motif.tgz>.
+However, release 7.00 is unspported, and I will reject any bug reports
+or enhancement requests pertaining to it.  I do not recommend that you
 use XRN 7.00.
 
 
@@ -178,7 +161,8 @@ look for it at your site.
 
 2. Edit the Imakefile (after making it writeable with chmod) for your
    local configuration.  The comments in the file explain what needs
-   to be edited.
+   to be edited.  Pay particular attention to "INN", which enables and
+   support for InterNetNews (INN).
 
 3. Edit config.h (after making it writeable with chmod) for your local
    configuration.  The file is (sort of) arranged from most
@@ -231,8 +215,8 @@ look for it at your site.
 
   If you have problems compiling or running XRN, you should check the
 COMMON-PROBLMS file in the XRN distribution to see if your problem is
-documented there.  If not, write to bug-xrn@kamens.brookline.ma.us for
-assistance.
+documented there.  If not, send E-mail to
+bug-xrn@kamens.brookline.ma.us for assistance.
 
   If you write to me about a problem which is documented in
 COMMON-PROBLMS, and I do not see any sign that you have read it, then
@@ -247,26 +231,9 @@ problems whose solutions are already documented.
 major bugs that are discovered in between releases, you can subscribe
 to the xrn-users@kamens.brookline.ma.us mailing list.  It's an
 announcement list, not a discussion list, so the traffic on it is very
-low.  Send mail to xrn-users-request@kamens.brookline.ma.us to ask to
-be added to the list.
-
-
-			  The future of XRN
-
-  Release 9.00 of XRN is the first general-availability release in
-over a year and a half.  The next major release may take just as long,
-or even longer.  I have not had as much time as I would have liked to
-work on XRN, and I will probably have even less in the future.
-
-  However, I do not want XRN to be orphaned or to deteriorate.
-Therefore, I will continue to make bug-fix releases as necessary, and
-I will devote as much time as I can to making enhancements.
-
-  If you are interested in volunteering to take over, I'd love to hear
-from you, but I'm only going to hand off XRN to someone whom I'm
-convinced will do a good job, because I've invested a lot of effort
-into it, and because the folks who maintained it before me allowed it
-to stagnate for years; I do not want that to happen again.
+low.  If you're interested, send mail to
+xrn-users-request@kamens.brookline.ma.us and ask to be added to the
+list.
 
 
 
@@ -275,4 +242,4 @@ I hope you find XRN useful!
   Jonathan Kamens
   jik@kamens.brookline.ma.us
 
-# $Id: README,v 1.51 2006-01-03 16:17:06 jik Exp $
+# $Id: README,v 1.45 1997-10-10 15:15:24 jik Exp $
