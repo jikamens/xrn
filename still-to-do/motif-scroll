@@ -1,0 +1,70 @@
+Return-Path: sun!spss.com!bobhays
+Return-Path: <sun!spss.com!bobhays>
+Received: by objy27. (5.57/SMI-4.0)
+	id AA21571; Tue, 19 Nov 91 14:25:06 -0800
+Received: from sun.UUCP by objy.com (4.1/SMI-4.0)
+	id AA12324; Tue, 19 Nov 91 14:24:33 PST
+From: sun!spss.com!bobhays
+Received: from Sun.COM (sun-barr.EBay.Sun.COM) by sun.Eng.Sun.COM (4.1/SMI-4.1)
+	id AA19007; Tue, 19 Nov 91 14:05:44 PST
+Received: from shambhala.Berkeley.EDU by Sun.COM (4.1/SMI-4.1)
+	id AB13808; Tue, 19 Nov 91 14:06:49 PST
+Received: by shambhala.Berkeley.EDU (5.57/1.41)
+	id AA16962; Tue, 19 Nov 91 14:06:26 -0800
+Received: by ic.Berkeley.EDU (5.57/Ultrix3.0-C)
+	id AA03343; Tue, 19 Nov 91 14:06:18 -0800
+Received: from spsssq (spsssq.spss.com) by spssig.spss.com Tue, 19 Nov 91 16:06:12 CST
+Received: from spssrs0 by spsssq (5.61/4.7)
+	id AA19063; Tue, 19 Nov 91 16:05:11 -0600
+Received: from spssrs4.spss.com by spssrs0.spss.com (AIX 3.1/UCB 5.61/4.03)
+          id AA37064; Tue, 19 Nov 91 16:05:33 -0600
+Received: by spssrs4 (AIX 3.1/UCB 5.61/4.03)
+          id AA25922; Tue, 19 Nov 91 16:05:35 -0600
+Message-Id: <9111192205.AA25922@spssrs4>
+Subject: Okay, here is how to do something you want in OSF/Motif (V.1.0)
+To: xrn@ic.berkeley.edu
+Date: Tue, 19 Nov 91 16:05:35 CST
+X-Mailer: ELM [version 2.3 PL11]
+
+You say in the TODO list that you would like to set up the page
+increment in the scrolled list area - well, in OSF/Motif, I have your
+procedure....
+
+NOTE: this works on V. 1.0 OSF/Motif on the RS/6000 IBM systems (yep,
+I got the most recent version working on RS/6000s with only a week of
+evening work - even though it says the R3 switch works, don't believe
+it too much:-).
+
+The procedure is SetPageSize.  It sets the page increment for the
+vertical scroll bar for a scrolled text area to one less than the
+number of lines in the area.  This call should be made after widget
+creation but before widget management (but can be delayed...).
+
+====8< cut here >8 ====
+#include <Mrm/MrmAppl.h>
+#include "resources.h"
+
+void SetPageSize ( widget )
+    Widget   widget;
+{
+    Widget   tmpWidget = NULL;
+    Arg      args[2];
+    short    rows = 0;
+
+    XtSetArg ( args[0], XmNrows, (XtArgVal) &rows );
+    XtGetValues ( widget, args, 1 );
+    rows -= 1;
+    if ( rows > 2 )
+    {
+        XtSetArg ( args[0], XmNverticalScrollBar, &tmpWidget );
+        XtGetValues ( XtParent(widget), args, 1 );
+        if ( tmpWidget != NULL )
+        {
+            int     value = 0, size = 0, increment = 0, pageIncrement = 0;
+
+            XmScrollBarGetValues ( tmpWidget, &value, &size, &increment, &pageIncrement );
+            pageIncrement = (int) rows;
+            XmScrollBarSetValues ( tmpWidget, value, size, increment, pageIncrement, FALSE );
+        }
+    }
+}

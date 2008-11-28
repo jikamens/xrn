@@ -1,10 +1,8 @@
 #ifndef XRN_H
 #define XRN_H
 
-#include "file_cache.h"
-
 /*
- * $Id: xrn.h,v 1.30 1997-06-30 02:52:46 jik Exp $
+ * $Id: xrn.h,v 1.25 1995-05-14 22:27:12 jik Exp $
  */
 
 /*
@@ -32,6 +30,8 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "patchlevel.h"
+
 #include <X11/Intrinsic.h>
 
 /*
@@ -43,6 +43,7 @@
 
 extern Widget TopLevel;
 extern XtAppContext TopContext;
+extern Widget Frame;
 extern Widget TopInfoLine;      /* top button info line                      */
 extern Widget BottomInfoLine;   /* bottom button info line                   */
 
@@ -50,20 +51,10 @@ extern int XRNState;
 
 extern int inCommand, inSubCommand;	/* executing a button function	     */
 
-extern file_cache FileCache;
-
 #define XRN_X_UP    0x01
 #define XRN_NEWS_UP 0x10
 
 #define LABEL_SIZE 128
 #define HOST_NAME_SIZE 1024
-
-#if XtSpecificationRelease < 6
-extern XEvent *XtLastEventProcessed _ARGUMENTS((Display *));
-extern void MyMainLoop _ARGUMENTS((XtAppContext));
-extern Boolean MyDispatchEvent _ARGUMENTS((XEvent *));
-#else
-#define MyDispatchEvent(ev) XtDispatchEvent(ev)
-#endif
 
 #endif /* XRN_H */

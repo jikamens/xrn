@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.44 2006-01-03 16:38:55 jik Exp $";
+static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.28 1995-09-22 09:33:50 jik Exp $";
 #endif
 
 /*
@@ -33,7 +33,6 @@ static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.44 2006-01-03 16:38:55 jik Exp $
  *
  */
 
-#include <assert.h>
 #include "copyright.h"
 #include "config.h"
 #include "utils.h"
@@ -54,32 +53,26 @@ static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.44 2006-01-03 16:38:55 jik Exp $
 #include "varfile.h"
 #include "internals.h"
 #include "activecache.h"
-#include "killfile.h"
 
 #ifndef R_OK
 #define R_OK 4
 #endif
 
-static char *NewsrcFile;    /* newsrc file name         */
+char *NewsrcFile;    /* newsrc file name         */
 FILE *Newsrcfp;      /* newsrc file FILE pointer */
 char *optionsLine;   /* `options' line           */
 struct stat fbuf;
 struct newsgroup **Newsrc = 0;
 static ng_num Newsrc_size = 0;
 
-static void freeNewsrc _ARGUMENTS((void));
-
-ng_num checkNewsrcSize(
-		     _ANSIDECL(ng_num,	size)
-		     )
-     _KNRDECL(ng_num,	size)
+void checkNewsrcSize(size)
+ng_num size;
 {
   if (size > Newsrc_size) {
     Newsrc = (struct newsgroup **) XtRealloc((char *) Newsrc,
 					     sizeof(*Newsrc) * size);
     Newsrc_size = size;
   }
-  return size;
 }
 
 #define OKAY  1
@@ -142,38 +135,26 @@ static int copyNewsrcFile(old, save)
     return OKAY;
 }
 
-int isLongNewsrcFile()
-{
-  static Boolean is_long;
-
-  if (NewsrcFile)
-    return is_long;
-
-  NewsrcFile = findServerFile(app_resources.newsrcFile, False, &is_long);
-  return is_long;
-}
-
 /*
  * read, parse, and process the .newsrc file
  *
  *   returns: 0 for fatal error, non-zero for okay
  *
  */
-int readnewsrc()
+int readnewsrc(newsrcfile, savenewsrcfile)
+    char *newsrcfile;
+    char *savenewsrcfile;
 {
     struct stat buf;
     extern int yyparse _ARGUMENTS((void));
     extern int newsrc_mesg_name;
-    char *SaveNewsrcFile;
 
-    CHECKNEWSRCSIZE(ActiveGroupsCount);
+    checkNewsrcSize(ActiveGroupsCount);
 
     optionsLine = NIL(char);
 
-    /* Make sure NewsrcFile has been set. */
-    (void) isLongNewsrcFile();
-    if (! NewsrcFile) {
-      mesgPane(XRN_SERIOUS, 0, CANT_EXPAND_MSG, app_resources.newsrcFile);
+    if (! (NewsrcFile = findServerFile(newsrcfile, False))) {
+      mesgPane(XRN_SERIOUS, 0, CANT_EXPAND_MSG, newsrcfile);
       return FATAL;
     }
 
@@ -181,35 +162,15 @@ int readnewsrc()
 	if (errno != ENOENT) {
 	    mesgPane(XRN_SERIOUS, 0, CANT_READ_NEWSRC_MSG, NewsrcFile,
 		     errmsg(errno));
-	    XtFree(NewsrcFile);
 	    return FATAL;
 	}
 	mesgPane(XRN_INFO, 0, CREATING_NEWSRC_MSG, NewsrcFile);
 	if ((Newsrcfp = fopen(NewsrcFile, "w")) == NULL) {
 	    mesgPane(XRN_SERIOUS, 0, CANT_CREATE_NEWSRC_MSG, NewsrcFile,
 		     errmsg(errno));
-	    XtFree(NewsrcFile);
 	    return FATAL;
 	}
-	if (NEWUSER_GROUPS[0] == '/') {
-          /* if NEWUSER_GROUPS begins with '/', we assume it's a filename */
-          char tmpbuf[BUFSIZ];
-          FILE *NewRCfp;
-
-          if(! (NewRCfp = fopen(NEWUSER_GROUPS, "r"))) {
-	    mesgPane(XRN_SERIOUS, 0, CANT_READ_NEWSRC_MSG, 
-		     NEWUSER_GROUPS, errmsg(errno));
-	    XtFree(NewsrcFile);
-	    return FATAL;
-          }
-          while(fgets(tmpbuf, BUFSIZ-1, NewRCfp)) {
-	    (void) fprintf(Newsrcfp, "%s", tmpbuf);
-          }
-          (void) fclose(NewRCfp);
-	}
-	else {
-	  (void) fprintf(Newsrcfp, NEWUSER_GROUPS);
-	}
+	(void) fprintf(Newsrcfp, NEWUSER_GROUPS);
 
 	(void) fstat((int) fileno(Newsrcfp), &fbuf);
 	do_chmod(Newsrcfp, 0, fbuf.st_mode);
@@ -220,19 +181,16 @@ int readnewsrc()
     if (stat(NewsrcFile, &buf) == -1) {
 	mesgPane(XRN_SERIOUS, 0, CANT_STAT_NEWSRC_MSG, NewsrcFile,
 		 errmsg(errno));
-	XtFree(NewsrcFile);
 	return FATAL;
     }
     
     if (buf.st_size == 0) {
 	mesgPane(XRN_SERIOUS, 0, ZERO_LENGTH_NEWSRC_MSG, NewsrcFile);
-	XtFree(NewsrcFile);
 	return FATAL;
     }
 
     if ((Newsrcfp = fopen(NewsrcFile, "r")) == NULL) {
 	mesgPane(XRN_SERIOUS, 0, CANT_OPEN_NEWSRC_MSG, NewsrcFile, errmsg(errno));
-	XtFree(NewsrcFile);
 	return FATAL;
     }
 
@@ -240,24 +198,11 @@ int readnewsrc()
     if (yyparse() != 0) {
 	mesgPane(XRN_SERIOUS, 0, CANT_PARSE_NEWSRC_MSG, NewsrcFile,
 		 MaxGroupNumber +1);
-	XtFree(NewsrcFile);
 	return FATAL;
     }
 
-    if (! (SaveNewsrcFile = findServerFile(app_resources.saveNewsrcFile,
-					   isLongNewsrcFile(), NULL))) {
-      mesgPane(XRN_SERIOUS, 0, CANT_EXPAND_MSG, app_resources.saveNewsrcFile);
-      freeNewsrc();
-      XtFree(NewsrcFile);
-      return FATAL;
-    }
-
-    if (!copyNewsrcFile(NewsrcFile, SaveNewsrcFile)) {
-      freeNewsrc();
-      XtFree(NewsrcFile);
-      XtFree(SaveNewsrcFile);
-      return FATAL;
-    }
+    if (!copyNewsrcFile(NewsrcFile, savenewsrcfile))
+	 return FATAL;
 
     (void) fstat((int) fileno(Newsrcfp), &fbuf);
 
@@ -267,34 +212,9 @@ int readnewsrc()
 
     Newsrcfp = NIL(FILE);
 
-    XtFree(SaveNewsrcFile);
     return(OKAY);
 }
 
-static void freeNewsrc()
-{
-  ng_num i;
-
-  for (i = 0; i < MaxGroupNumber; i++) {
-    struct list *list, *next;
-
-    /* Don't free the name, since it's also stored in the AVL table
-       which will be freed separately. */
-    for (list = Newsrc[i]->nglist; list; list = next) {
-      next = list->next;
-      XtFree((char *)list);
-    }
-    /* There are no hash tables because we haven't threaded any groups
-       yet. */
-    /* There are no kill files because we haven't read any kill files
-       yet. */
-    artListFree(Newsrc[i]);
-  }
-  XtFree((char *)Newsrc);
-  Newsrc = 0;
-  MaxGroupNumber = 0;
-}
-  
 static int ngEntryFprintf _ARGUMENTS((FILE *, struct newsgroup *));
 
 static int ngEntryFprintf(newsrcfp, newsgroup)
@@ -352,81 +272,109 @@ int updatenewsrc()
     static FILE *newsrcfp;       /* file pointer for the newsc file      */
     static struct stat lastStat; /* last stat done on the file           */
     struct stat currentStat;     /* current stat                         */
-    static char *tempfile;
+    static int done = 0;
+    static char tempfile[4096];
+    char *fname;
     static int retval;
 
     if (! MaxGroupNumber)
 	/* hasn't been read in yet */
 	return 1;
 
+    if (!done) {
+	char *ptr;
+
+	/*
+	  The "temp" is put at the beginning instead of the end of the
+	  file name so that the right thing will happen on systems
+	  with short file names when the .newsrc file name is as long
+	  as the file name limit on the system.
+
+	  It's better to do it this way rather than creating a
+	  temporary file in tmpDir to hold the temporary .newsrc file,
+	  because the file can be rename()d if it's in the same
+	  filesystem, and rename() is more robust and faster than
+	  copying a file between filesystems.
+	  */
+	ptr = rindex(NewsrcFile, '/');
+
+	(void) stat(NewsrcFile, &lastStat);
+
+	if (! ptr) {
+	    (void) sprintf(tempfile, ".temp-%s", NewsrcFile);
+	}
+	else {
+	    ptr++;
+	    (void) strcpy(tempfile, NewsrcFile);
+	    (void) sprintf(&tempfile[ptr - NewsrcFile], ".temp-%s", ptr);
+	}
+
+	done = 1;
+    }
+
     if (! var_write_file(cache_variables, cache_file))
 	return(FATAL);
-    if (active_cache_write(cache_file, Newsrc, MaxGroupNumber,
-			   app_resources.cacheActive))
+    if (app_resources.cacheActive &&
+	active_cache_write(cache_file, Newsrc, MaxGroupNumber))
 	return(FATAL);
 
     (void) stat(NewsrcFile, &currentStat);
 
-    if (lastStat.st_mtime && (currentStat.st_mtime > lastStat.st_mtime)) {
-      (void) sprintf(error_buffer, ASK_FILE_MODIFIED_MSG, "Newsrc",
-		     NewsrcFile);
-      if (ConfirmationBox(TopLevel, error_buffer, 0, 0, False)
-	  == XRN_CB_ABORT) {
-	ehNoUpdateExitXRN();
-      }
+    if (currentStat.st_mtime > lastStat.st_mtime) {
+	if (ConfirmationBox(TopLevel, ASK_UPDATE_NEWSRC_MSG, 0, 0) == XRN_CB_ABORT) {
+	    ehNoUpdateExitXRN();
+	}
     }
 
-    tempfile = utTempFile(NewsrcFile);
-
-    if ((newsrcfp = fopen(tempfile, "w")) == NULL) {
+    if ((newsrcfp = fopen(fname = tempfile, "w")) == NULL) {
 	mesgPane(XRN_SERIOUS, 0, CANT_OPEN_NEWSRC_TEMP_MSG, tempfile,
 		 errmsg(errno));
-	XtFree(tempfile);
 	return(FATAL);
-    }
-
-#define FAILIF(cond) \
-    if (cond) { \
-      (void) fclose(newsrcfp); \
-      (void) unlink(tempfile); \
-      XtFree(tempfile); \
-      return(FATAL); \
     }
 
     /*
      * handle outputing the options line
      */
     if (optionsLine != NIL(char)) {
-      FAILIF(fprintf(newsrcfp, "%s\n", optionsLine) == EOF);
+	if (fprintf(newsrcfp, "%s\n", optionsLine) == EOF) {
+	    return(FATAL);
+	}
     }
 
     for (indx = 0; indx < MaxGroupNumber; indx++) {
 	struct newsgroup *newsgroup = Newsrc[indx];
 
-	write_kill_file(newsgroup, KILL_LOCAL);
-	write_kill_file(newsgroup, KILL_GLOBAL);
-
-	FAILIF(fprintf(newsrcfp, "%s%c", newsgroup->name,
-		       (IS_SUBSCRIBED(newsgroup) ? ':' : '!')) == EOF);
-
-	if (newsgroup->last == 0) {
-	  FAILIF(fprintf(newsrcfp, "\n") == EOF);
-	  continue;
+	if (fprintf(newsrcfp, "%s%c", newsgroup->name,
+	       (IS_SUBSCRIBED(newsgroup) ? ':' : '!')) == EOF) {
+	    return(FATAL);
 	}
 
-	if (! artListFirst(newsgroup, 0, 0)) {
-	    if (newsgroup->nglist) {
-	      FAILIF(fprintf(newsrcfp, " ") == EOF);
-	      FAILIF(!ngEntryFprintf(newsrcfp, newsgroup));
-	      FAILIF(fprintf(newsrcfp, "\n") == EOF);
-	    } else {
-	      FAILIF(fprintf(newsrcfp, " 1-%ld\n", newsgroup->last) == EOF);
+	if (newsgroup->last == 0) {
+	    if (fprintf(newsrcfp, "\n") == EOF) {
+		return(FATAL);
 	    }
 	    continue;
 	}
 
-	ART_STRUCT_UNLOCK;
-
+	if (! artListFirst(newsgroup, 0, 0)) {
+	    if (newsgroup->nglist) {
+		if (fprintf(newsrcfp, " ") == EOF) {
+		    return(FATAL);
+		}
+		if (!ngEntryFprintf(newsrcfp, newsgroup)) {
+		    return(FATAL);
+		}
+		if (fprintf(newsrcfp, "\n") == EOF) {
+		    return(FATAL);
+		}
+	    } else {
+		if (fprintf(newsrcfp, " 1-%ld\n", newsgroup->last) == EOF) {
+		    return(FATAL);
+		}
+	    }
+	    continue;
+	}
+	
 	if (newsgroup->last >= newsgroup->first) {
 	    struct article *art;
 	    Boolean comma = False;
@@ -442,13 +390,16 @@ int updatenewsrc()
 			    continue;
 			}
 		      do_output:
-			FAILIF(fputc(comma ? ',' : ' ', newsrcfp) == EOF);
+			if (putc(comma ? ',' : ' ', newsrcfp) == EOF)
+			    return(FATAL);
 			if (last_first == last_last) {
-			  FAILIF(fprintf(newsrcfp, "%ld", last_first) == EOF);
+			    if (fprintf(newsrcfp, "%ld", last_first) == EOF)
+				return(FATAL);
 			}
 			else {
-			  FAILIF(fprintf(newsrcfp, "%ld-%ld",
-					 last_first, last_last) == EOF);
+			    if (fprintf(newsrcfp, "%ld-%ld",
+					last_first, last_last) == EOF)
+				return(FATAL);
 			}
 			last_first = last_last = 0;
 			comma = True;
@@ -466,28 +417,27 @@ int updatenewsrc()
 		else if (last_last)
 		    goto do_output;
 	    }
-	    ART_STRUCT_UNLOCK;
 	    if (last_last)
 		goto do_output;
 	} else {
 	    if (newsgroup->last > 1) {
-	      FAILIF(fprintf(newsrcfp, " 1-%ld", newsgroup->last) == EOF);
+		if (fprintf(newsrcfp, " 1-%ld", newsgroup->last) == EOF) {
+		    return(FATAL);
+		}
 	    }
 	}
 	    
-	FAILIF(fprintf(newsrcfp, "\n") == EOF);
+	if (fprintf(newsrcfp, "\n") == EOF) {
+	    return(FATAL);
+	}
     }
-
-#undef FAILIF
 
     do_chmod(newsrcfp, 0, fbuf.st_mode);
     retval = fclose(newsrcfp);
-    do_chmod(0, tempfile, fbuf.st_mode);
+    do_chmod(0, fname, fbuf.st_mode);
 
     if (retval == EOF) {
-      (void) unlink(tempfile);
-      XtFree(tempfile);
-      return(FATAL);
+	return(FATAL);
     }
 
 #ifdef ISC_TCP
@@ -498,8 +448,6 @@ int updatenewsrc()
     if (unlink(NewsrcFile) != 0) {
 	mesgPane(XRN_SERIOUS, 0, ERROR_UNLINKING_NEWSRC_MSG, NewsrcFile,
 		 errmsg(errno));
-	(void) unlink(tempfile);
-	XtFree(tempfile);
 	return(FATAL);
     }
 #endif /* ISC_TCP */
@@ -507,12 +455,8 @@ int updatenewsrc()
     if (rename(tempfile, NewsrcFile) != 0) {
 	mesgPane(XRN_SERIOUS, 0, ERROR_RENAMING_MSG, tempfile, NewsrcFile,
 		 errmsg(errno));
-	(void) unlink(tempfile);
-	XtFree(tempfile);
 	return(FATAL);
     }
-
-    XtFree(tempfile);
 
     (void) stat(NewsrcFile, &lastStat);
 
