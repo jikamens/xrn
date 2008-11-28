@@ -98,33 +98,33 @@ XtActionsRec NgActions[] = {
 
 int NgActionsCount = XtNumber(NgActions);
 
-static ButtonList NewsgroupButtonList[] = {
-    {"ngQuit",		ngQuitCallbacks,	NGQUIT_EXSTR,		True},
-    {"ngRead",		ngReadCallbacks,	NGREAD_EXSTR,		True},
-    {"ngNext",		ngNextCallbacks,	NGNEXT_EXSTR,		True},
-    {"ngPrev",		ngPrevCallbacks,	NGPREV_EXSTR,		True},
-    {"ngScroll",	ngScrollCallbacks,	NGSCROLL_EXSTR,		True},
-    {"ngScrollBack",	ngScrollBackCallbacks,	NGSCROLLBACK_EXSTR,	True},
-    {"ngCatchUp",	ngCatchUpCallbacks,	NGCATCHUP_EXSTR,	True},
-    {"ngSubscribe",	ngSubscribeCallbacks,	NGSUBSCRIBE_EXSTR,	True},
-    {"ngUnsub",		ngUnsubCallbacks,	NGUNSUB_EXSTR,		True},
-    {"ngGoto",		ngGotoCallbacks,	NGGOTO_EXSTR,		True},
-    {"ngAllGroups",	ngAllGroupsCallbacks,	NGALLGROUPS_EXSTR,	True},
-    {"ngRescan",	ngRescanCallbacks,	NGRESCAN_EXSTR,		True},
-    {"ngGetList",	ngGetListCallbacks,	NGGETLIST_EXSTR,	True},
-    {"ngPrevGroup",	ngPrevGroupCallbacks,	NGPREVGROUP_EXSTR,	True},
-    {"ngListOld",	ngListOldCallbacks,	NGLISTOLD_EXSTR,	True},
-    {"ngSelect",	ngSelectCallbacks,	NGSELECT_EXSTR,		True},
-    {"ngMove",		ngMoveCallbacks,	NGMOVE_EXSTR,		True},
-    {"ngExit",		ngExitCallbacks,	NGEXIT_EXSTR,		True},
-    {"ngCheckPoint",	ngCheckPointCallbacks,	NGCHECKPOINT_EXSTR,	True},
-    {"ngGripe",		ngGripeCallbacks,	NGGRIPE_EXSTR,		True},
-    {"ngPost",		ngPostCallbacks,	NGPOST_EXSTR,		True},
-    {"ngPostAndMail",	ngPostAndMailCallbacks,	NGPOST_AND_MAIL_EXSTR,	True},
-    {"ngMail",		ngMailCallbacks,	MAIL_EXSTR,		True},
+ButtonList NewsgroupButtonList[] = {
+    {"ngQuit",		ngQuitCallbacks,	NGQUIT_EXSTR},
+    {"ngRead",		ngReadCallbacks,	NGREAD_EXSTR},
+    {"ngNext",		ngNextCallbacks,	NGNEXT_EXSTR},
+    {"ngPrev",		ngPrevCallbacks,	NGPREV_EXSTR},
+    {"ngScroll",	ngScrollCallbacks,	NGSCROLL_EXSTR},
+    {"ngScrollBack",	ngScrollBackCallbacks,	NGSCROLLBACK_EXSTR},
+    {"ngCatchUp",	ngCatchUpCallbacks,	NGCATCHUP_EXSTR},
+    {"ngSubscribe",	ngSubscribeCallbacks,	NGSUBSCRIBE_EXSTR},
+    {"ngUnsub",		ngUnsubCallbacks,	NGUNSUB_EXSTR},
+    {"ngGoto",		ngGotoCallbacks,	NGGOTO_EXSTR},
+    {"ngAllGroups",	ngAllGroupsCallbacks,	NGALLGROUPS_EXSTR},
+    {"ngRescan",	ngRescanCallbacks,	NGRESCAN_EXSTR},
+    {"ngGetList",	ngGetListCallbacks,	NGGETLIST_EXSTR},
+    {"ngPrevGroup",	ngPrevGroupCallbacks,	NGPREVGROUP_EXSTR},
+    {"ngListOld",	ngListOldCallbacks,	NGLISTOLD_EXSTR},
+    {"ngSelect",	ngSelectCallbacks,	NGSELECT_EXSTR},
+    {"ngMove",		ngMoveCallbacks,	NGMOVE_EXSTR},
+    {"ngExit",		ngExitCallbacks,	NGEXIT_EXSTR},
+    {"ngCheckPoint",	ngCheckPointCallbacks,	NGCHECKPOINT_EXSTR},
+    {"ngGripe",		ngGripeCallbacks,	NGGRIPE_EXSTR},
+    {"ngPost",		ngPostCallbacks,	NGPOST_EXSTR},
+    {"ngPostAndMail",	ngPostAndMailCallbacks,	NGPOST_AND_MAIL_EXSTR},
+    {"ngMail",		ngMailCallbacks,	MAIL_EXSTR},
 };
 
-static int NewsgroupButtonListCount = XtNumber(NewsgroupButtonList);
+int NewsgroupButtonListCount = XtNumber(NewsgroupButtonList);
 
 /*
   Set the current insertion point in the newsgroup widget, saving the
@@ -221,7 +221,6 @@ void ngReadFunction(widget, event, string, count)
 	    switchToArticleMode();
 	}
 	else {
-	    exitNewsgroup();
 	    if (status == XRN_NOUNREAD)
 		mesgPane(XRN_INFO, 0, PROBABLY_KILLED_MSG, name);
 	    else if (status == BAD_GROUP)
@@ -435,14 +434,12 @@ static void subscribeHandler(widget, client_data, call_data)
 		goto done;
 	    }
 	    else if (ret == GOOD_GROUP) {
-	      if (subscribe()) {
+		subscribe();
 		CurrentIndexGroup = XtRealloc(CurrentIndexGroup,
 					      strlen(LastGroup) + 1);
 		(void) strcpy(CurrentIndexGroup, LastGroup);
 		updateNewsgroupMode(True, False);
 		exitNewsgroup();
-	      }
-	      
 	    }
 	    else {
 		mesgPane(XRN_SERIOUS, 0, UNKNOWN_FUNC_RESPONSE_MSG, ret,
@@ -601,7 +598,6 @@ static void gotoHandler(widget, client_data, call_data)
 		  mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_MSG, name);
 	     }
 	     else if (ret == XRN_NOMORE) {
-		  exitNewsgroup();
 		  mesgPane(XRN_SERIOUS, 0, NO_ARTICLES_MSG, name);
 	     }
 	     else {
@@ -695,17 +691,11 @@ void ngRescanFunction(widget, event, string, count)
     String *string;
     Cardinal *count;
 {
-    Boolean newgroups = True;
-
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
-
-    if (count && *count && !strcasecmp(string[0], "nonewgroups"))
-      newgroups = False;
-
     rescanServer(False);
-    determineMode(newgroups);
+    determineMode();
     
     return;
 }
@@ -718,7 +708,7 @@ void ngRescanFunction(widget, event, string, count)
 static void getListNG()
 {
   rescanServer(True);
-  determineMode(True);
+  determineMode();
 }
 
 void ngGetListFunction(widget, event, string, count)
@@ -759,7 +749,6 @@ void ngPrevGroupFunction(widget, event, string, count)
 	    mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_DELETED_MSG, LastGroup);
 	}
 	else if (ret == XRN_NOMORE) {
-	    exitNewsgroup();
 	    mesgPane(XRN_SERIOUS, 0, NO_ARTICLES_MSG, LastGroup);
 	}
 	else {
@@ -1153,10 +1142,7 @@ void switchToNewsgroupMode(
 
     /* update the newsgroup mode windows */
     updateNewsgroupMode(True, skip_last);
-
-    /* Set up the rescan timer, if automatic rescanning is configured. */
-    addTimeOut();
-
+    
     return;
 }
 
@@ -1199,10 +1185,6 @@ static void autoRescan _ARGUMENTS((XtPointer, XtIntervalId *));
 
 void addTimeOut()
 {
-#ifdef DEBUG
-  fprintf(stderr, "addTimeOut()\n");
-#endif
-
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
@@ -1215,6 +1197,8 @@ void addTimeOut()
     if (TimeOut) {
 	return;
     }
+    /* handle race conditions??? */
+    TimeOut = 1;
 
     TimeOut = XtAppAddTimeOut(TopContext,
 			      app_resources.rescanTime * 1000, autoRescan, 0);
@@ -1224,18 +1208,19 @@ void addTimeOut()
 
 void removeTimeOut()
 {
-#ifdef DEBUG
-    fprintf(stderr, "removeTimeOut()\n");
-#endif
+    XtIntervalId temp;
 
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
 
+    /* handle race conditions??? */
+    temp = TimeOut;
+    TimeOut = 0;
+
     /* do not allow recursive timeouts */
-    if (TimeOut) {
-	XtRemoveTimeOut(TimeOut);
-	TimeOut = 0;
+    if (temp) {
+	XtRemoveTimeOut(temp);
     }
     return;
 }
@@ -1245,15 +1230,6 @@ static void autoRescan(data, id)
     XtPointer data;
     XtIntervalId *id;
 {
-    String params[1];
-    Cardinal num_params = 1;
-
-#ifdef DEBUG
-    fprintf(stderr, "autoRescan(...)\n");
-#endif
-
-    params[0] = "nonewgroups";
-
     if (CurrentMode != NEWSGROUP_MODE) {
 	TimeOut = 0;
 	return;
@@ -1265,7 +1241,7 @@ static void autoRescan(data, id)
     TimeOut = 0;
     xrnBusyCursor();
     infoNow(AUTOMATIC_RESCAN_MSG);
-    ngRescanFunction(NULL, NULL, params, &num_params);
+    ngRescanFunction(NULL, NULL, NULL, NULL);
     infoNow("");
     xrnUnbusyCursor();
     addTimeOut();
@@ -1297,9 +1273,6 @@ void displayNewsgroupWidgets()
 
 	XawPanedSetRefigureMode(NewsgroupFrame, False);
 
-	setButtonActive(NewsgroupButtonList, "ngPost", PostingAllowed);
-	setButtonActive(NewsgroupButtonList, "ngPostAndMail", PostingAllowed);
-
 	/*
 	  The Box widget is managed only after
 	  its children have been placed in them because there is a
@@ -1309,6 +1282,7 @@ void displayNewsgroupWidgets()
 	  NewsgroupButtonBox = ButtonBoxCreate("buttons", NewsgroupFrame);\
 	  doButtons(app_resources.ngButtonList, NewsgroupButtonBox,\
 		    NewsgroupButtonList, &NewsgroupButtonListCount, TOP);\
+	  XtManageChild(NewsgroupButtonBox);\
 	}
 
 #define INFO_LINE() {\
@@ -1334,6 +1308,10 @@ void displayNewsgroupWidgets()
 	TextDisableWordWrap(NewsgroupText);
 
 	TopInfoLine = NewsgroupInfoLine;
+
+	setButtonSensitive(NewsgroupButtonBox, "ngPost", PostingAllowed);
+	setButtonSensitive(NewsgroupButtonBox, "ngPostAndMail",
+			   PostingAllowed);
 
 	XawPanedSetRefigureMode(NewsgroupFrame, True);
 

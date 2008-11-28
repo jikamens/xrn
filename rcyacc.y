@@ -1,6 +1,6 @@
 %{
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: rcyacc.y,v 1.7 2005-12-01 08:51:06 jik Exp $";
+static char XRNrcsid[] = "$Id: rcyacc.y,v 1.5 1997-01-08 14:43:29 jik Exp $";
 #endif
 
 /*
@@ -98,7 +98,7 @@ newsrc_line : NAME SEPARATOR artlist EOL
 			    if ($2 == ':')
 				SET_SUB(newsgroup);
 			    newsgroup->nglist = $3;
-			    (void) updateArticleArray(newsgroup, False);
+			    (void) updateArticleArray(newsgroup);
 			    newsgroup->newsrc = MaxGroupNumber;
 			    Newsrc[MaxGroupNumber] = newsgroup;
 			    INC_MAXGROUPNUMBER();
@@ -123,7 +123,7 @@ newsrc_line : NAME SEPARATOR artlist EOL
 			    if ($2 == ':')
 				SET_SUB(newsgroup);
 			    newsgroup->nglist = NIL(struct list);
-			    (void) updateArticleArray(newsgroup, False);
+			    (void) updateArticleArray(newsgroup);
 			    newsgroup->newsrc = MaxGroupNumber;
 			    Newsrc[MaxGroupNumber] = newsgroup;
 			    INC_MAXGROUPNUMBER();
@@ -179,3 +179,5 @@ articles  : NUMBER
 
    
 %%
+#include "rclex.c"
+
