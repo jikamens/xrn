@@ -1,5 +1,5 @@
 !
-! $Id: Xresources.sam,v 1.2 1994-11-23 01:42:47 jik Exp $
+! $Id$
 !
 xrn.newsrcFile:		~/.newsrc
 xrn.nntpServer:		news-server-machine

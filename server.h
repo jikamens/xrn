@@ -2,7 +2,7 @@
 #define SERVER_H
 
 /*
- * $Id: server.h,v 1.37 2006-01-03 16:16:43 jik Exp $
+ * $Id$
  */
 
 /*

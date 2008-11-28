@@ -5,7 +5,7 @@
 #include "file_cache.h"
 
 /*
- * $Id: cursor.h,v 1.15 1998-01-22 03:09:00 jik Exp $
+ * $Id$
  */
 
 /*

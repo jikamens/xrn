@@ -2,7 +2,7 @@
 #define DIALOGS_H
 
 /*
- * $Id: dialogs.h,v 1.8 1997-01-12 03:41:22 jik Exp $
+ * $Id$
  */
 
 /*

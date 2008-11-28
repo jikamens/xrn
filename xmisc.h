@@ -2,7 +2,7 @@
 #define XMISC_H
 
 /*
- * $Id: xmisc.h,v 1.6 1995-05-10 02:20:01 jik Exp $
+ * $Id$
  */
 
 /*

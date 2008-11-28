@@ -4,7 +4,7 @@
 #include "file_cache.h"
 
 /*
- * $Id: xrn.h,v 1.30 1997-06-30 02:52:46 jik Exp $
+ * $Id$
  */
 
 /*

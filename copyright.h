@@ -2,7 +2,7 @@
 #define COPYRIGHT_H
 
 /*
- * $Id: copyright.h,v 1.4 1994-11-23 01:46:57 jik Exp $
+ * $Id$
  */
 
 /*

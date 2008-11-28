@@ -2,7 +2,7 @@
 #define CODES_H
 
 /*
- * $Id: codes.h,v 1.3 1994-11-23 01:45:38 jik Exp $
+ * $Id$
  */
 
 /*

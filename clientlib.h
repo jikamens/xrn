@@ -2,7 +2,7 @@
 #define CLIENTLIB_H
 
 /*
- * $Id: clientlib.h,v 1.3 1997-01-02 23:14:15 jik Exp $
+ * $Id$
  */
 
 /*
