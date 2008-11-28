@@ -1,8 +1,8 @@
 !
-! $Id: XRn.src,v 1.204 2008-11-28 17:57:52 jik Exp $
+! $Id: XRn.src,v 1.185 2000-10-05 02:56:30 jik Exp $
 !
-MOTIFxAPP_CLASSx.version:			9.03-beta-15 (Motif)
-XAWxAPP_CLASSx.version:			9.03-beta-15
+MOTIFxAPP_CLASSx.version:			9.03-beta-2 (Motif)
+XAWxAPP_CLASSx.version:			9.03-beta-2
 xAPP_CLASSx.Geometry:			680x700
 *breakLength:			0
 *font:			8x13
@@ -626,10 +626,6 @@ LANG_german*compIncludeFile.label:	Datei einf\374gen
 LANG_english*Cancel*label:		Cancel Search
 LANG_french*Cancel*label:		Annuler recherche
 LANG_german*Cancel*label:		Suche abbrechen
-
-LANG_english*CancelGotoArticle*label:	Cancel
-LANG_french*CancelGotoArticle*label:	Cancel
-LANG_german*CancelGotoArticle*label:	Abbrechen
 
 LANG_english*CancelListOld*label:	Cancel
 LANG_french*CancelListOld*label:	Cancel
