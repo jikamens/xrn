@@ -13,8 +13,8 @@ extern void file_cache_file_destroy _ARGUMENTS((file_cache, file_cache_file));
 extern void file_cache_file_release _ARGUMENTS((file_cache, file_cache_file));
 extern void file_cache_file_lock _ARGUMENTS((file_cache, file_cache_file));
 extern void file_cache_file_unlock _ARGUMENTS((file_cache, file_cache_file));
-extern void file_cache_file_copy _ARGUMENTS((file_cache, file_cache_file,
-					     file_cache_file *));
+extern file_cache_file file_cache_file_copy _ARGUMENTS((file_cache,
+							file_cache_file));
 extern char *file_cache_file_name _ARGUMENTS((file_cache, file_cache_file));
 extern int file_cache_free_space _ARGUMENTS((file_cache, size_t));
 

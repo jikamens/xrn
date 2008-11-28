@@ -16,19 +16,6 @@ seek help at your site.
   Versions of XRN prior to 7.00 were maintained by Ellen Santovich and
 Rick Spickelmier.
 
-
-		XRN is a Usenet-friendly News reader!
-
-  I have striven to make XRN adhere to all relevant standards and to
-help users avoid the common pitfalls of participation in the Usenet.
-To that end, all releases of XRN starting with 9.02 are compliant with
-the Good Net-Keeping Seal of Approval (GNKSA), a standard which
-defines how News readers should behave to make the Usenet a better
-place for everyone.  See <URL:http://www.xs4all.nl/~js/gnksa/> for
-more information about the GNKSA.  XRN's GNKSA review can be viewed at
-<URL:http://www.xs4all.nl/~js/gnksa/Evaluations/xrn-9.02beta4.txt>.
-
-
 			   Where to get XRN
 
   The XRN home page is <http://www.mit.edu/people/jik/software/xrn.html>.
@@ -178,7 +165,8 @@ look for it at your site.
 
 2. Edit the Imakefile (after making it writeable with chmod) for your
    local configuration.  The comments in the file explain what needs
-   to be edited.
+   to be edited.  Pay particular attention to "INN", which enables and
+   support for InterNetNews (INN).
 
 3. Edit config.h (after making it writeable with chmod) for your local
    configuration.  The file is (sort of) arranged from most
@@ -251,28 +239,10 @@ low.  Send mail to xrn-users-request@kamens.brookline.ma.us to ask to
 be added to the list.
 
 
-			  The future of XRN
-
-  Release 9.00 of XRN is the first general-availability release in
-over a year and a half.  The next major release may take just as long,
-or even longer.  I have not had as much time as I would have liked to
-work on XRN, and I will probably have even less in the future.
-
-  However, I do not want XRN to be orphaned or to deteriorate.
-Therefore, I will continue to make bug-fix releases as necessary, and
-I will devote as much time as I can to making enhancements.
-
-  If you are interested in volunteering to take over, I'd love to hear
-from you, but I'm only going to hand off XRN to someone whom I'm
-convinced will do a good job, because I've invested a lot of effort
-into it, and because the folks who maintained it before me allowed it
-to stagnate for years; I do not want that to happen again.
-
-
 
 I hope you find XRN useful!
 
   Jonathan Kamens
   jik@kamens.brookline.ma.us
 
-# $Id: README,v 1.51 2006-01-03 16:17:06 jik Exp $
+# $Id: README,v 1.47 1997-12-17 02:58:43 jik Exp $

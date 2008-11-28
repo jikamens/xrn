@@ -71,19 +71,6 @@ void ButtonBoxDoneAdding(w)
     XtManageChild(w);
 }
 
-void ButtonBoxEmpty(w)
-     Widget w;
-{
-  WidgetList children;
-  Cardinal num_children;
-  
-  XtVaGetValues(w, XtNchildren, &children,
-		XtNnumChildren, &num_children, 0);
-
-  while (num_children-- >= 1)
-    XtDestroyWidget(children[num_children]);
-}
-
 void ButtonBoxDestroy(w)
     Widget w;
 {

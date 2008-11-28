@@ -343,13 +343,6 @@ void TextReplace(w, string, length, left, right)
     b.ptr = string;
     b.format = XawFmt8Bit;
 
-#ifdef XAW_REDISPLAY_BUG
-    /* Xaw Bug causes the insertion point to move if redisplay is
-       disabled and multiple text replacements are performed.  See
-       RedHat bugzilla bug number 12801. */
-    TextDisplay(w);
-#endif
-
     set_changed(w);
     XtVaGetValues(w, XtNeditType, &type, 0);
     XtVaSetValues(w, XtNeditType, XawtextEdit, 0);
