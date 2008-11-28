@@ -4,7 +4,7 @@
 #include "butdefs.h"
 
 /*
- * $Id: compose.h,v 1.12 1998-03-22 23:47:48 jik Exp $
+ * $Id$
  */
 
 /*

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: xmh-insrt-repl,v 1.1 1994-10-10 08:38:36 jik Exp $
+# $Id$
 
 [ -z "${TMP}" ] && TMP=/tmp
 

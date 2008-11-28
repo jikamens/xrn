@@ -1,5 +1,5 @@
-.TH XRN 1 "$Date: 2008-11-28 17:57:52 $" "X"
-.\" $Id: xrn-man.src,v 1.246 2008-11-28 17:57:52 jik Exp $
+.TH XRN 1 "$Date$" "X"
+.\" $Id$
 .\"
 .\" xrn - an X-based NNTP news reader
 .\"

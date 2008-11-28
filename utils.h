@@ -2,7 +2,7 @@
 #define UTILS_H
 
 /*
- * $Id: utils.h,v 1.58 1998-07-10 21:56:21 jik Exp $
+ * $Id$
  */
 
 /*

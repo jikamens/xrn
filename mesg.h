@@ -4,7 +4,7 @@
 #include "butdefs.h"
 
 /*
- * $Id: mesg.h,v 1.15 1997-01-12 03:41:22 jik Exp $
+ * $Id$
  */
 
 /*

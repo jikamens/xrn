@@ -2,7 +2,7 @@
 #define REFILE_H
 
 /*
- * $Id: refile.h,v 1.2 1994-11-23 01:51:12 jik Exp $
+ * $Id$
  */
 
 /*

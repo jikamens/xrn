@@ -2,7 +2,7 @@
 #define ERROR_HANDLERS_H
 
 /*
- * $Id: error_hnds.h,v 1.12 2005-12-01 08:51:17 jik Exp $
+ * $Id$
  */
 
 /*
