@@ -37,9 +37,9 @@ extern char *LastGroup;
 
 extern int NewsgroupDisplayMode;
 
-extern void switchToNewsgroupMode _ARGUMENTS((Boolean));
-extern void redrawNewsgroupTextWidget _ARGUMENTS((String, Boolean));
-extern void updateNewsgroupMode _ARGUMENTS((Boolean, Boolean));
+extern void switchToNewsgroupMode _ARGUMENTS((/* Boolean */ int));
+extern void redrawNewsgroupTextWidget _ARGUMENTS((String, /* Boolean */ int));
+extern void updateNewsgroupMode _ARGUMENTS((/* Boolean */ int, /* Boolean */ int));
 extern void doPrefetch _ARGUMENTS((Widget, XEvent *, String *, Cardinal *));
 extern void addTimeOut _ARGUMENTS((void));
 extern void removeTimeOut _ARGUMENTS((void));
