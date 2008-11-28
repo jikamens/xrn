@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: Xmisc.c,v 1.2 1997-03-30 15:33:56 jik Exp $";
+static char XRNrcsid[] = "$Id: xmisc.c,v 1.10 1995-01-25 03:17:52 jik Exp $";
 #endif
 
 /*
@@ -48,7 +48,6 @@ static char XRNrcsid[] = "$Id: Xmisc.c,v 1.2 1997-03-30 15:33:56 jik Exp $";
 #include "internals.h"
 #include "xrn.h"
 #include "xmisc.h"
-#include "busyCursor.h"
 
 /* XRN icon */
 
@@ -61,7 +60,7 @@ static Pixmap
 getpm()
 {
     unsigned int width, height;
-    unsigned char *bits;
+    char *bits;
 
 #if SUPPORT_SILLY_CALVIN_ICON
     if (app_resources.calvin) {
@@ -78,7 +77,7 @@ getpm()
 #endif
 
     return XCreateBitmapFromData(XtDisplay(TopLevel), XtScreen(TopLevel)->root,
-				 (char *) bits, width, height);
+				 bits, width, height);
 }
 
 
@@ -88,8 +87,8 @@ IconType it;
 {
     static char       *PrevName = NULL, *OldName = NULL;
     static Pixmap     PrevPm = None, OldPm = None;
-    char      *name WALL(= 0);
-    Pixmap    pm WALL(= 0);
+    char      *name;
+    Pixmap    pm;
     Arg               arg;
 
     if (OldPm == None) {
@@ -175,17 +174,62 @@ xmIconCreate()
  * create the normal and busy xrn cursors
  */
 
-void xrnBusyCursor()
+void busyCursor()
 {
-    BusyCursor(TopLevel, True);
+    static Cursor busyCursor = (Cursor) 0;
+    
+    /* define an appropriate busy cursor */
+    if (busyCursor == (Cursor) 0) {
+	XColor colors[2];
+
+	colors[0].pixel = app_resources.pointer_foreground;
+	colors[1].pixel = app_resources.pointer_background;
+	XQueryColors(XtDisplay(TopLevel),
+		     DefaultColormap(XtDisplay(TopLevel),
+				     DefaultScreen(XtDisplay(TopLevel))),
+		     colors, 2);
+	busyCursor = XCreateFontCursor(XtDisplay(TopLevel), XC_watch);
+	XRecolorCursor(XtDisplay(TopLevel), busyCursor,
+		       &colors[0], &colors[1]);
+    }
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(TopLevel), busyCursor);
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(Text), busyCursor);
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(ArticleText), busyCursor);
+    XFlush(XtDisplay(TopLevel));
+    
+    /* change icon */
     xmSetIconAndName(BusyIcon);
 
     return;
 }
 
-void xrnUnbusyCursor()
+void unbusyCursor()
 {
-    UnbusyCursor(TopLevel, True);
+    static Cursor unBusyCursor = (Cursor) 0;
+    static Cursor textCursor = (Cursor) 0;
+
+    if (unBusyCursor == (Cursor) 0) {
+	XColor colors[2];
+
+	colors[0].pixel = app_resources.pointer_foreground;
+	colors[1].pixel = app_resources.pointer_background;
+	XQueryColors(XtDisplay(TopLevel),
+		     DefaultColormap(XtDisplay(TopLevel),
+				     DefaultScreen(XtDisplay(TopLevel))),
+		     colors, 2);
+	unBusyCursor = XCreateFontCursor(XtDisplay(TopLevel), XC_left_ptr);
+	XRecolorCursor(XtDisplay(TopLevel), unBusyCursor,
+		       &colors[0], &colors[1]);
+	textCursor = XCreateFontCursor(XtDisplay(TopLevel), XC_xterm);
+	XRecolorCursor(XtDisplay(TopLevel), textCursor,
+		       &colors[0], &colors[1]);
+    }
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(TopLevel), unBusyCursor);
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(Text), unBusyCursor);
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(ArticleText), textCursor);
+    XFlush(XtDisplay(TopLevel));
+    
+    /* change icon */
     xmSetIconAndName(PrevIcon);
 
     return;
@@ -197,7 +241,7 @@ void CBbusyCursor(widget, client_data, call_data)
     XtPointer client_data;
     XtPointer call_data;
 {
-    xrnBusyCursor();
+    busyCursor();
     return;
 }
 
@@ -207,7 +251,7 @@ void CBunbusyCursor(widget, client_data, call_data)
     XtPointer client_data;
     XtPointer call_data;
 {
-    xrnUnbusyCursor();
+    unbusyCursor();
     return;
 }
 
