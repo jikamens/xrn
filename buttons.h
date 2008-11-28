@@ -1,12 +1,8 @@
 #ifndef BUTTONS_H
 #define BUTTONS_H
 
-#include <X11/Intrinsic.h>
-
-#include "utils.h"
-
 /*
- * $Id: buttons.h,v 1.16 1997-06-29 17:30:14 jik Exp $
+ * $Header: /d/src/cvsroot/xrn/buttons.h,v 1.4 1994-11-13 16:57:51 jik Exp $
  */
 
 /*
@@ -39,37 +35,13 @@
  *
  */
 
-typedef struct buttonList {
-    String name;
-    XtCallbackRec *callbacks;
-    char *message;
-    Boolean active;
-} ButtonList;
-
-#define TOP	0
-#define BOTTOM	1
-
-extern void determineMode _ARGUMENTS((Boolean));
+extern void determineMode _ARGUMENTS((void));
+extern void addTimeOut _ARGUMENTS((void));
+extern void abortSet _ARGUMENTS((void));
+extern void removeTimeOut _ARGUMENTS((void));
 extern Boolean watchingGroup _ARGUMENTS((char *));
 extern void doTheRightThing _ARGUMENTS((Widget, XEvent *, String *,
 					Cardinal *));
 extern void createButtons _ARGUMENTS((void));
-extern void setButtonSensitive _ARGUMENTS((Widget, char *, Boolean));
-extern void setButtonActive _ARGUMENTS((ButtonList *, char *, Boolean));
-
-extern void confirmBox _ARGUMENTS((String, int, int, void (*) _ARGUMENTS((void))));
-extern String anyIterator _ARGUMENTS((Widget, String, Boolean,
-				      Boolean, Boolean, long *));
-extern void setTopInfoLine _ARGUMENTS((char *));
-extern void setBottomInfoLine _ARGUMENTS((char *));
-extern void swapMode _ARGUMENTS((void));
-extern void abortClear _ARGUMENTS((void));
-extern int abortP _ARGUMENTS((void));
-extern void abortSet _ARGUMENTS((void));
-extern void abortClear _ARGUMENTS((void));
-
-extern void doButtons _ARGUMENTS((char *, Widget, ButtonList *, int *, int));
-
-extern char *LastGroup;
 
 #endif /* BUTTONS_H */
