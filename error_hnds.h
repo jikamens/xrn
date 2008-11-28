@@ -2,7 +2,7 @@
 #define ERROR_HANDLERS_H
 
 /*
- * $Id: error_hnds.h,v 1.12 2005-12-01 08:51:17 jik Exp $
+ * $Id: error_hnds.h,v 1.8 1996-03-29 06:00:51 jik Exp $
  */
 
 /*
@@ -39,7 +39,7 @@ extern void ehErrorExitXRN _ARGUMENTS((char *message));
 extern void ehSignalExitXRN _ARGUMENTS((char *message));
 extern void ehCleanExitXRN _ARGUMENTS((void));
 extern void ehNoUpdateExitXRN _ARGUMENTS((void));
-extern int ehErrorRetryXRN _ARGUMENTS((char *message, Boolean save));
+extern int ehErrorRetryXRN _ARGUMENTS((char *message, /* Boolean */ int save));
 
 #if XtSpecificationRelease > 5
 extern void saveNewsrcCB _ARGUMENTS((Widget w, XtPointer client_d,
@@ -54,15 +54,11 @@ extern void ehInstallErrorHandlers _ARGUMENTS((void));
 /* install the signal handlers */
 extern void ehInstallSignalHandlers _ARGUMENTS((void));
 
-#if 0
-#if !defined(__GNU_LIBRARY__) && !defined(__NetBSD__) && !defined(__FreeBSD__) && !defined(__CYGWIN__)
+#if !defined(__NetBSD__) && !defined(__FreeBSD__)
 extern int errno, sys_nerr;
 extern char *sys_errlist[];
 #endif
 
 #define errmsg(a) ((a < sys_nerr) ? sys_errlist[a] : "unknown error")
-#else
-#define errmsg(a) strerror(a)
-#endif
-
+     
 #endif /* ERROR_HANDLERS_H */

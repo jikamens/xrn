@@ -11,7 +11,6 @@
 
 #ifdef TESTING
 #define utTempnam tempnam
-#define utTempnamFree free
 #define mesgPane(a,b,c,d,e) fprintf(stderr, c, d, e)
 #define mesgPane6(a,b,c,d,e,f) fprintf(stderr, c, d, e, f)
 #define XtMalloc malloc
@@ -66,7 +65,6 @@ char *line, **name, **value;
 #define CLEANUP { \
 	    (void) fclose(input); \
 	    (void) fclose(output); \
-	    XtFree(tmpfile); \
 	    return 0; \
 	    }
 #define WRITE_LINE { \
@@ -84,7 +82,7 @@ struct var_rec *vars;
 {
     FILE *input, *output = 0;
     struct var_rec *this_var;
-    char line[BUFSIZ], *name, *val, last_chopped = 0, *tmpfile = 0;
+    char line[BUFSIZ], *name, *val, last_chopped = 0, *tmpfile;
 
 #ifdef GCC_WALL
     tmpfile = 0;
@@ -102,7 +100,6 @@ struct var_rec *vars;
 	if (! (output = fopen(tmpfile, "w"))) {
 	    mesgPane(XRN_SERIOUS, 0, CANT_OPEN_TEMP_MSG, tmpfile, errmsg(errno));
 	    (void) fclose(input);
-	    XtFree(tmpfile);
 	    return 0;
 	}
 	for (this_var = vars; this_var->name; this_var++)
@@ -159,24 +156,20 @@ struct var_rec *vars;
 		mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG, tmpfile,
 			 errmsg(errno));
 		(void) fclose(output);
-		XtFree(tmpfile);
 		return 0;
 	    }
 	if (fclose(output) == EOF) {
 	    mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG, tmpfile,
 		     errmsg(errno));
-	    XtFree(tmpfile);
 	    return 0;
 	}
 	if (rename(tmpfile, filename)) {
 	    mesgPane6(XRN_SERIOUS, 0, ERROR_RENAMING_MSG, tmpfile, filename,
 		     errmsg(errno));
-	    XtFree(tmpfile);
 	    return 0;
 	}
     }
 
-    XtFree(tmpfile);
     return vars;
 }
 
