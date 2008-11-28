@@ -2,7 +2,7 @@
 #define NEWS_H
 
 /*
- * $Id: news.h,v 1.35 2006-01-03 16:38:38 jik Exp $
+ * $Id: news.h,v 1.17 1996-06-05 14:57:33 jik Exp $
  */
 
 /*
@@ -36,13 +36,9 @@
  */
 
 #include "avl.h"
-#include "hash.h"
-#include "file_cache.h"
-#include "xrn.h"
 
 typedef long art_num;  /* easy way to pick out variables refering to articles */
-typedef unsigned int ng_num;   /* easy way to pick out newsgroup variables            */
-typedef unsigned char fetch_flag_t;
+typedef short ng_num;   /* easy way to pick out newsgroup variables            */
 
 extern avl_tree *NewsGroupTable;
 extern int ActiveGroupsCount;
@@ -54,17 +50,8 @@ struct article {
     char *from;		  /* full value of the "From" line	  */
     char *author;         /* author name                          */
     char *lines;          /* number of lines in the article       */
-    file_cache_file *base_file; /* the untranslated article file  */
-    file_cache_file *file; /* the displayed article file          */
+    char *filename;       /* name of the article file             */
     char *newsgroups;	  /* newsgroups list (maybe)		  */
-    char *date;		  /* date (maybe)			  */
-    char *id;		  /* message ID (maybe)		       	  */
-    char *references;	  /* references (maybe)			  */
-    char *xref;		  /* xref (maybe)			  */
-    char *approved;	  /* Approved (maybe)			  */
-    art_num parent;	  /* parent article, for threading	  */
-    art_num *children;	  /* child articles, for threading	  */
-    avl_tree *headers;    /* parsed header, indexed by downcased field name */
 #ifdef ARTSTRUCT_C
     /* These should only be touched in artstruct.c! */
     art_num first;
@@ -85,9 +72,7 @@ struct newsgroup {
     art_num current;   /* current article number                            */
     struct list *nglist;  /* newsgroup entry for unsubscribed groups        */
     unsigned char from_cache; /* is this entry from the active file cache?  */
-    fetch_flag_t fetch; /* what should we fetch?			    */
-    hash_table_object thread_table;
-    void *kill_file;
+    unsigned char fetch_newsgroups; /* should we fetch "Newsgroups" lines?  */
 #ifdef ARTSTRUCT_C
     /* These should only be touched in artstruct.c! */
     struct article *articles, *ref_art;
@@ -97,19 +82,16 @@ struct newsgroup {
 };
 
 
-#define ART_READ		(1<<0)
-#define ART_PRINTED		(1<<1)
-#define ART_FETCHED		(1<<2)
-#define ART_UNAVAIL		(1<<3)
-#define ART_ALL_HEADERS		(1<<4)
-#define ART_ROTATED		(1<<5)
-#define ART_SAVED		(1<<6)
-#define ART_MARKED		(1<<7)
-#define ART_XLATED		(1<<8)
-#define ART_KILLED		(1<<9)
-#define ART_LISTED		(1<<10)
-#define ART_MAYBE_LISTED	(1<<11)
-#define ART_XREFED		(1<<12)
+#define ART_READ	(1<<0)
+#define ART_PRINTED	(1<<1)
+#define ART_FETCHED	(1<<2)
+#define ART_UNAVAIL	(1<<3)
+#define ART_ALL_HEADERS	(1<<4)
+#define ART_ROTATED	(1<<5)
+#define ART_SAVED	(1<<6)
+#define ART_MARKED	(1<<7)
+#define ART_XLATED	(1<<8)
+#define ART_KILLED	(1<<9)
 
 #define ART_CLEAR       (0)
 #define ART_CLEAR_READ  (ART_READ | ART_KILLED)
@@ -130,9 +112,6 @@ struct newsgroup {
 #define IS_UNMARKED(art)	(! ((art)->status & ART_MARKED))
 #define IS_XLATED(art)		(   (art)->status & ART_XLATED)
 #define IS_KILLED(art)		(   (art)->status & ART_KILLED)
-#define IS_LISTED(art)		(   (art)->status & ART_LISTED)
-#define IS_MAYBE_LISTED(art)	(   (art)->status & ART_MAYBE_LISTED)
-#define IS_XREFED(art)		(   (art)->status & ART_XREFED)
   
 #define SET_READ(art)			((art)->status |= ART_READ)
 #define SET_UNREAD(art)			((art)->status &= ~ART_READ)
@@ -153,167 +132,74 @@ struct newsgroup {
 #define SET_UNXLATED(art)		((art)->status &= ~ART_XLATED)
 #define SET_XLATED(art)			((art)->status |= ART_XLATED)
 #define SET_KILLED(art)			((art)->status |= ART_KILLED)
-#define SET_LISTED(art)			((art)->status |= ART_LISTED)
-#define SET_MAYBE_LISTED(art)		((art)->status |= ART_MAYBE_LISTED)
-#define SET_UNLISTED(art)		((art)->status &= ~(ART_LISTED|ART_MAYBE_LISTED))
-#define SET_XREFED(art)			((art)->status |= ART_XREFED)
 
 #define _CLEAR_ALL(art,free) \
   _CLEAR_FILE((art),(free)); \
-  _CLEAR_BASE_FILE((art),(free)); \
-  _CLEAR_HEADERS((art),(free)); \
   _CLEAR_SUBJECT((art),(free)); \
   _CLEAR_FROM((art),(free)); \
   _CLEAR_AUTHOR((art),(free)); \
   _CLEAR_LINES((art),(free)); \
-  _CLEAR_NEWSGROUPS((art),(free)); \
-  _CLEAR_DATE((art),(free)); \
-  _CLEAR_ID((art),(free)); \
-  _CLEAR_REFS((art),(free)); \
-  _CLEAR_XREF((art),(free)); \
-  _CLEAR_PARENT((art),(free)); \
-  _CLEAR_CHILDREN((art),(free)); \
-  _CLEAR_APPROVED((art),(free))
-
-#ifdef DEBUG_NEWS_CLEARS
-
-static __inline__ void inline_CLEAR_FILE(struct article *art, int free)
-{
-  if ((free) && (art)->file)  {
-    fprintf(stderr, "inline_CLEAR_FILE(first=%d, file=0x%x)\n",
-#ifdef ARTSTRUCT_C
-	    art->first,
-#else
-	    art->dont_touch1,
-#endif
-	    art->file);
-    file_cache_file_release(FileCache, *(art)->file);
-    FREE((art)->file);
-  }
-  SET_UNFETCHED(art);
-  (art)->file = 0;
-}
-
-#define _CLEAR_FILE(art,free) inline_CLEAR_FILE(art,free)
-
-#else /* ! DEBUG_NEWS_CLEARS */
+  _CLEAR_NEWSGROUPS((art),(free));
 
 #define _CLEAR_FILE(art,free) \
-  if ((free) && (art)->file)  { \
-    file_cache_file_release(FileCache, *(art)->file); \
-    FREE((art)->file); \
-  } \
-  SET_UNFETCHED(art); \
-  (art)->file = 0;
-
-#endif /* DEBUG_NEWS_CLEARS */
-
-#define _CLEAR_BASE_FILE(art,free) \
-  if ((free) && (art)->base_file)  { \
-    file_cache_file_release(FileCache, *(art)->base_file); \
-    FREE((art)->base_file); \
-  } \
-  (art)->base_file = 0;
-
-#define ART_HEADERS_BASE " base "
-
-#define _CLEAR_HEADERS(art,dofree) \
-  if ((dofree) && (art)->headers) { \
-    char *key = ART_HEADERS_BASE; \
-    char *base; \
-    if (avl_delete((art)->headers, &key, &base)) \
-      free(base); \
-    avl_free_table((art)->headers, 0, 0); \
-  } \
-  (art)->headers = 0;
+  if ((art)->filename) { \
+    if ((free)) { \
+      (void) unlink((art)->filename); \
+      FREE((art)->filename); \
+    } \
+    SET_UNFETCHED(art); \
+    (art)->filename = 0; \
+  }
 
 #define _CLEAR_SUBJECT(art,free) \
-  if ((free) && (art)->subject) { \
-    FREE((art)->subject); \
-  } \
-  (art)->subject = 0;
+  if ((art)->subject) { \
+    if ((free)) { \
+      FREE((art)->subject); \
+    } \
+    (art)->subject = 0; \
+  }
 
 #define _CLEAR_FROM(art,free) \
-  if ((free) && (art)->from) { \
-    FREE((art)->from); \
-  } \
-  (art)->from = 0;
+  if ((art)->from) { \
+    if ((free)) { \
+      FREE((art)->from); \
+    } \
+    (art)->from = 0; \
+  }
 
 #define _CLEAR_AUTHOR(art,free) \
-  if ((free) && (art)->author) { \
-    FREE((art)->author); \
-  } \
-  (art)->author = 0;
+  if ((art)->author) { \
+    if ((free)) { \
+      FREE((art)->author); \
+    } \
+    (art)->author = 0; \
+  }
 
 #define _CLEAR_LINES(art,free) \
-  if ((free) && (art)->lines) { \
-    FREE((art)->lines); \
-  } \
-  (art)->lines = 0;
+  if ((art)->lines) { \
+    if ((free)) { \
+      FREE((art)->lines); \
+    } \
+    (art)->lines = 0; \
+  }
 
 #define _CLEAR_NEWSGROUPS(art,free) \
-  if ((free) && (art)->newsgroups) { \
-    FREE((art)->newsgroups); \
-  } \
-  (art)->newsgroups = 0;
-
-#define _CLEAR_DATE(art,free) \
-  if ((free) && (art)->date) { \
-    FREE((art)->date); \
-  } \
-  (art)->date = 0;
-
-#define _CLEAR_ID(art,free) \
-  if ((free) && (art)->id) { \
-    FREE((art)->id); \
-  } \
-  (art)->id = 0;
-
-#define _CLEAR_REFS(art,free) \
-  if ((free) && (art)->references) { \
-    FREE((art)->references); \
-  } \
-  (art)->references = 0;
-
-#define _CLEAR_XREF(art,free) \
-  if ((free) && (art)->xref) { \
-    FREE((art)->xref); \
-  } \
-  (art)->xref = 0;
-
-#define _CLEAR_APPROVED(art,free) \
-  if ((free) && (art)->xref) { \
-    FREE((art)->approved); \
-  } \
-  (art)->approved = 0;
-
-#define _CLEAR_PARENT(art,free) \
-  (art)->parent = 0;
-
-#define _CLEAR_CHILDREN(art,free) \
-  if ((free) && (art)->children) { \
-    FREE((art)->children); \
-  } \
-  (art)->children = 0;
+  if ((art)->newsgroups) { \
+    if ((free)) { \
+      FREE((art)->newsgroups); \
+    } \
+    (art)->newsgroups = 0; \
+  }
 
 #define CLEAR_ALL(art)		_CLEAR_ALL((art),1)
 #define CLEAR_ALL_NO_FREE(art)	_CLEAR_ALL((art),0)
 
 #define CLEAR_FILE(art)		_CLEAR_FILE((art),1)
-#define CLEAR_BASE_FILE(art)	_CLEAR_BASE_FILE((art),1)
-#define CLEAR_HEADERS(art)	_CLEAR_HEADERS((art),1)
 #define CLEAR_SUBJECT(art)	_CLEAR_SUBJECT((art),1)
 #define CLEAR_FROM(art)		_CLEAR_FROM((art),1)
 #define CLEAR_AUTHOR(art)	_CLEAR_AUTHOR((art),1)
 #define CLEAR_LINES(art)	_CLEAR_LINES((art),1)
 #define CLEAR_NEWSGROUPS(art)	_CLEAR_NEWSGROUPS((art),1)
-#define CLEAR_DATE(art)		_CLEAR_DATE((art),1)
-#define CLEAR_ID(art)		_CLEAR_ID((art),1)
-#define CLEAR_REFS(art)		_CLEAR_REFS((art),1)
-#define CLEAR_XREF(art)		_CLEAR_XREF((art),1)
-#define CLEAR_APPROVED(art)	_CLEAR_APPROVED((art),1)
-#define CLEAR_PARENT(art)	_CLEAR_PARENT((art),1)
-#define CLEAR_CHILDREN(art)	_CLEAR_CHILDREN((art),1)
 
 #define NG_SUB		(1<<0)	/* newsgroup is subscribed/unsubscribed to */
 #define NG_NOENTRY	(1<<1)	/* no entry in the .newsrc for this group */
@@ -344,24 +230,9 @@ static __inline__ void inline_CLEAR_FILE(struct article *art, int free)
 extern struct newsgroup *CurrentGroup;   /* current index into the newsrc array  */
 extern ng_num MaxGroupNumber;       /* size of the newsrc array                  */
 
-/*
-  If this assertion fails, it means that you've got too many groups to
-  fit in an integer of ng_num's size, and you need to change the
-  typedef of ng_num above so that it is an integer with more bytes.
-  */
-#define INC_MAXGROUPNUMBER() { assert(MaxGroupNumber < NOT_IN_NEWSRC-1); \
-			       MaxGroupNumber++; }
-
 extern struct newsgroup **Newsrc;          /* sequence list for .newsrc file            */
 
-/*
-  NOTE WELL: There are places in the code that depend on the fact that
-  when a variable of type ng_num with value 0 is decremented, it
-  acquires a value of NOT_IN_NEWSRC.  I don't know of any systems on
-  which XRN works for which an unsigned integer type doesn't wrap
-  around like this, but if there is one, then the code will fail.
-  */
-#define NOT_IN_NEWSRC ((ng_num)-1)
+#define NOT_IN_NEWSRC -1            /* must be less than 0 */
 
 /* not a valid group (must be less than 0) */
 #define NO_GROUP -1

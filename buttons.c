@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: Buttons.c,v 1.6 1999-11-23 00:36:37 jik Exp $";
+static char XRNrcsid[] = "$Id: buttons.c,v 1.66 1995-06-08 02:05:07 jik Exp $";
 #endif
 
 /*
@@ -38,19 +38,14 @@ static char XRNrcsid[] = "$Id: Buttons.c,v 1.6 1999-11-23 00:36:37 jik Exp $";
 #include "utils.h"
 #include <X11/Xos.h>
 #include <assert.h>
+#include <X11/Intrinsic.h>
+#include <X11/StringDefs.h>
 
-#ifdef MOTIF
-# include <Xm/Xm.h>
-# include <Xm/PushB.h>
-#else
-# include <X11/Intrinsic.h>
-# include <X11/StringDefs.h>
-# include <X11/Xaw/Paned.h>
-# include <X11/Xaw/Label.h>
-# include <X11/Xaw/Command.h>
-# include <X11/Xaw/Box.h>
-# include <X11/Xaw/Dialog.h>
-#endif
+#include <X11/Xaw/Paned.h>
+#include <X11/Xaw/Label.h>
+#include <X11/Xaw/Command.h>
+#include <X11/Xaw/Box.h>
+#include <X11/Xaw/Dialog.h>
 
 #include "compose.h"
 #include "cursor.h"
@@ -72,13 +67,11 @@ static char XRNrcsid[] = "$Id: Buttons.c,v 1.6 1999-11-23 00:36:37 jik Exp $";
 #include "newsrcfile.h"
 #include "butexpl.h"
 #include "Text.h"
-#include "Frame.h"
 #include "ButtonBox.h"
 #include "ngMode.h"
 #include "addMode.h"
 #include "artMode.h"
 #include "allMode.h"
-#include "InfoLine.h"
 
 #ifndef O_RDONLY
 #define O_RDONLY 0
@@ -169,20 +162,17 @@ static void bottomInfoHandler(widget, client_data, event)
     Boolean *dispatch;
 #endif /* XtSpecificationRelease > 4 */
 {
-    char *s = NULL;
+    Arg infoLineArg[1];
 
     if (! BottomInfoLine)
 	return;
 
-    /* kb - force thru InfoLineSet() instead of set-values */
-    if (event->type == LeaveNotify)
-	s = BottomNonButtonInfo;
-    else if (event->type == EnterNotify)
-	s = client_data;
-
-    if (s)
-      InfoLineSet(BottomInfoLine, s);
-
+    if (event->type == LeaveNotify) {
+	XtSetArg(infoLineArg[0], XtNlabel, BottomNonButtonInfo);
+    } else if (event->type == EnterNotify) {
+	XtSetArg(infoLineArg[0], XtNlabel, client_data);
+    }
+    XtSetValues(BottomInfoLine, infoLineArg, XtNumber(infoLineArg));
     return;
 }
 
@@ -242,45 +232,25 @@ void setBottomInfoLine(message)
     if (! BottomInfoLine)
 	return;
     
-    InfoLineSet(BottomInfoLine, message);
+    XtVaSetValues(BottomInfoLine, XtNlabel, message, 0);
     return;
 }
 
 #undef setBottomInfoLine
 
-void setButtonSensitive(
-			_ANSIDECL(Widget,	box),
-			_ANSIDECL(char *,	name),
-			_ANSIDECL(Boolean,	sensitive)
-			)
-     _KNRDECL(Widget,	box)
-     _KNRDECL(char *,	name)
-     _KNRDECL(Boolean,	sensitive)
+void setButtonSensitive(box, name, sensitive)
+    Widget box;
+    char *name;
+    Boolean sensitive;
 {
     Widget w;
 
     if (! (w = XtNameToWidget(box, name)))
 	return;
 
-    XtSetSensitive(w, sensitive);
+    XtVaSetValues(w, XtNsensitive, sensitive, 0);
 }
 
-/*
-  NOTE: The named button MUST APPEAR in the specified button list.
-  */
-void setButtonActive(
-		     _ANSIDECL(ButtonList *,	list),
-		     _ANSIDECL(char *,		name),
-		     _ANSIDECL(Boolean,		active)
-		     )
-     _KNRDECL(ButtonList *,	list)
-     _KNRDECL(char *,		name)
-     _KNRDECL(Boolean,		active)
-{
-  while (strcmp(list->name, name))
-    list++;
-  list->active = active;
-}
     
 void doButtons(resource, box, buttonList, size, infoLine)
     char *resource;
@@ -293,8 +263,6 @@ void doButtons(resource, box, buttonList, size, infoLine)
     int j, i = 0;
     Widget button;
 
-    ButtonBoxEmpty(box);
-
     if (resource) {
 	ptr = resource;
 
@@ -302,20 +270,16 @@ void doButtons(resource, box, buttonList, size, infoLine)
 	    /* find name */
 	    for (j = 0; j < *size; j++) {
 		if (STREQ(token, (char *) buttonList[j].name)) {
-		  if (buttonList[j].active) {
 		    button = ButtonBoxAddButton(buttonList[j].name,
 						buttonList[j].callbacks, box);
-		    if (buttonList[j].message) {
-		      if (infoLine == TOP) {
+		    if (infoLine == TOP) {
 			setTopInfoLineHandler(button, buttonList[j].message);
-		      } else {
+		    } else {
 			setBottomInfoLineHandler(button,
 						 buttonList[j].message);
-		      }
 		    }
 		    i++;
-		  }
-		  break;
+		    break;
 		}
 	    }
 	    if (j == *size) {
@@ -327,17 +291,13 @@ void doButtons(resource, box, buttonList, size, infoLine)
 	
     } else {
 	for (i = 0; i < *size; i++) {
-	  if (buttonList[i].active) {
 	    button = ButtonBoxAddButton(buttonList[i].name,
 					buttonList[i].callbacks, box);
-	    if (buttonList[i].message) {
-	      if (infoLine == TOP) {
+	    if (infoLine == TOP) {
 		setTopInfoLineHandler(button, buttonList[i].message);
-	      } else {
+	    } else {
 		setBottomInfoLineHandler(button, buttonList[i].message);
-	      }
 	    }
-	  }
 	}
     }
     ButtonBoxDoneAdding(box);
@@ -347,6 +307,10 @@ void doButtons(resource, box, buttonList, size, infoLine)
 
 void createButtons()  
 {
+#define SETTRANSLATIONS(w, index, mode, bind) \
+    Translations[index].widget = w; \
+    Translations[index].unparsed[mode] = bind;
+
     XtAppAddActions(TopContext, TopActions, XtNumber(TopActions));
     XtAppAddActions(TopContext, AllActions, AllActionsCount);
     XtAppAddActions(TopContext, NgActions, NgActionsCount);
@@ -359,7 +323,7 @@ void createButtons()
 
 void hideGenericWidgets()
 {
-    DestroyMainFrame();
+    XtDestroyWidget(Frame);
 }
 
 void swapMode()
@@ -589,20 +553,11 @@ Boolean watchingGroup(newsgroup)
 }
 
 
-String anyIterator(
-		   _ANSIDECL(Widget,	w),
-		   _ANSIDECL(String,	string),
-		   _ANSIDECL(Boolean,	group),
-		   _ANSIDECL(Boolean,	start),
-		   _ANSIDECL(Boolean,	delete),
-		   _ANSIDECL(long *,	out_left)
-		   )
-     _KNRDECL(Widget,	w)
-     _KNRDECL(String,	string)
-     _KNRDECL(Boolean,	group)
-     _KNRDECL(Boolean,	start)
-     _KNRDECL(Boolean,	delete)
-     _KNRDECL(long *,	out_left)
+String anyIterator(w, string, group, start, delete, out_left)
+    Widget w;
+    String string;
+    Boolean group, start, delete;
+    long *out_left;
 {
     static char *name = 0;
     static long left, right;
@@ -704,17 +659,14 @@ void confirmBox(message, mode, flag, handler)
 }
 
 
+void determineMode()
 /*
  * determine the initial mode and set up Text, TopButtonBox, and Question
  */
-void determineMode(
-		   _ANSIDECL(Boolean,	do_newgroups)
-		   )
-     _KNRDECL(Boolean,	do_newgroups)
 {
     String string;
 
-    if (do_newgroups && (string = newGroups())) {
+    if ((string = newGroups())) {
 	switchToAddMode(string);
 	FREE(string);
     }

@@ -76,22 +76,16 @@ char *filename;
     mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG, tmpfile, errmsg(errno)); \
     (void) fclose(input); \
     (void) fclose(output); \
-    XtFree(tmpfile); \
     return -1; \
   } \
 }
 
 
-int active_cache_write(
-		       _ANSIDECL(char *,		filename),
-		       _ANSIDECL(struct newsgroup **,	Newsrc),
-		       _ANSIDECL(ng_num,		num_groups),
-		       _ANSIDECL(Boolean,		write_entries)
-		       )
-     _KNRDECL(char *,			filename)
-     _KNRDECL(struct newsgroup **,	Newsrc)
-     _KNRDECL(ng_num,			num_groups)
-     _KNRDECL(Boolean,			write_entries)
+int active_cache_write(filename, Newsrc, num_groups, write_entries)
+char *filename;
+struct newsgroup **Newsrc;
+ng_num num_groups;
+Boolean write_entries;
 {
   FILE *input, *output;
   char *tmpfile;
@@ -103,7 +97,6 @@ int active_cache_write(
 
   if (! (output = fopen(tmpfile, "w"))) {
     mesgPane(XRN_SERIOUS, 0, CANT_OPEN_TEMP_MSG, tmpfile, errmsg(errno));
-    XtFree(tmpfile);
     return -1;
   }
 
@@ -144,7 +137,6 @@ int active_cache_write(
 	mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG, tmpfile,
 		 errmsg(errno));
 	(void) fclose(output);
-	XtFree(tmpfile);
 	return -1;
       }
     }
@@ -153,18 +145,15 @@ int active_cache_write(
   if (fclose(output) == EOF) {
     mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG, tmpfile,
 	     errmsg(errno));
-    XtFree(tmpfile);
     return -1;
   }
 
   if (rename(tmpfile, filename)) {
     mesgPane(XRN_SERIOUS, 0, ERROR_RENAMING_MSG, tmpfile, filename,
 	     errmsg(errno));
-    XtFree(tmpfile);
     return -1;
   }
 
-  XtFree(tmpfile);
   return 0;
 }
 
