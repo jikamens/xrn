@@ -1,5 +1,6 @@
+
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $";
+static char XRNrcsid[] = "$Id: resources.c,v 1.44 1995-11-23 06:25:23 jik Exp $";
 #endif
 
 /*
@@ -35,24 +36,20 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #include "config.h"
 #include "utils.h"
 #include <X11/Xos.h>
-#ifdef MOTIF
-# include <Xm/Xm.h>
-#else
-# include <X11/Intrinsic.h>
-# include <X11/StringDefs.h>
-# include <X11/Shell.h>
-#endif
+#include <X11/Intrinsic.h>
+#include <X11/StringDefs.h>
+#include <X11/Shell.h>
 #include <ctype.h>
 #include "avl.h"
 #include "news.h"
 #include "xthelper.h"
 #include "mesg.h"
 #include "xrn.h"
+#include "patchlevel.h"
 #include "resources.h"
 #include "error_hnds.h"
 #include "internals.h"
 #include "mesg_strings.h"
-#include "sort.h"
 
 #ifndef XRN_APP_CLASS
 #define XRN_APP_CLASS "XRn"
@@ -71,8 +68,6 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #define XtCArtButtonList        "ArtButtonList"
 #define XtNartSpecButtonList    "artSpecButtonList"
 #define XtCArtSpecButtonList    "ArtSpecButtonList"
-#define XtNauthenticateOnConnect "authenticateOnConnect"
-#define XtCAuthenticateOnConnect "AuthenticateOnConnect"
 #define XtNauthenticator        "authenticator"
 #define XtCAuthenticator        "Authenticator"
 #define XtNauthenticatorCommand "authenticatorCommand"
@@ -91,10 +86,6 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #define XtCCacheActive		"CacheActive"
 #define XtNcacheFile            "cacheFile"
 #define XtCCacheFile            "CacheFile"
-#define XtNcacheFilesMaxFiles	"cacheFilesMaxFiles"
-#define XtCCacheFilesMaxFiles	"CacheFilesMaxFiles"
-#define XtNcacheFilesMaxSize	"cacheFilesMaxSize"
-#define XtCCacheFilesMaxSize	"CacheFilesMaxSize"
 #if SUPPORT_SILLY_CALVIN_ICON
 #define XtNcalvin               "calvin"
 #define XtCCalvin               "Calvin"
@@ -106,11 +97,8 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #define XtNccForward            "ccForward"
 #define XtNcmdLineNntpServer    "cmdLineNntpServer"
 #define XtCCmdLineNntpServer    "CmdLineNntpServer"
-#define XtNcomplainAboutBadDates "complainAboutBadDates"
 #define XtNconfirm              "confirm"
 #define XtCConfirm              "Confirm"
-#define XtNcourtesyCopyMessage	"courtesyCopyMessage"
-#define XtCCourtesyCopyMessage	"CourtesyCopyMessage"
 #define XtNdeadLetters          "deadLetters"
 #define XtCDeadLetters          "DeadLetters"
 #define XtNdefaultLines         "defaultLines"
@@ -120,8 +108,10 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #define XtCDiscardOld           "DiscardOld"
 #define XtNdisplayLineCount     "displayLineCount"
 #define XtCDisplayLineCount     "DisplayLineCount"
+#ifdef REALLY_USE_LOCALTIME
 #define XtNdisplayLocalTime     "displayLocalTime"
 #define XtCDisplayLocalTime     "DisplayLocalTime"
+#endif
 #define XtNdistribution         "distribution"
 #define XtCDistribution         "Distribution"
 #define XtNdomainName           "domainName"
@@ -133,8 +123,6 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #define XtCExecutableSignatures "ExecutableSignatures"
 #define XtNfullNewsrc           "fullNewsrc"
 #define XtCFullNewsrc           "FullNewsrc"
-#define XtNhiddenHost		"hiddenHost"
-#define XtCHiddenHost		"HiddenHost"
 #define XtNiconGeometry         "iconGeometry"
 #define XtCIconGeometry         "IconGeometry"
 #define XtNignoreNewsgroups     "ignoreNewsgroups"
@@ -149,12 +137,8 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #define XtCIncludeSep           "IncludeSep"
 #define XtNinfo                 "info"
 #define XtCInfo                 "Info"
-#define XtNkillFileName		"killFileName"
-#define XtCKillFileName		"KillFileName"
 #define XtNkillFiles            "killFiles"
 #define XtCKillFiles            "KillFiles"
-#define XtNkillTimeout		"killTimeout"
-#define XtCKillTimeout		"KillTimeout"
 #define XtNleaveHeaders         "leaveHeaders"
 #define XtCLeaveHeaders         "LeaveHeaders"
 #define XtNlineLength           "lineLength"
@@ -175,8 +159,6 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #define XtCNewsrcFile           "NewsrcFile"
 #define XtNngButtonList         "ngButtonList"
 #define XtCNgButtonList         "NgButtonList"
-#define XtNnntpPort             "nntpPort"
-#define XtCNntpPort             "NntpPort"
 #define XtNnntpServer           "nntpServer"
 #define XtCNntpServer           "NntpServer"
 #define XtNonlyShow             "onlyShow"
@@ -211,9 +193,6 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #define XtCSaveNewsrcFile       "SaveNewsrcFile"
 #define XtNsavePostings         "savePostings"
 #define XtCSavePostings         "SavePostings"
-#define XtNsaveSentMail		"saveSentMail"
-#define XtNsaveSentPostings	"saveSentPostings"
-#define XtCSaveSent		"SaveSent"
 #define XtNsaveString           "saveString"
 #define XtCSaveString           "SaveString"
 #define XtNsignatureFile        "signatureFile"
@@ -242,107 +221,15 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #define XtCUnreadIconPixmap     "UnreadIconPixmap"
 #define XtNupdateNewsrc         "updateNewsrc"
 #define XtCUpdateNewsrc         "UpdateNewsrc"
-#define XtNvalidNewsgroups      "validNewsgroups"
-#define XtCValidNewsgroups      "ValidNewsgroups"
 #define XtNverboseKill          "verboseKill"
 #define XtCVerboseKill          "VerboseKill"
-#define XtNverifyFrom		"verifyFrom"
-#define XtCVerifyFrom		"VerifyFrom"
 #define XtNversion              "version"
 #define XtCVersion              "Version"
 #define XtNwatchUnread          "watchUnread"
 #define XtCWatchUnread          "WatchUnread"
 
-/*
-  I'm putting this list of resources separately becauase they're
-  actually sub-resources and are handled specially.
-  */
-#define XtNwarnings		"warnings"
-#define XtNposting		"posting"
-#define XtCPosting		"Posting"
-#define XtNfollowup		"followup"
-#define XtCFollowup		"Followup"
-#define XtNfollowupTo		"followupTo"
-#define XtNcrossPost		"crossPost"
-
-
 static Boolean defaultFalse = False;
 static Boolean defaultTrue  = True;
-
-
-/*
-  This is a gross, disgusting hack to allow me to use the Xt Intrinsic
-  resource-handling routines (in particular, XtGetSubresources) in
-  order to extract subresources, without having to use the Xrm
-  routines directly.
-  */
-
-typedef struct widgetNameList {
-  String name;
-  struct widgetNameList **sub_names;
-  int sub_count;
-  XtResource *resources;
-  int resources_count;
-} widgetNameList;
-
-static void DoSubResources _ARGUMENTS((Widget, widgetNameList *));
-
-static XtResource warningsFollowupResources[] = {
-  {XtNfollowupTo, XtNfollowupTo, XtRBoolean, sizeof(Boolean),
-   XtOffset(app_res, warnings.followup.followupTo), XtRBoolean,
-   &app_resources.warnings.followup.followupTo},
-  {XtNcrossPost, XtNcrossPost, XtRInt, sizeof(int),
-   XtOffset(app_res, warnings.followup.crossPost), XtRInt,
-   (XtPointer) &app_resources.warnings.followup.crossPost},
-};
-
-static widgetNameList warningsFollowupNames = {
-  XtNfollowup,
-  0, 0,
-  warningsFollowupResources,
-  XtNumber(warningsFollowupResources)
-};
-
-static XtResource warningsPostingResources[] = {
-  {XtNfollowupTo, XtNfollowupTo, XtRInt, sizeof(int),
-   XtOffset(app_res, warnings.posting.followupTo), XtRInt,
-   (XtPointer) &app_resources.warnings.posting.followupTo},
-  {XtNcrossPost, XtNcrossPost, XtRInt, sizeof(int),
-   XtOffset(app_res, warnings.posting.crossPost), XtRInt,
-   (XtPointer) &app_resources.warnings.posting.crossPost},
-};
-  
-static widgetNameList warningsPostingNames = {
-  XtNposting,
-  0, 0,
-  warningsPostingResources,
-  XtNumber(warningsPostingResources)
-};
-
-static widgetNameList *warningsSubNames[] = {
-  &warningsFollowupNames, &warningsPostingNames
-};
-
-static XtResource warningsResources[] = {
-  {XtCFollowup, XtCFollowup, XtRBoolean, sizeof(Boolean),
-   XtOffset(app_res, warnings.followup.followupTo), XtRBoolean,
-   &defaultTrue},
-  {XtCFollowup, XtCFollowup, XtRInt, sizeof(int),
-   XtOffset(app_res, warnings.followup.crossPost), XtRImmediate,
-   (XtPointer) 2},
-  {XtCPosting, XtCPosting, XtRInt, sizeof(Boolean),
-   XtOffset(app_res, warnings.posting.followupTo), XtRImmediate,
-   (XtPointer) FOLLOWUPTO_CONFIRM},
-  {XtCPosting, XtCPosting, XtRBoolean, sizeof(Boolean),
-   XtOffset(app_res, warnings.posting.crossPost), XtRImmediate,
-   (XtPointer) CROSSPOST_CONFIRM},
-};
-
-static widgetNameList subNames = {
-  XtNwarnings,
-  warningsSubNames, XtNumber(warningsSubNames),
-  warningsResources, XtNumber(warningsResources)
-};
 
 
 app_resourceRec app_resources;
@@ -361,8 +248,6 @@ static XtResource resources[] = {
      XtOffset(app_res,artButtonList), XtRString, (XtPointer) NULL},
     {XtNartSpecButtonList, XtCArtSpecButtonList, XtRString, sizeof(char *),
      XtOffset(app_res,artSpecButtonList), XtRString, (XtPointer) NULL},
-    {XtNauthenticateOnConnect, XtCAuthenticateOnConnect, XtRBoolean, sizeof(Boolean),
-     XtOffset(app_res,authenticateOnConnect), XtRBoolean, (XtPointer) &defaultFalse},
     {XtNauthenticator, XtCAuthenticator, XtRString, sizeof(char *),
      XtOffset(app_res,authenticator), XtRString, (XtPointer) NULL},
     {XtNauthenticatorCommand, XtCAuthenticatorCommand, XtRString, sizeof(char *),
@@ -381,10 +266,6 @@ static XtResource resources[] = {
      XtOffset(app_res,cacheActive), XtRBoolean, (XtPointer) &defaultFalse},
     {XtNcacheFile, XtCCacheFile, XtRString, sizeof(char *),
      XtOffset(app_res,cacheFile), XtRString, (XtPointer) CACHEFILE},
-    {XtNcacheFilesMaxFiles, XtCCacheFilesMaxFiles, XtRInt, sizeof(int),
-     XtOffset(app_res,cacheFilesMaxFiles), XtRImmediate, (XtPointer) 50},
-    {XtNcacheFilesMaxSize, XtCCacheFilesMaxSize, XtRInt, sizeof(int),
-     XtOffset(app_res,cacheFilesMaxSize), XtRImmediate, (XtPointer) 0},
 #if SUPPORT_SILLY_CALVIN_ICON
     {XtNcalvin, XtCCalvin, XtRBoolean, sizeof(Boolean),
      XtOffset(app_res,calvin), XtRBoolean, (XtPointer) &defaultFalse},
@@ -397,12 +278,8 @@ static XtResource resources[] = {
      XtOffset(app_res,ccForward), XtRBoolean, (XtPointer) &defaultFalse},
     {XtNcmdLineNntpServer, XtCCmdLineNntpServer, XtRString, sizeof(char *),
      XtOffset(app_res,cmdLineNntpServer), XtRString, (XtPointer) NULL},
-    {XtNcomplainAboutBadDates, XtCDebug, XtRBoolean, sizeof(Boolean),
-     XtOffset(app_res,dumpCore), XtRBoolean, (XtPointer) &defaultFalse},
     {XtNconfirm, XtCConfirm, XtRString, sizeof(char *),
      XtOffset(app_res,confirm), XtRString, (XtPointer) NULL},
-    {XtNcourtesyCopyMessage, XtCCourtesyCopyMessage, XtRString, sizeof(char *),
-     XtOffset(app_res,courtesyCopyMessage), XtRString, (XtPointer) NULL},
     {XtNdeadLetters, XtCDeadLetters, XtRString, sizeof(char *),
      XtOffset(app_res,deadLetters), XtRString, (XtPointer) DEADLETTER},
     {XtNdefaultLines, XtCDefaultLines, XtRInt, sizeof(int),
@@ -411,8 +288,10 @@ static XtResource resources[] = {
      XtOffset(app_res,discardOld), XtRBoolean, (XtPointer) &defaultFalse},
     {XtNdisplayLineCount, XtCDisplayLineCount, XtRBoolean, sizeof(Boolean),
      XtOffset(app_res,displayLineCount), XtRBoolean, (XtPointer) &defaultTrue},
+#ifdef REALLY_USE_LOCALTIME
     {XtNdisplayLocalTime, XtCDisplayLocalTime, XtRBoolean, sizeof(Boolean),
-     XtOffset(app_res,displayLocalTime), XtRBoolean, (XtPointer) &defaultFalse},
+     XtOffset(app_res,displayLocalTime), XtRBoolean, (XtPointer) &defaultTrue},
+#endif
     {XtNdistribution, XtCDistribution, XtRString, sizeof(char *),
      XtOffset(app_res,distribution), XtRString, (XtPointer) NULL},
     {XtNdomainName, XtCDomainName, XtRString, sizeof(char *),
@@ -433,8 +312,6 @@ static XtResource resources[] = {
      XtOffset(app_res,fullNewsrc), XtRBoolean, (XtPointer) &defaultTrue},
     {XtNgeometry, XtCGeometry, XtRString,  sizeof(char *),
      XtOffset(app_res,geometry), XtRString, (XtPointer) NULL},
-    {XtNhiddenHost, XtCHiddenHost, XtRString, sizeof(String),
-     XtOffset(app_res,hiddenHost), XtRString, (XtPointer) NULL},
     {XtNiconGeometry,  XtCIconGeometry,  XtRString,  sizeof(char *),
      XtOffset(app_res,iconGeometry), XtRString, (XtPointer) NULL},
     {XtNiconName,  XtCIconName,  XtRString,  sizeof(char *),
@@ -459,12 +336,8 @@ static XtResource resources[] = {
      XtOffset(app_res,includeSep), XtRBoolean, (XtPointer) &defaultTrue},
     {XtNinfo, XtCInfo, XtRBoolean, sizeof(Boolean),
      XtOffset(app_res,info), XtRBoolean, (XtPointer) &defaultTrue},
-    {XtNkillFileName, XtCKillFileName, XtRString, sizeof(String),
-     XtOffset(app_res,killFileName), XtRImmediate, (XtPointer) "KILL"},
     {XtNkillFiles, XtCKillFiles, XtRBoolean, sizeof(Boolean),
      XtOffset(app_res,killFiles), XtRBoolean, (XtPointer) &defaultTrue},
-    {XtNkillTimeout, XtCKillTimeout, XtRInt, sizeof(int),
-     XtOffset(app_res,killTimeout), XtRImmediate, (XtPointer) 0},
     {XtNleaveHeaders, XtCLeaveHeaders, XtRString, sizeof(char *),
      XtOffset(app_res,leaveHeaders), XtRString, (XtPointer) NULL},
     {XtNlineLength, XtCLineLength, XtRInt, sizeof(int),
@@ -485,8 +358,6 @@ static XtResource resources[] = {
      XtOffset(app_res,newsrcFile), XtRString, (XtPointer) NEWSRCFILE},
     {XtNngButtonList, XtCNgButtonList, XtRString, sizeof(char *),
      XtOffset(app_res,ngButtonList), XtRString, (XtPointer) NULL},
-    {XtNnntpPort, XtCNntpPort, XtRString, sizeof(char *),
-     XtOffset(app_res,nntpPort), XtRString, (XtPointer) NULL},
     {XtNnntpServer, XtCNntpServer, XtRString, sizeof(char *),
      XtOffset(app_res,nntpServer), XtRString, (XtPointer) NULL},
     {XtNonlyShow, XtCOnlyShow, XtRInt, sizeof(int),
@@ -521,18 +392,14 @@ static XtResource resources[] = {
      XtOffset(app_res,saveNewsrcFile), XtRString, (XtPointer) SAVENEWSRCFILE},
     {XtNsavePostings, XtCSavePostings, XtRString, sizeof(char *),
      XtOffset(app_res,savePostings), XtRString, (XtPointer) SAVEPOSTINGS},
-    {XtNsaveSentMail, XtCSaveSent, XtRString, sizeof(char *),
-     XtOffset(app_res,saveSentMail), XtRString, (XtPointer) 0},
-    {XtNsaveSentPostings, XtCSaveSent, XtRString, sizeof(char *),
-     XtOffset(app_res,saveSentPostings), XtRString, (XtPointer) 0},
     {XtNsaveString, XtCSaveString, XtRString, sizeof(char *),
      XtOffset(app_res,saveString), XtRString, (XtPointer) NULL},
     {XtNsignatureFile, XtCSignatureFile, XtRString, sizeof(char *),
      XtOffset(app_res,signatureFile), XtRString, (XtPointer) SIGNATUREFILE},
     {XtNsignatureNotify, XtCSignatureNotify, XtRBoolean, sizeof(Boolean),
      XtOffset(app_res,signatureNotify), XtRBoolean, (XtPointer) &defaultFalse},
-    {XtNsortedSubjects, XtCSortedSubjects, XtRString, sizeof(String),
-     XtOffset(app_res,sortedSubjects), XtRImmediate, (XtPointer) 0},
+    {XtNsortedSubjects, XtCSortedSubjects, XtRBoolean, sizeof(Boolean),
+     XtOffset(app_res,sortedSubjects), XtRBoolean, (XtPointer) &defaultFalse},
     {XtNstayInArticleMode, XtCStayInArticleMode, XtRBoolean, sizeof(Boolean),
      XtOffset(app_res,stayInArticleMode), XtRBoolean, (XtPointer) &defaultFalse},
     {XtNstripHeaders, XtCStripHeaders, XtRString, sizeof(char *),
@@ -555,12 +422,8 @@ static XtResource resources[] = {
      XtOffset(app_res,unreadIconPixmap), XtRPixmap, (XtPointer) NULL},
     {XtNupdateNewsrc, XtCUpdateNewsrc, XtRBoolean, sizeof(Boolean),
      XtOffset(app_res,updateNewsrc), XtRBoolean, (XtPointer) &defaultFalse},
-    {XtNvalidNewsgroups, XtCValidNewsgroups, XtRString, sizeof(char *),
-     XtOffset(app_res,validNewsgroups), XtRString, (XtPointer) NULL},
     {XtNverboseKill, XtCVerboseKill, XtRString, sizeof(String),
      XtOffset(app_res,verboseKill), XtRString, (XtPointer) "jms"},
-    {XtNverifyFrom, XtCVerifyFrom, XtRBoolean, sizeof(Boolean),
-     XtOffset(app_res,verifyFrom), XtRBoolean, (XtPointer) &defaultTrue},
     {XtNversion, XtCVersion, XtRString, sizeof(char *),
      XtOffset(app_res,version), XtRString, (XtPointer) NULL},
     {XtNwatchUnread, XtCWatchUnread, XtRString, sizeof(char *),
@@ -599,8 +462,10 @@ static XrmOptionDescRec optionList[] = {
     {"+discardOld", XtNdiscardOld, XrmoptionNoArg, (XtPointer) "on"},
     {"-displayLineCount",XtNdisplayLineCount,XrmoptionNoArg, (XtPointer) "off"},
     {"+displayLineCount",XtNdisplayLineCount,XrmoptionNoArg, (XtPointer) "on"},
+#ifdef REALLY_USE_LOCALTIME
     {"-displayLocalTime",XtNdisplayLocalTime,XrmoptionNoArg, (XtPointer) "off"},
     {"+displayLocalTime",XtNdisplayLocalTime,XrmoptionNoArg, (XtPointer) "on"},
+#endif
     {"-distribution",   XtNdistribution,   XrmoptionSepArg,  (XtPointer) NULL},
     {"-dumpCore",	XtNdumpCore,	   XrmoptionNoArg,   (XtPointer) "off"},
     {"+dumpCore",	XtNdumpCore,	   XrmoptionNoArg,   (XtPointer) "on"},
@@ -728,7 +593,9 @@ static void usage(ac, av)
     puts("\t-defaultLines number\tDefault number of lines above cursor");
     puts("\t+/-discardOld\t\tDiscard unshown articles when onlyShow is in effect");
     puts("\t+/-displayLineCount\tDisplay line count in the subject index");
+#ifdef REALLY_USE_LOCALTIME
     puts("\t+/-displayLocalTime\t\tDisplay local time in the Date: field");
+#endif
     puts("\t-distribution\t\tDefault distribution for messages");
 #ifdef DUMPCORE
     puts("\t+/-dumpCore\t\tDump core on error exit");
@@ -737,11 +604,10 @@ static void usage(ac, av)
     puts("\t+/-executableSignatures\tExecute signature files that are executable\n\t\t\t\tto get signature text");
     puts("\t+/-fullNewsrc\t\tNewsrc file should contain all known newsgroups");
     puts("\t-geometry WxH+X+Y\tSize and position of window");
-    puts("\t-hiddenHost host\tHost name to put in \"From\" lines\n\t\t\t\tof composed messages");
     puts("\t-iconGeometry +X+Y\tPosition of icon");
     puts("\t-iconName\t\tIcon name used when unread articles");
     puts("\t-iconPixmap\t\tIcon used when unread articles");
-    puts("\t-ignoreNewsgroups list\tRegexps of valid newsgroups to ignore");
+    puts("\t-ignoreNewsgroups list\tRegexps of newsgroups to ignore");
     puts("\t-includeCommand\t\tCommand to use for article insertions\n\t\t\t\t(defaults to the toolkit editor)");
     puts("\t+/-includeHeader\tInclude original article's header");
     puts("\t-includePrefix\t\tPrefix for included lines");
@@ -775,7 +641,7 @@ static void usage(ac, av)
     puts("\t-saveString\t\tString to use in the save dialog");
     puts("\t-signatureFile file\tSignature file for posting");
     puts("\t+/-signatureNotify\tNotify user which signature file is being used");
-    puts("\t+/-sortedSubjects\tSubject sorting order");
+    puts("\t+/-sortedSubjects\tSort or do not sort the subjects");
     puts("\t+/-stayInArticleMode\tSwitch to the next newsgroup whenever possible\n\t\t\t\tinstead of exiting article mode");
     puts("\t-stripHeaders list\tHeaders to strip");
     puts("\t+/-subjectRead\t\tChange default from next unread to subject next");
@@ -790,28 +656,6 @@ static void usage(ac, av)
 
     exit(0);
 }
-
-static void DoSubResources(w, list)
-     Widget w;
-     widgetNameList *list;
-{
-  Widget subw;
-
-  XtGetSubresources(w, &app_resources,
-		    list->name, list->name,
-		    list->resources, list->resources_count,
-		    0, 0);
-
-  if (list->sub_names) {
-    int i;
-
-    subw = XtCreateWidget(list->name, shellWidgetClass, w, 0, 0);
-    for (i = 0; i < list->sub_count; i++)
-      DoSubResources(subw, list->sub_names[i]);
-    XtDestroyWidget(subw);
-  }
-}
-
 
 /*
  * initialize the toolkit, parse the command line, and handle the Xdefaults
@@ -852,16 +696,15 @@ Widget Initialize(argc, argv)
 
 #if defined(__DATE__) && defined(WANT_DATE)
     (void) sprintf(title, "xrn - version %s (compiled on %s)",
-		   PACKAGE_VERSION, __DATE__);
+		   XRN_VERSION, __DATE__);
 #else
     (void) sprintf(title, "xrn - version %s",
-		   PACKAGE_VERSION);
+		   XRN_VERSION);
 #endif
 
     /* get the resources needed by xrn itself */
     XtGetApplicationResources(widget, (XtPointer) &app_resources,
 			      resources, XtNumber(resources), 0, 0);
-    DoSubResources(widget, &subNames);
 
     /* 
      * check and set the lock file - must be after the application resources
@@ -880,8 +723,6 @@ Widget Initialize(argc, argv)
     app_resources.saveMode = 0;
     if (utSubstring(app_resources.strSaveMode, "mailbox") == 1) {
 	app_resources.saveMode |= MAILBOX_SAVE;
-    } else if (utSubstring(app_resources.strSaveMode, "formfeed") == 1) {
-	app_resources.saveMode |= FORMFEED_SAVE;
     } else {
 	app_resources.saveMode |= NORMAL_SAVE;
     }
@@ -1015,14 +856,6 @@ Widget Initialize(argc, argv)
 	app_resources.breakLength = 0;
 	app_resources.lineLength = 0;
     }
-
-    /*
-      Authentication
-      */
-    if (getenv("NNTPAUTH"))
-      app_resources.authenticator = getenv("NNTPAUTH");
-
-    art_sort_parse_sortlist(app_resources.sortedSubjects);
 
     return widget;
 }
