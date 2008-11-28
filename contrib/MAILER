@@ -1,9 +1,0 @@
-#! /bin/csh -f
-#
-# does not work for multiple To and Subject lines
-#
-cat > /tmp/mail.$$
-set to = `grep "^To:" /tmp/mail.$$ | sed 's/To://'`
-set subject = `grep "^Subject:" /tmp/mail.$$`
-/usr/ucb/Mail -s $subject $to < /tmp/mail.$$
-exit 0

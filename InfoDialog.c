@@ -19,8 +19,6 @@
 #include "ButtonBox.h"
 #include "InfoLine.h"
 #include "Text.h"
-#include "InfoDialog.h"
-#include "ngMode.h"
 
 /* entire widget */
 static Widget MesgTopLevel = (Widget) 0;
@@ -31,7 +29,7 @@ static long current_length = 0;
 
 
 long
-MesgLength()
+MesgLength(void)
 {
 	return (current_length);
 }
@@ -70,6 +68,15 @@ InfoDialogCreate(Widget parent)
         XtAddCallback(MesgTopLevel, XmNokCallback, mesgClearXmCallback, NULL);
 
 	XtRealizeWidget(MesgTopLevel);
+        /*
+	XtSetKeyboardFocus(MesgTopLevel, MesgText);
+	XtInstallAccelerators(MesgText, button);
+        */
+
+        /*
+	XDefineCursor(XtDisplay(MesgTopLevel), XtWindow(MesgTopLevel),
+		      XCreateFontCursor(XtDisplay(MesgTopLevel), XC_left_ptr));
+        */
         XtManageChild(pane);
         XtManageChild(MesgTopLevel);
 #else
@@ -110,24 +117,21 @@ void displayMesgString(new_string)
     char *new_string;
 {
     long newlen = strlen(new_string);
-    long nl_position;
 
     if (! MesgText)
 	return;
 
+/*
+#ifdef MOTIF
+    XmTextInsert(MesgText, current_length, new_string);
+    current_length += newlen;
+    XmTextSetInsertionPosition(MesgText, current_length);
+#else
+#endif
+*/
     TextReplace(MesgText, new_string, newlen, current_length, current_length);
     current_length += newlen;
-    /* Put the cursor immediately after the final newline, to make
-       sure that if any messages in the window are longer than its
-       width and the window has line wrapping and horizontal scroll
-       bars turned off, the text will still be lined up properly,
-       i.e., the window won't scroll right with no obvious way to get
-       back to the left margin. */
-    if ((nl_position = TextSearch(MesgText, current_length,
-				  TextSearchLeft, "\n")) > -1)
-      TextSetInsertionPoint(MesgText, nl_position + 1);
-    else
-      TextSetInsertionPoint(MesgText, 0);
+    TextSetInsertionPoint(MesgText, current_length);
 }
 
 /*ARGSUSED*/
@@ -148,6 +152,9 @@ static void mesgClearXmCallback(widget, client, cbsp)
     XtPointer client;
     XtPointer cbsp;
 {
+    /*
+    XmTextSetString("");
+    */
     TextClear(MesgText);
     current_length = 0;
 }

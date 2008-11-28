@@ -12,9 +12,7 @@
 #endif
 
 #include "config.h"
-#include "utils.h"
 #include "xrn.h"
-#include "ButtonBox.h"
 
 Widget ButtonBoxCreate(name, parent)
     String name;
@@ -66,22 +64,24 @@ Widget ButtonBoxAddButton(name, callbacks, parent)
 void ButtonBoxDoneAdding(w)
     Widget w;
 {
-    if (XtIsRealized(XtParent(w)))
-      XtRealizeWidget(w);
+    XtWidgetGeometry intended, ret;
+
+    XtRealizeWidget(w);
     XtManageChild(w);
-}
 
-void ButtonBoxEmpty(w)
-     Widget w;
-{
-  WidgetList children;
-  Cardinal num_children;
-  
-  XtVaGetValues(w, XtNchildren, &children,
-		XtNnumChildren, &num_children, 0);
-
-  while (num_children-- >= 1)
-    XtDestroyWidget(children[num_children]);
+    /* kb - Now that the manager widget is realized (above), the manage method will have the
+       correct size of all the children.  This works for Motif at least, and should work for
+       Xaw.  But since I'm not testing Xaw, I'll leave the code below for now.  If it works
+       for Xaw as well, then we can remove the geom. query code below.  If not, then more
+       #ifdef MOTIF type lines will be needed.  If this is not enough of a "why", then check
+       the Motif FAQ for a good explanation of geom. man. */
+    /*
+      I'm not really sure why this is necessary, but it is.
+    XtVaGetValues(w, XtNwidth, &intended.width, 0);
+    intended.request_mode = CWWidth | XtCWQueryOnly;
+    XtQueryGeometry(w, &intended, &ret);
+    XtVaSetValues(w, XtNheight, ret.height, 0);
+     */
 }
 
 void ButtonBoxDestroy(w)

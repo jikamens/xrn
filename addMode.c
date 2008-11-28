@@ -388,17 +388,25 @@ void displayAddWidgets()
 
 #ifndef MOTIF
 	XawPanedSetRefigureMode(AddFrame, False);
-#endif /* MOTIF */
+#endif MOTIF
 
 	if (app_resources.fullNewsrc) {
 	  setButtonActive(AddButtonList, "addIgnoreRest", False);
 	  setButtonActive(AddButtonList, "addIgnore", False);
 	}
 
+	/*
+	  The Box widget is managed only after
+	  its children have been placed in them because there is a
+	  bug in the Xaw Box widget (as of 05/06/95).
+     *
+     Actually, this is the way geometry management says it should be. - kb
+	  */
 #define BUTTON_BOX() {\
 	  AddButtonBox = ButtonBoxCreate("buttons", AddFrame);\
 	  doButtons(app_resources.addButtonList, AddButtonBox,\
 		    AddButtonList, &AddButtonListCount, TOP);\
+	  XtManageChild(AddButtonBox);\
 	}
 	
 #define INFO_LINE() {\
