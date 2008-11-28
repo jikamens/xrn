@@ -478,10 +478,6 @@ static int getNearbyArticle(status, file, question, artNum)
 	}
 	move = True;
 
-	/* If this assertion fires, you probably need to put "#define
-	   XAW_REDISPLAY_BUG" in config.h and recompile XRN. */
-	assert(ArtPosition == 0 || SubjectString[ArtPosition - 1] == '\n');
-
 	if (! SubjectString[ArtPosition])
 	    continue;
 
@@ -489,10 +485,6 @@ static int getNearbyArticle(status, file, question, artNum)
 	    continue;
 
 	*artNum = atol(&SubjectString[ArtPosition + 2]);
-
-	/* If this assertion fires, you probably need to put "#define
-	   XAW_REDISPLAY_BUG" in config.h and recompile XRN. */
-	assert(*artNum);
 
 	if (getArticle(CurrentGroup, *artNum, file, question) != XRN_OKAY) {
 	    mesgPane(XRN_SERIOUS, mesg_name, ART_NOT_AVAIL_MSG, *artNum);
@@ -641,7 +633,6 @@ static int isPrevSubject(subject, file, question, artNum)
 
 	    art = artStructGet(CurrentGroup, *artNum, True);
 	    SET_MAYBE_LISTED(art);
-	    artStructSet(CurrentGroup, &art);
 
 	    if (newSubjects) {
 		tmp = XtMalloc(utStrlen(newSubjects) + utStrlen(newLine) + 1);
@@ -862,13 +853,10 @@ int switchToArticleMode()
     for (i = FirstListedArticle + 1; i <= newsgroup->last; i++) {
       art = artStructGet(newsgroup, i, False);
       if (IS_AVAIL(art) && IS_UNREAD(art)) {
-	struct article copy;
-	copy = *art;
+	struct article copy = *art;
 	SET_LISTED(&copy);
 	artStructReplace(newsgroup, &art, &copy, i);
       }
-      else
-	ART_STRUCT_UNLOCK;
     }
 
     SubjectString = getSubjects(TextGetColumns(SubjectText), FirstListedArticle,
@@ -1018,8 +1006,6 @@ static void foundArticle(file, ques, motion)
 	struct article *art = artStructGet(CurrentGroup, PrevArticle, False);
 
 	setButtonSensitive(SubjectButtonBox, "artLast", True);
-
-	ART_STRUCT_UNLOCK;
 
 	if (art->file)
 	  file_cache_file_unlock(FileCache, *art->file);
@@ -1511,27 +1497,40 @@ void artNextGroupFunction(widget, event, string, count)
 	    mesgPane(XRN_SERIOUS, mesg_name, NO_SUCH_NG_DELETED_MSG, name);
 	    mesgPane(XRN_SERIOUS | XRN_SAME_LINE, mesg_name,
 		     SKIPPING_TO_NEXT_NG_MSG);
-	save_name:
 	    CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(name) + 1);
 	    (void) strcpy(CurrentIndexGroup, name);
 	    continue;
 	}
-	else if ((ret == XRN_NOMORE) || (ret == XRN_NOUNREAD)) {
-	    exitNewsgroup();
+	else if (ret == XRN_NOMORE) {
 	    if ((p = strstr(&ArticleNewsGroupsString[GroupPosition],
-			    (ret == XRN_NOMORE) ? NEWS_IN_MSG : UNREAD_MSG)) &&
+			    NEWS_IN_MSG)) &&
 		(p < strstr(&ArticleNewsGroupsString[GroupPosition], name))) {
-		mesgPane(XRN_INFO, mesg_name, (ret == XRN_NOMORE) ?
-			 PROBABLY_EXPIRED_MSG : PROBABLY_KILLED_MSG, name);
+		mesgPane(XRN_INFO, mesg_name, PROBABLY_EXPIRED_MSG, name);
 		mesgPane(XRN_INFO | XRN_SAME_LINE, mesg_name,
 			 SKIPPING_TO_NEXT_NG_MSG);
 	    }
-	    goto save_name;
+	    CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(name) + 1);
+	    (void) strcpy(CurrentIndexGroup, name);
+	    continue;
+	}
+	else if (ret == XRN_NOUNREAD) {
+	    if ((p = strstr(&ArticleNewsGroupsString[GroupPosition],
+			    UNREAD_MSG)) &&
+		(p < strstr(&ArticleNewsGroupsString[GroupPosition], name))) {
+		mesgPane(XRN_INFO, mesg_name, PROBABLY_KILLED_MSG, name);
+		mesgPane(XRN_INFO | XRN_SAME_LINE, mesg_name,
+			 SKIPPING_TO_NEXT_NG_MSG);
+	    }
+	    CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(name) + 1);
+	    (void) strcpy(CurrentIndexGroup, name);
+	    continue;
 	}
 	else if (ret != GOOD_GROUP) {
 	    mesgPane(XRN_SERIOUS, mesg_name, UNKNOWN_FUNC_RESPONSE_MSG,
 		     ret, "enterNewsgroup", "artNextGroupFunction");
-	    goto save_name;
+	    CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(name) + 1);
+	    (void) strcpy(CurrentIndexGroup, name);
+	    continue;
 	}
 
 	 if (switchToArticleMode() == GOOD_GROUP) {
@@ -1955,14 +1954,9 @@ void artThreadParentFunction(widget, event, string, count)
   art = artStructGet(CurrentGroup, artNum, False);
   assert(art);
 
-  if (prefer_listed && (parent = art->parent)) {
-    ART_STRUCT_UNLOCK;
-    if (articleIsAvailable(CurrentGroup, parent))
-      goto done;
-    art = artStructGet(CurrentGroup, artNum, False);
-  }
-
-  ART_STRUCT_UNLOCK;
+  if (prefer_listed && (parent = art->parent) &&
+      articleIsAvailable(CurrentGroup, parent))
+    goto done;
 
   if (! ((refs = XtNewString(art->references)) && *refs))
     goto done;
@@ -1979,14 +1973,13 @@ void artThreadParentFunction(widget, event, string, count)
       /* empty */;
     if (begin_id < refs)
       break;
-    if ((parent = getArticleNumberFromIdXref(CurrentGroup, begin_id))) {
+    if ((parent = getArticleNumberFromIdXref(CurrentGroup, begin_id)))
       if ((parent < 0) || !articleIsAvailable(CurrentGroup, parent)) {
 	parent = 0;
 	continue;
       }
       else
 	break;
-    }
     if (! cancel_created) {
       abortClear();
       cancelCreate("CancelThreadParent");
@@ -1998,11 +1991,10 @@ void artThreadParentFunction(widget, event, string, count)
       (void) getidlist(CurrentGroup, block_start, block_end, False, 0);
       for (checkee = block_end ; checkee >= block_start; checkee--) {
 	art = artStructGet(CurrentGroup, checkee, False);
-	ART_STRUCT_UNLOCK;
 	if (art->id && !strcmp(art->id, begin_id) &&
 	    articleIsAvailable(CurrentGroup, checkee)) {
 	  parent = checkee;
-	  goto done;
+	  break;
 	}
       }
       if (abortP()) {
@@ -2097,8 +2089,6 @@ static String artKillSession(
     assert(art);
 
     match_val = *(char **)((char *)art + source_offset);
-    ART_STRUCT_UNLOCK;
-
     if (source_fix_function)
       match_val = (*source_fix_function)(match_val);
     if (! match_val) {
@@ -2131,28 +2121,23 @@ static String artKillSession(
 
 	left = 0;
 	while (SubjectString[left] != '\0') {
-	    if ((SubjectString[left] != UNREAD_MARKER) &&
-		(SubjectString[left] != READ_MARKER)) {
+	    if (SubjectString[left] != UNREAD_MARKER) {
 		artNum = atol(&SubjectString[left+2]);
 		art = artStructGet(CurrentGroup, artNum, False);
 		assert(art);
 		cur_val = *(char **)((char *)art + target_offset);
 		if (! cur_val) {
 		  /* XXX See above. */
-		    struct article copy;
-		    copy = *art;
+		    struct article copy = *art;
 		    mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, artNum);
 		    TextRemoveLine(SubjectText, left);
 		    removeLine(SubjectString, &left);
 		    SET_UNLISTED(&copy);
 		    artStructReplace(CurrentGroup, &art, &copy, artNum);
 		}
-		else {
-		  ART_STRUCT_UNLOCK;
-
-		  if
+		else if
 #ifdef POSIX_REGEX
-		        (! regexec(&reStruct, cur_val, 0, 0, 0))
+			(! regexec(&reStruct, cur_val, 0, 0, 0))
 #else
 # ifdef SYSV_REGEX
 	                (regex(reRet, cur_val))
@@ -2165,7 +2150,6 @@ static String artKillSession(
 			(void) markStringRead(SubjectString, left);
 			TextInvalidate(SubjectText, SubjectString, left, left + 1);
 		    }
-		}
 	    }
 	    if (!moveCursor(FORWARD, SubjectString, &left)) {
 		break;
@@ -2290,6 +2274,37 @@ void artKillAuthorFunction(widget, event, string, count)
 		       event, string, count, True);
 }
 
+static char *getFirstReference _ARGUMENTS((char *));
+
+static char *getFirstReference(references)
+     char *references;
+{
+  static char *ref_buf = NULL;
+  static int buf_size = 0;
+  char *lbrace, *rbrace;
+
+  if (! (references && *references))
+    return NULL;
+
+  if (! (lbrace = strchr(references, '<')))
+    return NULL;
+
+  if (! (rbrace = strchr(lbrace, '>')))
+    return NULL;
+
+  rbrace++;
+
+  if (rbrace - lbrace + 1 > buf_size) {
+    buf_size = rbrace - lbrace + 1;
+    ref_buf = XtRealloc(ref_buf, buf_size);
+  }
+
+  strncpy(ref_buf, lbrace, rbrace - lbrace);
+  ref_buf[rbrace - lbrace] = '\0';
+
+  return ref_buf;
+}
+
 void artKillThreadFunction(widget, event, string, count)
      Widget widget;
      XEvent *event;
@@ -2342,7 +2357,7 @@ void artListOldHandler(widget, client_data, call_data)
     TextUnsetSelection(SubjectText);
 
     if ((int) client_data == XRNgotoArticle_ABORT) {
-      goto finishedl;
+      goto finished;
     }
     else if ((int) client_data == XRNgotoArticle_DEFAULT) {
       artNum = CurrentGroup->first;
@@ -2358,17 +2373,13 @@ void artListOldHandler(widget, client_data, call_data)
 	  artNum = atol(numberstr);
 	if (! artNum) {
 	  mesgPane(XRN_SERIOUS, 0, BAD_ART_NUM_MSG, numberstr);
-	  goto finishedl;
+	  goto finished;
 	}
 	if (*numberstr == '+')
 	  artNum = MAX(FirstListedArticle - artNum, CurrentGroup->first);
       }
     }
 
-    if (GotoArticleBox) {
-      PopDownDialog(GotoArticleBox);
-      GotoArticleBox = 0;
-    }
     abortClear();
     cancelCreate("CancelListOld");
 
@@ -2389,8 +2400,6 @@ void artListOldHandler(widget, client_data, call_data)
 	  artStructReplace(CurrentGroup, &art, &copy, i);
 	  FirstListedArticle = MIN(FirstListedArticle, i);
 	}
-	else
-	  ART_STRUCT_UNLOCK;
       }
       SubjectString = getSubjects(TextGetColumns(SubjectText),
 				  FirstListedArticle, True);
@@ -2413,7 +2422,11 @@ void artListOldHandler(widget, client_data, call_data)
       setListSorted(True);
     }
 
-finishedl:
+finished:
+    if (GotoArticleBox) {
+      PopDownDialog(GotoArticleBox);
+      GotoArticleBox = 0;
+    }
     xrnUnbusyCursor();
     cancelDestroy();
     inCommand = 0;
@@ -2550,31 +2563,36 @@ static void gotoArticleHandler(widget, client_data, call_data)
     inCommand = 1;
     xrnBusyCursor();
     TextUnsetSelection(SubjectText);
-    numberstr = GetDialogValue(GotoArticleBox);
-    PopDownDialog(GotoArticleBox);
-    GotoArticleBox = 0;
     if ((int) client_data == XRNgotoArticle_ABORT) {
-      goto finished;
+	PopDownDialog(GotoArticleBox);
+	GotoArticleBox = 0;
+	xrnUnbusyCursor();
+	inCommand = 0;
+	return;
     }
-    abortClear();
-    cancelCreate("CancelGotoArticle");
+    numberstr = GetDialogValue(GotoArticleBox);
     if (! (numberstr && *numberstr)) {
 	mesgPane(XRN_INFO, 0, NO_ART_NUM_MSG);
-	goto finished;
+	PopDownDialog(GotoArticleBox);
+	GotoArticleBox = 0;
+	xrnUnbusyCursor();
+	inCommand = 0;
+	return;
     }
 
     artNum = atol(numberstr);
     if (artNum == 0) {
 	mesgPane(XRN_SERIOUS, 0, BAD_ART_NUM_MSG, numberstr);
-	goto finished;
+	PopDownDialog(GotoArticleBox);
+	GotoArticleBox = 0;
+	xrnUnbusyCursor();
+	inCommand = 0;
+	return;
     }
 
     status = moveToArticle(CurrentGroup, artNum, &file, &question);
 
     switch (status) {
-
-    case ABORT:
-      break;
 
     case NOMATCH:
     case ERROR:
@@ -2609,10 +2627,10 @@ static void gotoArticleHandler(widget, client_data, call_data)
 	break;
     }
 
- finished:
+    PopDownDialog(GotoArticleBox);
+    GotoArticleBox = 0;
     xrnUnbusyCursor();
     inCommand = 0;
-    cancelDestroy();
     return;
 }
 
@@ -2877,7 +2895,6 @@ static int subjectSearch(dir, position, expr, file, ques, artNum)
 
 		art = artStructGet(CurrentGroup, *artNum, True);
 		SET_MAYBE_LISTED(art);
-		artStructSet(CurrentGroup, &art);
 		if (! last_new)
 		  first_new = last_new = *artNum;
 		else
@@ -2896,7 +2913,6 @@ static int subjectSearch(dir, position, expr, file, ques, artNum)
 		    if (getArticle(CurrentGroup, *artNum, file, ques) != XRN_OKAY) {
 			mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
 			removeLine(newString, 0);
-			art = artStructGet(CurrentGroup, *artNum, True);
 			SET_UNLISTED(art);
 			artStructSet(CurrentGroup, &art);
 			continue;
@@ -3639,10 +3655,8 @@ void artDoTheRightThing(widget, event, string, count)
 	    }
 	}
 	else {
-	    long top_position = TextGetTopPosition(ArticleText);
 	    artScrollFunction(widget, event, string, count);
-	    if (TextPastLastPage(ArticleText) ||
-		(top_position == TextGetTopPosition(ArticleText)))
+	    if (TextPastLastPage(ArticleText))
 		goto next_article;
 	}
     }
