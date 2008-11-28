@@ -1,19 +1,16 @@
 !
-! $Id: XRn.src,v 1.204 2008-11-28 17:57:52 jik Exp $
+! $Id: XRn.src,v 1.64 1995-03-30 20:30:51 jik Exp $
 !
-MOTIFxAPP_CLASSx.version:			9.03-beta-15 (Motif)
-XAWxAPP_CLASSx.version:			9.03-beta-15
-xAPP_CLASSx.Geometry:			680x700
+XRn.version:			7.03-beta-4
+XRn.Geometry:			680x700
 *breakLength:			0
 *font:			8x13
 *Label.font:			8x13
 *Command.font:		9x15
 *Dialog.borderWidth:		1
-*Dialog.default.accelerators: #override \n\
-	<Key>Linefeed: XawSet() XawNotify() XawUnSet() \n\
-	<Key>Return: XawSet() XawNotify() XawUnSet()
-MOTIF*XmLabel.fontList:			7x13
-MOTIF*XmPushButton.fontList:		7x13bold
+*Dialog.default.Accelerators: #override \n\
+	<Key>0xff0a: set() notify() unset() \n\
+	<Key>0xff0d: set() notify() unset()
 
 *lockFile:	~/.xrnlock
 
@@ -30,646 +27,292 @@ MOTIF*XmPushButton.fontList:		7x13bold
 ! by sprintf to insert the value of authenticator/NNTPAUTH.
 *authenticatorCommand:	     xterm -geometry 30x5+1+1 -T 'News Authentication' -e "%s"
 
+! Index asciiText window stuff
+*index.cursor:         left_ptr
 ! Composition pane stuff
-XAW*Composition.pane.text.scrollVertical:		always
-XAW*Composition.pane.text.wrap:			never
-XAW*Composition.pane.text.autoFill:		true
-XAW*Composition*showGrip:			false
-MOTIF*Composition.pane*text.scrollVertical:		true
-MOTIF*Composition.pane*text.wrap:			false
+*Composition.pane.text.scrollVertical:		always
+*Composition.pane.text.wrap:			never
+*Composition.pane.text.autoFill:		true
 
 ! button keybindings
 
-*addFrame.list.baseTranslations: #override\
-  <Key>q:	addQuit()	\n\
-  <Key>x:	addIgnoreRest()	\n\
-  <Key>\^:	addFirst()	\n\
-  <Key>\$:	addLast()	\n\
-  <Key>+:	addAfter()	\n\
-  <Key>u:	addUnsub()	\n\
-  <Key>i:	addIgnore()	\n\
-  <Key>Left:	no-op(RingBell)	\n\
-  <Key>Right:	no-op(RingBell)	\n
+*index.Translations:   #override \n\
+  <Btn2Down>:	select-start() extend-end() doTheRightThing(jump)	\n\
+  <Btn1Up>:	extend-end(PRIMARY, CUT_BUFFER0) doPrefetch()		\n\
+  <Btn3Up>:	extend-end(PRIMARY, CUT_BUFFER0) doPrefetch()
 
-*ngFrame.newsgroups.baseTranslations: #override					\n\
-  :<Btn1Up>:		extend-end() doPrefetch()				\n\
-XAW  :<Btn3Up>:		extend-end() doPrefetch()				\n\
-MOTIF  Shift<Btn1Up>:	extend-end() doPrefetch()				\n\
-  :<Btn2Down>:		select-start() extend-end() doTheRightThing(jump)	\n\
-  <Key>q:		ngQuit()						\n\
-  <Key>space:		ngRead()						\n\
-  <Key>y:		ngRead()						\n\
-  <Key>n:		ngNext() doPrefetch()					\n\
-  <Key>Down:		ngNext() doPrefetch()					\n\
-  <Key>p:		ngPrev() doPrefetch()					\n\
-  <Key>Up:		ngPrev() doPrefetch()					\n\
-  Ctrl<Key>v:		ngScroll() doPrefetch()					\n\
-  <Key>Next:		ngScroll() doPrefetch()					\n\
-  Meta<Key>v:		ngScrollBack() doPrefetch()				\n\
-  <Key>Prior:		ngScrollBack() doPrefetch()				\n\
-  <Key>c:		ngCatchUp() doPrefetch()				\n\
-  ~Ctrl ~Shift<Key>s:	ngSubscribe()						\n\
-  <Key>u:		ngUnsub() doPrefetch()					\n\
-  ~Shift<Key>g:		ngGoto()						\n\
-  Shift<Key>L:		ngAllGroups()						\n\
-  ~Shift<Key>r:		ngRescan()						\n\
-  Shift<Key>R:		ngGetList()						\n\
-  <Key>-:		ngPrevGroup()						\n\
-  ~Shift<Key>l:		ngListOld()						\n\
-  ~Ctrl Shift<Key>S:	ngSelect()						\n\
-  ~Shift<Key>m:		ngMove()						\n\
-  <Key>x:		ngExit()						\n\
-  ~Shift Ctrl<Key>s:	ngCheckPoint()						\n\
-  Shift<Key>G:		ngGripe()						\n\
-  ~Shift<Key>a:		ngPost()						\n\
-  Shift<Key>A:		ngPostAndMail()						\n\
-  Shift<Key>M:		ngMail()						\n\
-  <Key>Left:		no-op(RingBell)						\n\
-  <Key>Right:		no-op(RingBell)						\n
+*ngBindings: \
+  <Key>0x20:	doTheRightThing(goto)	\n\
+  <Key>y:	doTheRightThing(goto)	\n\
+  :<Key>u:	ngUnsub() doPrefetch()	\n\
+  :<Key>c:	ngCatchUp() doPrefetch()\n\
+  <Key>n:	ngNext() doPrefetch()	\n\
+  <Key>Down:	ngNext() doPrefetch()	\n\
+  <Key>p:	ngPrev() doPrefetch()	\n\
+  <Key>Up:	ngPrev() doPrefetch()	\n\
+  <Key>-:	ngPrevGroup()	\n\
+  :<Key>g:	ngGoto()	\n\
+  :<Key>L:	ngAllGroups()	\n\
+  <Key>q:	ngQuit()
 
-*ngUnsub*baseTranslations: #override \n\
+*ngUnsub.translations: #override \n\
 	<Btn1Up>:	notify() unset() doPrefetch()
-*ngCatchUp*baseTranslations: #override \n\
+*ngCatchUp.translations: #override \n\
 	<Btn1Up>:	notify() unset() doPrefetch()
-*ngNext*baseTranslations: #override \n\
+*ngNext.translations: #override \n\
 	<Btn1Up>:	notify() unset() doPrefetch()
-*ngScroll*baseTranslations: #override \n\
-	<Btn1Up>:	notify() unset() doPrefetch()
-*ngScrollBack*baseTranslations: #override \n\
+*ngPrev.translations: #override \n\
 	<Btn1Up>:	notify() unset() doPrefetch()
 
-*artFrame.subjects.baseTranslations: #override			\n\
-  <Btn2Down>:		select-start() extend-end() artNext()	\n\
-  <Key>space:		doTheRightThing(goto)			\n\
-  <Key>q:		artQuit()				\n\
-  :~Ctrl ~Meta<Key>n:	artNextUnread()				\n\
-  :~Ctrl ~Meta<Key>N:	artNext()				\n\
-  ~Ctrl~Meta<Key>p:	artPrev()				\n\
-  <Key>-:		artLast()				\n\
-  <Key>Linefeed:	artCurrent()				\n\
-  <Key>Return:		artCurrent()				\n\
-  ~Meta<Key>Up:		artUp()					\n\
-  ~Meta<Key>Down:	artDown()				\n\
-  Meta<Key>n:		artNextGroup()				\n\
-  ~Meta<Key>c:		artCatchUp()				\n\
-  Meta<Key>c:		artFedUp()				\n\
-  ~Shift<Key>.:		artGotoArticle()			\n\
-  <Key>j:		artMarkRead()				\n\
-  ~Shift<Key>m:		artMarkUnread()				\n\
-  <Key>+:		artSub()				\n\
-  <Key>u:		artUnsub()				\n\
-  Ctrl<Key>n:		artSubNext()				\n\
-  Ctrl<Key>p:		artSubPrev()				\n\
-  Meta<Key>p:		artThreadParent()			\n\
-  Shift<Key>L:		artListOld()				\n\
-  ~Meta<Key>k:		artKillSubject()			\n\
-  Meta<Key>k:		artKillAuthor()				\n\
-  ~Meta<Key>t:		artKillThread()				\n\
-  Meta<Key>t:		artKillSubthread()			\n\
-  ~Meta<Key>/:		artSubSearch()				\n\
-  Meta<Key>/:		artContinue()				\n\
-  ~Shift Ctrl<Key>v:	artScroll()				\n\
-  ~Shift <Key>Next:	artScroll()				\n\
-  ~Shift Meta<Key>v:	artScrollBack()				\n\
-  ~Shift <Key>Prior:	artScrollBack()				\n\
-  <Key>b:		artScrollBack()				\n\
-  Meta<Key>Down:	artScrollLine()				\n\
-  Meta<Key>Up:		artScrollBackLine()			\n\
-  <Key>\>:		artScrollEnd()				\n\
-  <Key>\<:		artScrollBeginning()			\n\
-  Shift Ctrl<Key>v:	artScrollIndex()			\n\
-  Shift <Key>Next:	artScrollIndex()			\n\
-  Shift Meta<Key>v:	artScrollIndexBack()			\n\
-  Shift <Key>Prior:	artScrollIndexBack()			\n\
-  ~Shift<Key>a:		artPost()				\n\
-  Shift<Key>A:		artPostAndMail()			\n\
-  Shift<Key>M:		artMail()				\n\
-  ~Shift ~Ctrl<Key>x:	artExit()				\n\
-  Ctrl<Key>s:		artCheckPoint()				\n\
-  Shift<Key>G:		artGripe()				\n\
-  ~Ctrl<Key>s:		artSave()				\n\
-  <Key>w:		artSave()				\n\
-  <Key>|:		artSave()				\n\
-  <Key>r:		artReply()				\n\
-  Meta<Key>f:		artForward()				\n\
-  ~Meta ~Ctrl<Key>f:	artFollowup()				\n\
-  Ctrl<Key>f:		artFollowupAndReply()			\n\
-  Shift<Key>C:		artCancel()				\n\
-  Ctrl<Key>x:		artRot13()				\n\
-  Shift<Key>X:		artRot13()				\n\
-  ~Ctrl ~Meta<Key>v:	artHeader()				\n\
-  <Key>Left:		no-op(RingBell)				\n\
-  <Key>Right:		no-op(RingBell)				\n\
-  ~Ctrl<Key>o:		artResort()				\n\
-  Ctrl<Key>o:		artResort(false)			\n
+*artBindings: \
+  <Key>b:	artScrollBack()		\n\
+  <Key>0x20:	doTheRightThing(goto)	\n\
+  ^<Key>N:	artSubNext()	\n\
+  :<Key>N:	artNext()	\n\
+  :<Key>Down:	artNext()	\n\
+  :<Key>n:	artNextUnread()	\n\
+  ^<Key>P:	artSubPrev()	\n\
+  <Key>P:	artPrev()	\n\
+  <Key>Up:	artPrev()	\n\
+  :<Key>-:	artLast()	\n\
+  :<Key>/:	artSubSearch()	\n\
+  <Key>f:	artFollowup()	\n\
+  <Key>r:	artReply()	\n\
+  <Key>s:	artSave()	\n\
+  <Key>w:	artSave()	\n\
+  <Key>|:	artSave()	\n\
+  <Key>%:	artSave("| uudecode")	\n\
+  :<Key>C:	artCancel()	\n\
+  :<Key>v:	artHeader()	\n\
+  ^<Key>X:	artRot13()	\n\
+  :<Key>X:	artRot13()	\n\
+  :<Key>c:	artCatchUp()	\n\
+  :<Key>j:	artMarkRead()	\n\
+  <Key>m:	artMarkUnread()	\n\
+  :<Key>k:	artKillSession()	\n\
+  :<Key>K:	artKillLocal()	\n\
+  :<Key>u:	artUnsub()	\n\
+  <Key>.:	artGotoArticle()	\n\
+  <Key>q:	artQuit()
 
-*allFrame.list.baseTranslations: #override		\n\
-  <Btn2Down>:	select-start() extend-end() allGoto()	\n\
-  <Key>q:	allQuit()				\n\
-  <Key>n:	allNext()				\n\
-  <Key>Down:	allNext()				\n\
-  <Key>p:	allPrev()				\n\
-  <Key>Up:	allPrev()				\n\
-  Ctrl<Key>v:	allScroll()				\n\
-  <Key>Next:	allScroll()				\n\
-  Meta<Key>v:	allScrollBack()				\n\
-  <Key>Prior:	allScrollBack()				\n\
-  <Key>/:	allSearch()				\n\
-  <Key>l:	allLimit()				\n\
-  ~Shift<Key>s:	allSub()				\n\
-  <Key>\^:	allFirst()				\n\
-  <Key>\$:	allLast()				\n\
-  <Key>+:	allAfter()				\n\
-  <Key>u:	allUnsub()				\n\
-  <Key>i:	allIgnore()				\n\
-  <Key>space:	allGoto()				\n\
-  <Key>g:	allGoto()				\n\
-  Shift<Key>S:	allSelect()				\n\
-  ~Shift<Key>m:	allMove()				\n\
-  <Key>o:	allToggle()				\n\
-  ~Shift<Key>a:	allPost()				\n\
-  Shift<Key>A:	allPostAndMail()			\n\
-  Shift<Key>M:	allMail()				\n\
-  <Key>Left:	no-op(RingBell)				\n\
-  <Key>Right:	no-op(RingBell)				\n
+*allBindings: \
+  <Key>q:	allQuit()
 
-! Kill button actions
-
-*artKillSubject*baseTranslations: #override	\n\
-  <BtnDown>:		set()			\n\
-  <BtnUp>:		notify() unset()	\n
-
-*artKillAuthor*baseTranslations: #override	\n\
-  <BtnDown>:		set()			\n\
-  <BtnUp>:		notify() unset()	\n
-
-*artKillThread*baseTranslations: #override	\n\
-  <BtnDown>:		set()			\n\
-  <BtnUp>:		notify() unset()	\n
-
-*artKillSubthread*baseTranslations: #override	\n\
-  <BtnDown>:		set()			\n\
-  <BtnUp>:		notify() unset()	\n
-
-! Default button lists
-
-*addButtonList: addQuit addIgnoreRest addFirst addLast addAfter \
-	addUnsub addIgnore
-
-*ngButtonList: ngQuit ngRead ngNext ngPrev ngCatchUp ngSubscribe \
-	ngUnsub ngGoto ngAllGroups ngRescan ngPrevGroup ngListOld \
-	ngSelect ngMove ngExit ngCheckPoint ngGripe ngPost \
-	ngPostAndMail
-
-*allButtonList: allQuit allNext allPrev allSearch allLimit allSub \
-	allFirst allLast allAfter allUnsub allIgnore allGoto \
-	allSelect allMove allToggle allPost allPostAndMail
-
-*artButtonList: artQuit artNextUnread artNext artPrev artLast \
-	artNextGroup artCatchUp artFedUp artGotoArticle artMarkRead \
-	artMarkUnread artUnsub artSubNext artSubPrev artThreadParent \
-	artListOld artResort artKillSubject artKillAuthor \
-	artKillThread artKillSubthread artSubSearch \
-	artContinue artPost artPostAndMail artExit artCheckPoint
-
-*artSpecButtonList: artSave artReply artForward artFollowup \
-	artFollowupAndReply artCancel artRot13 artXlate artHeader \
-	artPrint
+*addBindings: \
+  <Key>q:	addQuit()
 
 ! scrollbars, resize, wrap
-XAW*popup.dialog.value.scrollVertical: never
-XAW*popup.dialog.value.scrollHorizontal: never
-MOTIF*popup.dialog*value.scrollVertical:	False
-MOTIF*popup.dialog*value.scrollHorizontal:	False
+*popup.dialog.value.scrollVertical: never
+*popup.dialog.value.scrollHorizontal: never
+*vpane.Text.scrollVertical: always
+*vpane.Text.resize: never
+*titlebar.resize: false
+*articleText.wrap: word
+*index.wrap: never
 
 ! A few directions for vpane resizing...
-
-! Generic
-
-*Paned.Box.allowResize:		True
-*Paned.Box.skipAdjust:		True
-*Paned.Box.showGrip:		False
-*Paned.Box.resizeToPreferred:	True
-
-! Add mode
-
-XAW*addFrame.list.scrollVertical:	always
-MOTIF*addFrame*list.scrollVertical:		True
-*addFrame*list.cursor:		left_ptr
-
-! All mode
-
-XAW*allFrame.list.scrollVertical:	always
-MOTIF*allFrame*list.scrollVertical:	True
-*allFrame*list.cursor:		left_ptr
-
-! Article mode
-
-MOTIF*artFrame.subjectsSW.resizeToPreferred:	True
-MOTIF*artFrame.subjectsSW.skipAdjust:	False
-
-XAW*artFrame*subjects.scrollVertical:	always
-MOTIF*artFrame*subjects.scrollVertical:	True
-*artFrame*subjects.resizeToPreferred:	True
-*artFrame*subjects.skipAdjust:		True
-*artFrame*subjects.cursor:		left_ptr
-MOTIF*artFrame*subjects.editable:		False
-
-XAW*artFrame*text.scrollVertical:		always
-XAW*artFrame*text.wrap:			word
-MOTIF*artFrame*text.scrollVertical:		True
-MOTIF*artFrame*text.wrap:			True
-MOTIF*artFrame*text.editable:		false
-
-! Newsgroup mode
-
-XAW*ngFrame*newsgroups.scrollVertical:	always
-XAW*ngFrame*newsgroups.cursor:		left_ptr
-MOTIF*ngFrame*newsgroups.scrollVertical:	True
-MOTIF*ngFrame*newsgroups.cursor:		left_ptr
-MOTIF*ngFrame*newsgroups.editable:		false
+*vpane.Text.allowResize: False
+*vpane.Text.skipAdjust: False
+*vpane.Box.allowResize: True
+*vpane.Box.skipAdjust: True
+*vpane.Label.allowResize: True
+*vpane.Label.skipAdjust: False
+! grips
+*articleText.showGrip:	False
+*titlebar.showGrip:	False
+*indexinfo.showGrip:	False
+*indexbuttons.showGrip:	False
+*textinfo.showGrip:	False
 
 ! button names
 LANG_english*addQuit.label:		Quit
-LANG_french*addQuit.label:		Pas d'abonnement
-LANG_german*addQuit.label:		Auswahl beenden
-LANG_english*addIgnoreRest.label:	Ignore rest
-LANG_french*addIgnoreRest.label:	Ignore rest
-LANG_german*addIgnoreRest.label:	Rest ignorieren
+LANG_german*addQuit.label:		Gruppenauswahl
 LANG_english*addFirst.label:		Add first
-LANG_french*addFirst.label:		Ajouter en tÅÍte
-LANG_german*addFirst.label:		Abo, Anfang
+LANG_german*addFirst.label:		an Anfang
 LANG_english*addLast.label:		Add last
-LANG_french*addLast.label:		Ajouter en queue
-LANG_german*addLast.label:		Abo, Ende
+LANG_german*addLast.label:		an Ende
 LANG_english*addAfter.label:		Add after group
-LANG_french*addAfter.label:		Ajouter aprÅËs le groupe
-LANG_german*addAfter.label:		Abo&plazieren
+LANG_german*addAfter.label:		Platzieren
 LANG_english*addUnsub.label:		Add unsubscribed
-LANG_french*addUnsub.label:		Ajouter non abonnÅÈ
-LANG_german*addUnsub.label:		Nicht abonnieren
-LANG_english*addIgnore.label:		Ignore
-LANG_french*addIgnore.label:		Ignore
-LANG_german*addIgnore.label:		Ignorieren
+LANG_german*addUnsub.label:		Gruppe verwerfen
 
 LANG_english*ngQuit.label:		Quit
-LANG_french*ngQuit.label:		Quitter
 LANG_german*ngQuit.label:		Beenden
 LANG_english*ngRead.label:		Read
-LANG_french*ngRead.label:		Lire groupe
-LANG_german*ngRead.label:		NG lesen
+LANG_german*ngRead.label:		Gruppe lesen
 LANG_english*ngNext.label:		Next
-LANG_french*ngNext.label:		Suivant
-LANG_german*ngNext.label:		N\344chste NG
+LANG_german*ngNext.label:		n\344chste Gruppe
 LANG_english*ngPrev.label:		Prev
-LANG_french*ngPrev.label:		PrÅÈcÅÈdent
-LANG_german*ngPrev.label:		Vorige NG
+LANG_german*ngPrev.label:		vorherige Gruppe
 LANG_english*ngCatchUp.label:		Catch up
-LANG_french*ngCatchUp.label:		Rattraper
-LANG_german*ngCatchUp.label:		Alles gelesen
+LANG_german*ngCatchUp.label:		Gruppe gelesen
 LANG_english*ngSubscribe.label:		Subscribe
-LANG_french*ngSubscribe.label:		S'abonner
-LANG_german*ngSubscribe.label:		NG abonnieren
+LANG_german*ngSubscribe.label:		Gruppe abbonieren
 LANG_english*ngUnsub.label:		Unsubscribe
-LANG_french*ngUnsub.label:		Se dÅÈsabonner
-LANG_german*ngUnsub.label:		NG abbestellen
+LANG_german*ngUnsub.label:		Gruppe verwerfen
 LANG_english*ngGoto.label:		Goto group
-LANG_french*ngGoto.label:		Aller au groupe
-LANG_german*ngGoto.label:		Gehe zu NG
+LANG_german*ngGoto.label:		gehe zu Gruppe
 LANG_english*ngListOld.label:		List old
-LANG_french*ngListOld.label:		Groupes abonnÅÈs
-LANG_german*ngListOld.label:		Alle Abos zeigen
+LANG_german*ngListOld.label:		abbonierte Gruppen
 LANG_english*ngAllGroups.label:		All groups
-LANG_french*ngAllGroups.label:		Tous les groupes
-LANG_german*ngAllGroups.label:		Alle NG zeigen
+LANG_german*ngAllGroups.label:		Gruppen\374bersicht
 LANG_english*ngRescan.label:		Rescan
-LANG_french*ngRescan.label:		RafraÅÓchir
-LANG_german*ngRescan.label:		Serverabfrage
-LANG_english*ngGetList.label:		Get newsgroup list
-LANG_french*ngGetList.label:		Get newsgroup list
-LANG_german*ngGetList.label:		Hole NG-Liste
+LANG_german*ngRescan.label:		Server abfragen
 LANG_english*ngPrevGroup.label:		Prev group
-LANG_french*ngPrevGroup.label:		Groupe prÅÈcÅÈdent
-LANG_german*ngPrevGroup.label:		Zuletzt gelesene NG
+LANG_german*ngPrevGroup.label:		vorherige Gruppe
 LANG_english*ngSelect.label:		Select groups
-LANG_french*ngSelect.label:		SÅÈlectionner groupes
-LANG_german*ngSelect.label:		Vormerken
+LANG_german*ngSelect.label:		Merken
 LANG_english*ngMove.label:		Move
-LANG_french*ngMove.label:		DÅÈplacer
 LANG_german*ngMove.label:		Verschieben
 LANG_english*ngExit.label:		Exit
-LANG_french*ngExit.label:		Terminer
-LANG_german*ngExit.label:		Abbrechen
+LANG_german*ngExit.label:		Verlassen
 LANG_english*ngCheckPoint.label:	Checkpoint
-LANG_french*ngCheckPoint.label:		Point de contrÅÙle
-LANG_german*ngCheckPoint.label:		Liste sichern
+LANG_german*ngCheckPoint.label:		Aktualisieren
 LANG_english*ngPost.label:		Post
-LANG_french*ngPost.label:		Poster
-LANG_german*ngPost.label:		Neuer Artikel
-LANG_english*ngPostAndMail.label:	Post & Mail
-LANG_french*ngPostAndMail.label:	Post & Mail
-LANG_german*ngPostAndMail.label:	Neuer Art.&EMail
-LANG_english*ngMail.label:		Send Mail
-LANG_french*ngMail.label:		Send Mail
-LANG_german*ngMail.label:		EMail
+LANG_german*ngPost.label:		Artikel verfassen
 LANG_english*ngGripe.label:		Gripe
-LANG_french*ngGripe.label:		RÅ‚ler
-LANG_german*ngGripe.label:		XRN-Betreuer
+LANG_german*ngGripe.label:		Nachricht Systemoperator
 LANG_english*ngScroll.label:		Scroll forward
-LANG_french*ngScroll.label:		Ascenseur avant
-LANG_german*ngScroll.label:		Seite vorw.
+LANG_german*ngScroll.label:		Seite nach unten
 LANG_english*ngScrollBack.label:	Scroll backward
-LANG_french*ngScrollBack.label:		Ascenseur arriÅËre
-LANG_german*ngScrollBack.label:		Seite zur\374ck
+LANG_german*ngScrollBack.label:		Seite nach oben
 
 LANG_english*allQuit.label:		Quit
-LANG_french*allQuit.label:		Quitter
-LANG_german*allQuit.label:		Auswahl beenden
-LANG_english*allNext.label:		Next
-LANG_french*allNext.label:		Next
-LANG_german*allNext.label:		N\344chste NG
-LANG_english*allPrev.label:		Prev
-LANG_french*allPrev.label:		Prev
-LANG_german*allPrev.label:		Vorige NG
+LANG_german*allQuit.label:		Gruppenauswahl
 LANG_english*allSub.label:		Subscribe
-LANG_french*allSub.label:		S'abonner
-LANG_german*allSub.label:		NG abonnieren
+LANG_german*allSub.label:		Gruppe abbonieren
 LANG_english*allFirst.label:		Subscribe first
-LANG_french*allFirst.label:		S'abonner en tÅÍte
-LANG_german*allFirst.label:		Abo,  Anfang
+LANG_german*allFirst.label:		an Anfang
 LANG_english*allLast.label:		Subscribe last
-LANG_french*allLast.label:		S'abonner en queue
-LANG_german*allLast.label:		Abo,  Ende
+LANG_german*allLast.label:		an Ende
 LANG_english*allAfter.label:		Subscribe after group
-LANG_french*allAfter.label:		S'abonner aprÅËs un groupe
-LANG_german*allAfter.label:		Abo&plazieren
+LANG_german*allAfter.label:		Platzieren
 LANG_english*allUnsub.label:		Unsubscribe
-LANG_french*allUnsub.label:		Se dÅÈsabonner
-LANG_german*allUnsub.label:		NG abbestellen
-LANG_english*allIgnore.label:		Ignore
-LANG_french*allIgnore.label:		Ignore
-LANG_german*allIgnore.label:		Ignorieren
+LANG_german*allUnsub.label:		Gruppe verwerfen
 LANG_english*allGoto.label:		Goto group
-LANG_french*allGoto.label:		Aller au groupe
-LANG_german*allGoto.label:		Gehe zu NG
+LANG_german*allGoto.label:		gehe zu Gruppe
 LANG_english*allSelect.label:		Select groups
-LANG_french*allSelect.label:		SÅÈlectionner groupes
-LANG_german*allSelect.label:		Vormerken
+LANG_german*allSelect.label:		Merken
 LANG_english*allMove.label:		Move
-LANG_french*allMove.label:		DÅÈplacer
 LANG_german*allMove.label:		Verschieben
 LANG_english*allToggle.label:		Toggle order
-LANG_french*allToggle.label:		Changer l'ordre
-LANG_german*allToggle.label:		ABC/.newsrc-Rhf.
+LANG_german*allToggle.label:		Anzeige umschalten
 LANG_english*allScroll.label:		Scroll forward
-LANG_french*allScroll.label:		Ascenseur avant
-LANG_german*allScroll.label:		Seite vorw.
+LANG_german*allScroll.label:		Seite nach unten
 LANG_english*allScrollBack.label:	Scroll backward
-LANG_french*allScrollBack.label:	Ascenseur arriÅËre
-LANG_german*allScrollBack.label:	Seite zur\374ck
-LANG_english*allSearch.label:		Search
-LANG_french*allSearch.label:		Search
-LANG_german*allSearch.label:		Suchen
-LANG_english*allLimit.label:		Limit list
-LANG_french*allLimit.label:		Limit list
-LANG_german*allLimit.label:		Liste begrenzen
+LANG_german*allScrollBack.label:	Seite nach oben
 LANG_english*allPost.label:		Post
-LANG_french*allPost.label:		Poster
-LANG_german*allPost.label:		Neuer Artikel
-LANG_english*allPostAndMail.label:	Post & Mail
-LANG_french*allPostAndMail.label:	Post & Mail
-LANG_german*allPostAndMail.label:	Neuer Art.&EMail
-LANG_english*allMail.label:		Send Mail
-LANG_french*allMail.label:		Send Mail
-LANG_german*allMail.label:		EMail
+LANG_german*allPost.label:		Artikel verfassen
 
 LANG_english*artQuit.label:		Quit
-LANG_french*artQuit.label:		Quitter
-LANG_german*artQuit.label:		NG verlassen
+LANG_german*artQuit.label:		Gruppenauswahl
 LANG_english*artNext.label:		Next
-LANG_french*artNext.label:		Suivant
-LANG_german*artNext.label:		N\344chster Art.
-LANG_english*artCurrent.label:		Current
-LANG_french*artCurrent.label:		Current
-LANG_german*artCurrent.label:		Gew\344hlter Art.
-LANG_english*artUp.label:		Up index line
-LANG_french*artUp.label:		Up index line
-LANG_german*artUp.label:		Vorige Indexzeile
-LANG_english*artDown.label:		Down index line
-LANG_french*artDown.label:		Down index line
-LANG_german*artDown.label:		N\344chste Indexzeile
+LANG_german*artNext.label:		Artikel weiter
 LANG_english*artScroll.label:		Scroll forward
-LANG_french*artScroll.label:		Ascenseur avant
-LANG_german*artScroll.label:		Seite vorw.
+LANG_german*artScroll.label:		Seite nach unten
 LANG_english*artScrollBack.label:	Scroll backward
-LANG_french*artScrollBack.label:	Ascenseur arriÅËre
-LANG_german*artScrollBack.label:	Seite zur\374ck
+LANG_german*artScrollBack.label:	Seite nach oben
 LANG_english*artScrollLine.label:	Scroll line forward
-LANG_french*artScrollLine.label:	Avancer d'une ligne
-LANG_german*artScrollLine.label:	Zeile vorw.
+LANG_german*artScrollLine.label:	Zeile nach unten
 LANG_english*artScrollBackLine.label:	Scroll line backward
-LANG_french*artScrollBackLine.label:	Reculer d'une ligne
-LANG_german*artScrollBackLine.label:	Zeile zur\374ck
+LANG_german*artScrollBackLine.label:	Zeile nach oben
 LANG_english*artScrollEnd.label:	Scroll to end
-LANG_french*artScrollEnd.label:		Fin de liste
 LANG_german*artScrollEnd.label:		Zum Ende
 LANG_english*artScrollBeginning.label:	Scroll to beginning
-LANG_french*artScrollBeginning.label:	DÅÈbut de liste
 LANG_german*artScrollBeginning.label:	Zum Anfang
 LANG_english*artScrollIndex.label:	Scroll index
-LANG_french*artScrollIndex.label:	En avant vers l'index
-LANG_german*artScrollIndex.label:	Indexseite vorw.
+LANG_german*artScrollIndex.label:	Index nach unten
 LANG_english*artScrollIndexBack.label:	Scroll index backward
-LANG_french*artScrollIndexBack.label:	En arriÅËre vers l'index
-LANG_german*artScrollIndexBack.label:	Indexseite zur\374ck
+LANG_german*artScrollIndexBack.label:	Index nach oben
 LANG_english*artNextUnread.label:	Next unread
-LANG_french*artNextUnread.label:	Suivant non lu
-LANG_german*artNextUnread.label:	N\344chster ungelesener Art.
+LANG_german*artNextUnread.label:	n\344chster ungelesener Artikel
 LANG_english*artPrev.label:		Prev
-LANG_french*artPrev.label:		PrÅÈcÅÈdent
-LANG_german*artPrev.label:		Voriger Art.
+LANG_german*artPrev.label:		Gruppe zur\374ck
 LANG_english*artLast.label:		Last
-LANG_french*artLast.label:		Dernier
-LANG_german*artLast.label:		Zuetzt gelesener Art.
+LANG_german*artLast.label:		Letzter
 LANG_english*artNextGroup.label:	Next group
-LANG_french*artNextGroup.label:		Groupe suivant
-LANG_german*artNextGroup.label:		N\344chste NG
+LANG_german*artNextGroup.label:		n\344chste Gruppe
 LANG_english*artGotoArticle.label:	Goto article
-LANG_french*artGotoArticle.label:	Aller Å‡ l'article
-LANG_german*artGotoArticle.label:	Gehe zu Art.
+LANG_german*artGotoArticle.label:	gehe zu Artikel
 LANG_english*artCatchUp.label:		Catch up
-LANG_french*artCatchUp.label:		Rattraper
-LANG_german*artCatchUp.label:		NG bis Art. gelesen
+LANG_german*artCatchUp.label:		bis Artikel gelesen
 LANG_english*artFedUp.label:		Fed up
-LANG_french*artFedUp.label:		Consommer
-LANG_german*artFedUp.label:		NG gelesen, zur n\344chsten
+LANG_german*artFedUp.label:		Gruppe gelesen
 LANG_english*artMarkRead.label:		Mark read
-LANG_french*artMarkRead.label:		Marquer lu
-LANG_german*artMarkRead.label:		Art.`gelesen'
+LANG_german*artMarkRead.label:		Artikel gelesen
 LANG_english*artMarkUnread.label:	Mark unread
-LANG_french*artMarkUnread.label:	Marquer non lu
-LANG_german*artMarkUnread.label:	Art.`ungelesen'
+LANG_german*artMarkUnread.label:	Artikel nicht gelesen
 LANG_english*artUnsub.label:		Unsubscribe
-LANG_french*artUnsub.label:		Se dÅÈsabonner
-LANG_german*artUnsub.label:		NG abbestellen
-LANG_english*artSub.label:		Subscribe
-LANG_french*artSub.label:		Subscribe
-LANG_german*artSub.label:		NG abonnieren
+LANG_german*artUnsub.label:		Gruppe verwerfen
 LANG_english*artSubNext.label:		Subject next
-LANG_french*artSubNext.label:		Suivant du sujet
-LANG_german*artSubNext.label:		Suche vorw.
+LANG_german*artSubNext.label:		Suche vorw\344rts
 LANG_english*artSubPrev.label:		Subject prev
-LANG_french*artSubPrev.label:		PrÅÈcÅÈdent du sujet
 LANG_german*artSubPrev.label:		Suche zur\374ck
-LANG_english*artThreadParent.label:	Goto parent
-LANG_french*artThreadParent.label:	Goto parent
-LANG_german*artThreadParent.label:	Zum Vorg\344nger
-LANG_english*artKillSubject.label:	Subject kill
-LANG_french*artKillSubject.label:	Subject kill
-LANG_german*artKillSubject.label:	Thema ausblenden
+LANG_english*artKillSession.label:	Session kill
+LANG_german*artKillSession.label:	f\374 Sitzung l\366schen
+LANG_english*artKillLocal.label:	Local kill
+LANG_german*artKillLocal.label:		f\374 Gruppe l\366schen
+LANG_english*artKillGlobal.label:	Global kill
+LANG_german*artKillGlobal.label:	f\374 immer l\366schen
 LANG_english*artKillAuthor.label:	Author kill
-LANG_french*artKillAuthor.label:	Tuer l'auteur
-LANG_german*artKillAuthor.label:	Verf. ausblenden
-LANG_english*artKillThread.label:	Thread kill
-LANG_french*artKillThread.label:	Thread kill
-LANG_german*artKillThread.label:	Serie ausblenden
-LANG_english*artKillSubthread.label:	Subthread kill
-LANG_french*artKillSubthread.label:	Subthread kill
-LANG_german*artKillSubthread.label:	Teilserie ausblenden
+LANG_german*artKillAuthor.label:	Verfasser l\366schen 
 LANG_english*artSubSearch.label:	Subject search
-LANG_french*artSubSearch.label:		Chercher par sujet
-LANG_german*artSubSearch.label:		Thema Suchen
+LANG_german*artSubSearch.label:		Suchen Thema
 LANG_english*artContinue.label:		Continue
-LANG_french*artContinue.label:		Continuer
-LANG_german*artContinue.label:		Thema Weitersuchen
+LANG_german*artContinue.label:		Weitersuchen Thema
 LANG_english*artPost.label:		Post
-LANG_french*artPost.label:		Poster
-LANG_german*artPost.label:		Neuer Artikel
-LANG_english*artPostAndMail.label:	Post & Mail
-LANG_french*artPostAndMail.label:	Post & Mail
-LANG_german*artPostAndMail.label:	Neuer Art.&EMail
-LANG_english*artMail.label:		Send Mail
-LANG_french*artMail.label:		Send Mail
-LANG_german*artMail.label:		EMail
+LANG_german*artPost.label:		Artikel verfassen
 LANG_english*artExit.label:		Exit
-LANG_french*artExit.label:		Terminer
-LANG_german*artExit.label:		Abbrechen
+LANG_german*artExit.label:		Verlassen
 LANG_english*artGripe.label:		Gripe
-LANG_french*artGripe.label:		RÅ‚ler
-LANG_german*artGripe.label:		XRN-Betreuer
+LANG_german*artGripe.label:		Nachricht Systemoperator
 LANG_english*artListOld.label:		List old
-LANG_french*artListOld.label:		Tous les articles
-LANG_german*artListOld.label:		Alte Art. zeigen
-LANG_english*artResort.label:		Resort list
-LANG_french*artResort.label:		Resort list
-LANG_german*artResort.label:		Liste neu sortieren
+LANG_german*artListOld.label:		alle Artikel
 LANG_english*artCheckPoint.label:	Checkpoint
-LANG_french*artCheckPoint.label:	Point de contrÅÙle
-LANG_german*artCheckPoint.label:	Liste sichern
+LANG_german*artCheckPoint.label:	Aktualisieren
 
 LANG_english*artSave.label:		Save
-LANG_french*artSave.label:		Sauver
-LANG_german*artSave.label:		Art. speichern
+LANG_german*artSave.label:		Sichern
 LANG_english*artReply.label:		Reply
-LANG_french*artReply.label:		RÅÈpondre
-LANG_german*artReply.label:		Antwort EMail
+LANG_german*artReply.label:		Nachricht
 LANG_english*artForward.label:		Forward
-LANG_french*artForward.label:		Faire suivre
-LANG_german*artForward.label:		Weiterreichen EMail
+LANG_german*artForward.label:		Weiterreichen
 LANG_english*artFollowup.label:		Followup
-LANG_french*artFollowup.label:		Poursuivre
-LANG_german*artFollowup.label:		Folgeartikel
+LANG_german*artFollowup.label:		Bezug
 LANG_english*artFollowupAndReply.label:	Followup & Reply
-LANG_french*artFollowupAndReply.label:	Poursuivre & rÅÈpondre
-LANG_german*artFollowupAndReply.label:	Folgeart.&EMail
+LANG_german*artFollowupAndReply.label:	Bezug und Nachricht
 LANG_english*artCancel.label:		Cancel
-LANG_french*artCancel.label:		Annuler
-LANG_german*artCancel.label:		Art. zur\374ckziehen
+LANG_german*artCancel.label:		Zur\374ckziehen
 LANG_english*artXlate.label:		Translate
-LANG_french*artXlate.label:		Traduire
-LANG_german*artXlate.label:		Zeichensatz anpassen
+LANG_german*artXlate.label:		Anpassen
 LANG_english*artRot13.label:		Rot-13
-LANG_french*artRot13.label:		Rot-13
 LANG_german*artRot13.label:		Rot-13
 LANG_english*artHeader.label:		Toggle header
-LANG_french*artHeader.label:		En-tÅÍte
-LANG_german*artHeader.label:		Kopf ein/ausblenden
+LANG_german*artHeader.label:		Artikelkopf
 LANG_english*artPrint.label:		Print
-LANG_french*artPrint.label:		Imprimer
 LANG_german*artPrint.label:		Drucken
 
 LANG_english*compAbort.label:		abort
-LANG_french*compAbort.label:		Annuler
 LANG_german*compAbort.label:		Abbrechen
-LANG_english*compSwitchFollowup.label:	Post instead
-LANG_french*compSwitchFollowup.label:	Post instead
-LANG_german*compSwitchFollowup.label:	Post instead
-LANG_english*compSwitchReply.label:	Mail instead
-LANG_french*compSwitchReply.label:	Mail instead
-LANG_german*compSwitchReply.label:	Mail instead
-LANG_english*compSwitchBoth.label:	Post & mail instead
-LANG_french*compSwitchBoth.label:	Post & mail instead
-LANG_german*compSwitchBoth.label:	Post & mail instead
 LANG_english*compSend.label:		send
-LANG_french*compSend.label:		Envoyer
 LANG_german*compSend.label:		Verschicken
 LANG_english*compSave.label:		save
-LANG_french*compSave.label:		Sauver
 LANG_german*compSave.label:		Sichern
 LANG_english*compIncludeArticle.label:	include article
-LANG_french*compIncludeArticle.label:	Inclure article
-LANG_german*compIncludeArticle.label:	Art. einf\374gen
+LANG_german*compIncludeArticle.label:	Artikel einf\374gen
 LANG_english*compIncludeFile.label:	include file
-LANG_french*compIncludeFile.label:	Inclure fichier
 LANG_german*compIncludeFile.label:	Datei einf\374gen
 
 LANG_english*Cancel*label:		Cancel Search
-LANG_french*Cancel*label:		Annuler recherche
 LANG_german*Cancel*label:		Suche abbrechen
 
-LANG_english*CancelGotoArticle*label:	Cancel
-LANG_french*CancelGotoArticle*label:	Cancel
-LANG_german*CancelGotoArticle*label:	Abbrechen
-
-LANG_english*CancelListOld*label:	Cancel
-LANG_french*CancelListOld*label:	Cancel
-LANG_german*CancelListOld*label:	Abbrechen
-
-LANG_english*CancelThreadParent*label:	Cancel
-LANG_french*CancelThreadParent*label:	Cancel
-LANG_german*CancelThreadParent*label:	Abbrechen
-
-XAW*Information.geometry:		600x150
-XAW*Information.pane.label.showGrip:	False
-XAW*Information.pane.text.showGrip:	False
-XAW*Information.pane.box.skipAdjust:	True
-XAW*Information*mesgDismiss.accelerators: #override \n\
-XAW	<Key>Linefeed: set() notify() unset() \n\
-XAW	<Key>Return: set() notify() unset()
-XAWLANG_english*Information*mesgDismiss*label:	Dismiss
-XAWLANG_french*Information*mesgDismiss*label:	Supprimer
-XAWLANG_german*Information*mesgDismiss*label:	Schlie\337en
-XAWLANG_english*Information*mesgClear*label:	Clear
-XAWLANG_french*Information*mesgClear*label:	Effacer
-XAWLANG_german*Information*mesgClear*label:	L\366schen
-
-MOTIF*Information.autoUnmanage:		False
-MOTIF*Information*text.width:		500
-MOTIF*Information*text.height:		150
-MOTIFLANG_english*Information*cancelLabelString:	Dismiss
-MOTIFLANG_french*Information*cancelLabelString:		Supprimer
-MOTIFLANG_german*Information*cancelLabelString:		Schlie\337en
-MOTIFLANG_english*Information*okLabelString:		Clear
-MOTIFLANG_french*Information*okLabelString:		Effacer
-MOTIFLANG_german*Information*okLabelString:		L\366schen
-
-LANG_english*Information*label.label:	Information
-LANG_french*Information*label.label:	Information
-LANG_german*Information*label.label:	Informationen
+*Information.pane.label.showGrip:	False
+LANG_english*Information.pane.label.label:	Information (can be left up or dismissed)
+LANG_german*Information.pane.label.label:	Informationen (Fenster kann ge\366ffnet bleiben)
+*Information.pane.text.showGrip:	False
 *Information.saveUnder:			False
-*Information*text.displayCaret:		False
-XAW*Information*text.scrollVertical:	always
-XAW*Information*text.wrap:			word
-MOTIF*Information*text.scrollVertical:	True
-MOTIF*Information*text.wordWrap:		True
-MOTIF*Information*text.editable:		false
+*Information.geometry:			600x150
+*Information.pane.text.displayCaret:	False
+*Information.pane.text*scrollVertical:	always
+*Information.pane.text*wrap:		word
+*Information.pane.box.skipAdjust:	True
