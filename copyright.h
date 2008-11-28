@@ -2,7 +2,7 @@
 #define COPYRIGHT_H
 
 /*
- * $Id: copyright.h,v 1.4 1994-11-23 01:46:57 jik Exp $
+ * $Header: /d/src/cvsroot/xrn/copyright.h,v 1.2 1994-10-10 18:46:30 jik Exp $
  */
 
 /*
@@ -30,7 +30,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
+#if !defined(lint) && !defined(SABER)
 static char *copyright = "Copyright (c) 1988-1993, Ellen M. Sentovich and Rick L. Spickelmier.";
 #endif
 

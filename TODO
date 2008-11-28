@@ -1,278 +1,9 @@
 
-$Id: TODO,v 1.218 2006-01-03 16:16:57 jik Exp $
+$Header: /d/src/cvsroot/xrn/TODO,v 1.28 1994-11-07 16:04:36 jik Exp $
 
 The Ever growing list of things that should be done and things that would 
 be nice if they were done.... (and even worse, it's not up to date)
 
-- Since INN rejects postings with multiple CC headers, XRN should
-  merge them (and perhaps others as well).
-- The "artPost" composition pane should have a button to switch to
-  "Post and mail".
-- It should be possible to wrap included text, paying attention to the
-  included text prefix when doing so.
-- Warn the user if a message being sent or posted contains long lines.
-- XRN should strip empty headers before sending messages.
-- By default, including article text in a followup or reply should not
-  include the signature.  To allow the signature to be included, two
-  features should be available:
-
-  - A modifier hey held down when the "Include article" button is
-    pressed to tell XRN to include everything.
-  - The user should be allowed to highlight the text he wants to
-    include and then click on a button to include just that text.
-- In "all groups" mode, the "Post" and "Post & Mail" buttons post to
-  whatever newsgroup the cursor is currently over.  I'm not convinced
-  this is correct behavior; I suspect that like Newsgroup mode, they
-  should put up a blank template and let the user specify the group to
-  which to post.
-- Allow various header fields (configurable) in a displayed message to
-  be in a different font, different color, different size, etc.
-- Add an option to hide identical Subject lines in the article
-  summary, so that users can scan the summary quickly to find the
-  various Subject lines in a group.  Suggested by Karl Kleinpaste
-  <karl@justresearch.com>.
-- When a message is put in the info line while a dialog is popped up
-  (e.g., the dialog with the "Cancel search" button in it), and then
-  the dialog is popped down, if the mouse is over one of the buttons,
-  the message in the info line will immediately disappear because of
-  the enter event generated when the dialog goes away.  Proposed fix:
-  Keep track of the time at which messages are put into the info line,
-  and require that a message remain in the info line for some number
-  of seconds before allowing the button documentation strings to start
-  appearing again.
-- Log the date in the Information window when it chanegs, so that it's
-  possible to tell the dates as well as times of all messages in the
-  window.  Suggested by bri@whitestone.com (Brian Rice).
-- Allow Reply-To to be set differently for News and Mail messages.
-- Add a kill-file command for dynamically creating a new kill-file
-  entry (e.g., "when you see a message by this author, kill its
-  subthread," but more general than that).
-- Allow the user to retry after mistyping his NNTP password.
-- Allow users to Supersede their own articles, similar to their
-  current ability to cancel their own articles.
-- Make XRN behave better in the face of groups in the active file
-  which claim to have many more unread articles than they actually do
-  because the active file hasn't been renumbered.
-- Make it possible to undo changes made to a newsgroup after exiting
-  the group.
-- Make XRN display a list of valid distributions (or make the list
-  available to the user in some other way) while composing a posting.
-- Support a separate colormap for XRN.
-- XRN should notice when the contents of a THRU line makes no sense,
-  and ignore it if so.
-- XRN should include the NNTP server name on the THRU line, so that
-  the same KILL file can be used with multiple servers.
-- Don't redraw the newsgroup list immediately upon rescan -- only
-  redraw it if it changes.
-- For dialog boxes that prompt for file names, either (a) allow a
-  "file selection widget" type of thing to be used, or (b) keep track
-  of previously specified file names and allow them to be selected
-  from a menu in addition to allowing a new filename to be specified,
-  or (c) some combination of both of these.
-- There are various places where XRN notices that newsgroup which
-  previously existed doesn't anymore, but then doesn't proceed to
-  follow through on that and remove the newsgroup from the .newsrc,
-  cache, newsgroup list, etc.  These should be fixed.
-- Make the Makefile insert the version number into xrn.man and XRn.ad
-  so that it only have to be hard-coded in one place -- patchlevel.h.
-- Document accelerators for the text window of article mode in the man
-  page.
-- Add a facility to allow users to add customized headers to outgoing
-  messages, in addition to the ones that XRN knows about (possibly,
-  make them different for mail and news messages, with the same class
-  so people who want them to be the same don't have to put them in
-  their resources twice).
-- Add a "Save" button to the dialog that comes up after a composition
-  is edited with an external editor, asking the user to send, abort or
-  reedit.
-- GroupLens integration.
-- Display a netiquette message directing new users to
-  news.announce.newusers when they read news for the first time
-  (suppressable by an X resource).
-- When the user is posting, there are no postable groups in the
-  Newsgroups line, and fullNewsrc is false, ask the user if he wants
-  to fetch the full newsgroup list in case the group(s) he's trying to
-  post to is/are ignored.
-- Support for scoring on both authors and threads?  E.g., sort
-  Subjects by their scores, only display articles above a certain
-  score, don't display articles below a certain score, etc.
-- Fix server.c to recover properly if it loses the NNTP connection in
-  the middle of a command (and to retry a limited number of times,
-  instead of retrying forever and possibly going into a tight loop?).
-- add a "clear" button to the dialog boxes with persistent text entry
-  fields.
-- why does updatenewsrc() mark all articles in an unsubscribed group
-  as read when saving the .newsrc?  There may be a reason for this,
-  but on the other hand, it may be incorrect behavior.  Need to try to
-  figure out what's going on here, and fix it if it's wrong. (problem
-  reported by Klaus Guntermann
-  <guntermann@iti.informatik.th-darmstadt.de>)
-- support for a motd (suggested by dennett@image.Kodak.COM (Charles
-  R. Dennett)).
-- Add minLines/maxLines support to newsgroup mode.  I'll probably want
-  different resources for article mode and newsgroup mode, with the
-  same classes so that people can set them both to be the same thing
-  if they want.  The code for this in artMode.c should be generalized
-  and moved into buttons.c so that it can be used both by article mode
-  and newsgroup mode.
-- XOVER support?
-- Add support for displaying an article by message ID (suggested by
-  Philippe Brieu <philippe@pablo.physics.LSA.UMich.EDU>).
-- Add confirmation-box support to more buttons (in particular, someone
-  requested it for the kill buttons, but it would be useful for others
-  as well).
-- WWW support.  Either use an HTML widget for displaying articles, or
-  make it possible to highlight a URL and send commands to display it
-  to an externally running browser (e.g., Mosaic, Netscape), as
-  suggested by burwell@parc.xerox.com (Becky Burwell).
-- Make some of the "gripe" information filled in automatically, or
-  perhaps simplify the "gripe" screen so that it doesn't put off users
-  who don't know most of the information.  Or perhaps mention
-  explicitly that it's all optional.
-- Remove most of the command-line options that are the same as X
-  resources.  They're unnecessary given that the X toolkit provides
-  the '-xrm' option, and considering that most of them will be
-  specified in X resources almost exclusively anyway.
-- Figure out why "Select widget in client" in editres on XRN causes it
-  to crash with a "bad window" X error.
-- Replace all the messages of type "Can't open <foo> file `%s' for
-  writing: %s." with a single message with a %s for the file type
-  which is filled in by each of the callers.
-- Shouldn't warn about article being mailed to moderator when it
-  includes an Approved line?
-- Make the attribution lines in followups and replies customizable.
-- Line-break attribution lines if they're too long. (suggested by Paul
-  Menage <pbm1001@cam.ac.uk>).
-- Fix up the posting code so it only includes mail headers in the mail
-  message and news headers in the posting, and comments out other
-  headers with "X-" or removes some of them completely or something.
-- Is it really necessary to copy the .newsrc file instead of renaming
-  it?  Need to look into this, find out if renaming is sufficient, and
-  if so, modify the code to rename instead of copying.
-- Good Net-Keeping Seal of Approval evaluation for XRN.
-- French support.
-- MH folderDir support.
-- MIME support.
-- When dialogs are popped up, make the default button centered under
-  the cursor, instead of centering the entire dialog under the cursor.
-- Xaw3d support.
-- Allow different organizations for different newsgroups, just like
-  there are different signatures for different newsgroups.
-- Make it possible to configure the composition pane buttons with a
-  buttonlist resource.
-- Add allScrollBeginning, allScrollEnd, allScrollLine,
-  allScrollLineBack buttons, actions, bindings.
-- Add a resource to specify the KILL-file directory, so that the user
-  can store KILL files and save files in separate directories if he
-  chooses to do so.
-- Make more of the stuff in the man page configurable based on what's
-  in config.h.
-- Send a bug report to the X Consortium about TopPosition changes
-  while redisplay is disabled not working.  (i.e., disable redisplay,
-  change insertion point to somewhere off screen, and the widget
-  doesn't realize immediately that its top position has changed.)
-- Make ^S in newsgroup and all modes search through the newsgroup
-  index and then move to the beginning of the line on which the match
-  was found.
-- Send in bug report about how the Text widget drops a character when
-  wrapping a word longer than the line length.
-- Break up internals.c into smaller files.
-- When I "Local Kill" a series of articles in succession when running
-  XRN over a slow network (SLIP), when it's done KILLing and puts the
-  cursor on the next unread article, the cursor flashes several times.
-  I'm not sure, but it may flash as many times as articles I killed.
-  I need to investigate this one further.  I think this only happens
-  when the article list scrolls while doing the killing.  This is
-  probably related to an Xaw Text widget bug that I can't fix (I've
-  already sent in a bug report about it to the X Consortium).
-- Modularize all the other Xaw usages in the code into simplified
-  interfaces.
-- Put back Motif support.
-- Investigate bug reported by uri@watson.ibm.com, that article mode
-  exits to newsgroup mode if it encounters an unavailable article.
-- Send in a bug report about the fact that XawTextEnableRedisplay
-  always redisplays the whole window, even if nothing has changed (I
-  *think* -- need to confirm this).
-- Send in a bug report about the fact that XawTextSetInsertionPoint
-  causes a full redisplay instead of just the cursor being erased and
-  being redrawn (this may only happen when it is called when redisplay
-  is disabled -- need to investigate more).
-- Optimize article mode so that it only redraws the upper text widget
-  when it has to.
-- Send in a bug report and patch about the fact that the AsciiSrc
-  widget doesn't always ignore XtNlength when useStringInPlace is
-  false, even though it's supposed to.
-- Optimize all mode so that it only redraws the lower text widget when
-  it has to.
-- Optimize add mode so that it only redraws the upper text widget when
-  it has to.
-- The code in signatureFile() is unnecessarily obtuse and complex.
-  For example, the "sigfile" variable doesn't need to be dynamically
-  allocated *or* static.
-
-  Clean this code up.
-- "When leaving article mode to return to all mode, the cursor should
-  either remain on the previously read group (my favorite) or go to
-  the next one.  Instead, it always jumps to the very first
-  group."  Suggested by Michel Eyckmans (MCE) <eyckmans@imec.be>.
-
-  More generally, keep track of where we are in the "all" list just
-  like we keep track of where we are in the newsgroup index, using a
-  global variable containing the group we're currently on, and finding
-  it in the list whenever updating all mode.
-- Support WM_DELETE_WINDOW.  Suggested by nissen@montefiore.ulg.ac.be
-  (Alain Nissen).
-- Display newsgroup descriptions somehow in all mode and/or newsgroup
-  mode. and/or add mode.
-- Allow subject index and article text fonts to be specified on a
-  per-newsgroup basis in X resources.  Suggested by uri@watson.ibm.com.
-- if you type a character in the save dialog while the save is
-  happening (i.e., after you already typed the file name and hit
-  return), the character makes it into the dialog before it gets
-  popped down, and shows up the next time you go to save (if you save
-  again while reading the group).  Possibly true of all dialogs.
-- should be possible to highlight and kill a range of articles.
-- subscribeHandler doesn't display an error if "Last group" is
-  selected and there is no last group.
-- subscribeHandler should put a message in the info line indicating
-  what it did.
-- Fix this bug (reported by Reg Clemens <reg@dwf.com>):
-  First bring up XRN, and select a group.
-  I see 7 lines of buttons in the middle of the screen, ranging from
-  Quit -> List_old.
-
-  Now reach up to the upper Right Hand corner of the border and make
-  the Widget TALLER or SHORTER.  *DO NOT* change its width.
-
-  The 7 lines of buttons will collapse to 3 lines from Quit->Goto_Article.
-
-  If you then quit the group and (re)open it or another group you get
-  back to the 7line display of buttons.
-
-  Strange.
-
-  Now go back to the corner and make the widget WIDER or Narrower,
-  then change the height again, the above behaviour no longer occurs.
-
-  Weird.
-- Add X resource to optionally process Xref headers in articles being
-  caught up in a newsgroup.
-- Go through all of the X resources that are hard-coded as
-  widget-creation arguments in the program and move as many of them as
-  possible to the app-defaults file.
-- Go through all the uses of XtSetValues and XtGetValues and convert
-  them to use XtVaSetValues and XtVaGetValues whereever possible, to
-  eliminate unnecessary argument arrays.  Same thing for the
-  Create*Widget functions.
-- Make sure all temporary files are being deleted properly (I think
-  there may be a temporary file leak somewhere).
-- Allow the number of articles to be retrieved to be specified upon
-  entering the newsgroup, if the number of unread articles in the
-  group exceeds a certain threshold, rather than making it only
-  configurable via showOnly.
-- Facility for unpacking and decoding multi-part articles.
-- Fix stuff that uses MAXPATHLEN to use the correct POSIX call instead
-  on POSIX systems.
 - PGP support?
 - Add a mode in which only the header of an article is fetched, unless
   the user tries to scroll down, in which case the rest of the article
@@ -284,13 +15,25 @@ be nice if they were done.... (and even worse, it's not up to date)
   really isn't good enough splitting the NNTP stuff into a separate
   thread or process is the right way to do this, but it's a lot of
   work).
-
-  Another option is to make all of the NNTP code event-driven, and to
-  use XtAppAddInput to add the NNTP socket as an input source, so that
-  input from the NNTP server gets processed whenever there are no
-  other X events to be handled.
+- When the last newsgroup in the newsgroup list is read and exited
+  from, make sure that the cursor doesn't end up floating in space
+  past the end of the newsgroup list in the index window.  Reported by
+  philippe@pablo.physics.lsa.umich.edu (Philippe Brieu).
+- Clean up the code in getlineslist() in server.c that extracts the
+  number of lines in a posting from a line returned by XHDR.  It's
+  much more complicated and obtuse than it needs to be, and
+  furthermore, it doesn't deal with "Lines:" headers that have more
+  than one whitespace character after the colon before the number of
+  lines.  Problem reported by dstarks@rc.tudelft.nl
+  (D. Starks-Browning).
 - Add X resources (and command line options) corresponding to the
   USER, HIDDENHOST, HIDDENPATH and FULLNAME environment variables.
+- In artListOldFunction, display an error message for every range of
+  articles that isn't available, instead of displaying an error
+  message for every article that isn't available.
+- Fix up the action of "Followup & Reply" so it only includes mail
+  headers in the mail message and news headers in the posting, and
+  comments out other headers with "X-" or something.
 - Add something to the buttonList X resource syntax to allow someone
   to say, "Put all buttons not listed explicitly here."  It should
   obviously only be specifiable once in any particular button list.
@@ -298,10 +41,94 @@ be nice if they were done.... (and even worse, it's not up to date)
   end of the list in the order they want, without having to update
   their resources for new buttons after every release.  Suggested by
   phigro@phigro.rnd.symix.com (Phil Gross).
+- Compile with gcc -Wall and fix all the warnings that pop up.
+- When you try to pipe an article into a command that fails and exits
+  without reading all the input, XRN exits (under SunOS, at least).
+  I'm not sure why, since it does seem to be trapping SIGPIPE in
+  ehInstallSignalHandlers.  Need to investigate this and fix it.
+- Add an XRN_SAME_LINE option to mesgPane, which is similar to
+  XRN_APPEND but causes the new message to be appended to the end of
+  the line that the previous message is on, instead of displayed on a
+  new line.  Use the new option where it's appropriate, where
+  XRN_APPEND is being used now but XRN_SAME_LINE would be better.
 - Should XRN try to connect to a news server with host name "news" by
-  default if NNTPSERVER isn't set and SERVER_FILE doesn't exist?
+  default if NNTPSERVER isn't set and SERVER_FILE doesn't exist (and
+  the server name can't be determined from the INN configuration
+  file)?
+- Update the XtInitialize call to an XtAppInitialize call, and modify
+  all the places that determine the application context themselves to
+  use a global application context variable instead (maybe; it might
+  actually not be best to use a global variable, in case XRN wants to
+  use multiple application contexts at some point in the future.  need
+  to think about it).
+- The Xaw code uses a text widget for the list of newsgroups or list
+  of articles in the top window.  It displays a cursor to show the
+  current article, and highlighting to show when an article has been
+  selected.
+
+  The Motif code, however, uses a list widget instead of a text widget
+  for the top window.  As a result, it can't display a cursor, so it
+  uses highlighting for everything.
+
+  There is therefore some ambiguity.  XRN uses selecting an article in
+  the index to mean a specific thing -- e.g., if "Catchup" is pressed
+  when an article is selected, only articles up to that one are marked
+  read.  It's easy to tell when an article is selected when using the
+  Xaw interface, but it's not possible to tell when using the Motif
+  interface, because the current article looks the same as a selected
+  article.
+
+  Either the XRN documentation needs to be updated to indicate this
+  ambiguity, or (better) the Motif code needs to be fixed somehow
+  (perhaps by switching it back to using a Text widget, or by finding
+  out if the Motif widget supports multiple kinds of highlighting in
+  the same widget) so that it's possible to distinguish between the
+  current position and a selected item in the top window.
+- Merge the functionality of the post, followup and gripe functions
+  into the followup_or_reply function, so that all of the
+  header-adding code only needs to happen in one place.
+- Add a 'Post & E-mail' button to go along with the 'Followup & Reply'
+  button.
+- When done prefetching a newsgroup and still in newsgroup mode, the
+  newsgroup list should be updated.  However, doing so may cause
+  problems, so need to make sure it's OK before doing it.
+- When someone clicks on "Followup" for an article marked
+  "Followup-To: poster", the dialog that pops up should offer three
+  options -- followup, reply, and followup & reply, not just the
+  followup and reply options.
+- I clicked on "Followup & Reply" for a posting in news.groups that
+  had "Followup-To: sender" in its header.  Ignoring for a moment the
+  fact that "sender" is an invalid thing to put there, the compose
+  pane that I got said "X-Newsgroups: sender" in it.  It should have
+  said "X-Newsgroups: news.groups", since the X-Newsgroups header
+  should list the newsgroups that the original article was posted in,
+  not the newsgroup that the followup is being posted in.
+- Say the newsgroup under your cursor has unread articles in it but
+  that all of them will be KILLed when you enter the newsgroup.  Say,
+  too, that the next newsgroup is in the same situation.  When you hit
+  the space bar to enter the group, it will try to enter the group,
+  realize that it's empty, and stay in newsgroup mode; however, it
+  will also start a prefetch for the second group.  When you hit space
+  to enter the *second* group after the prefetch is finished, it'll
+  again try to enter the group, realize that it's empty, and stay in
+  newsgroup mode, but this time it won't start to prefetch the next
+  group (i.e., the third group from where your cursor originally was).
+  At least, I *think* this is what's happening.  Need to investigate
+  to confirm that it's really happening, and if so, figure out how to
+  make the prefetch keep going until it finds a group with unread
+  articles in it.
 - Make DO_NOT_EAT_TYPE_AHEAD work.
+- Fix mesg.c so that instead of displaying the full output of ctime,
+  including the day, date and year, in the message pane, it displays
+  just the current time.  After all, the user is using the program
+  interactively and therefore doesn't need to be told what the current
+  day, date and year are, and the extra information is clutter that
+  should be gotten rid of.
+- Make matchTranslations support the bottom button box too.
 - Merge DXRN into this version of XRN.
+- Make the "Continue" button insensitive when there was no previous
+  Subject search in the current newsgroup, thus making the "No
+  previous regular expression" check (and message) unnecessary.
 - Figure out how to make the KILL file stuff support case-insensitive
   searches.  The best way to do this is probably to add an option for
   XRN to use the GNU regexp routines, which I believe take options to
@@ -311,22 +138,15 @@ be nice if they were done.... (and even worse, it's not up to date)
   and fix all calls to them -- calls with strings with % in them need
   to have the %'s escaped, and calls that use sprintf into a buffer
   first can get rid of the buffer.
-- Make the format in which files are saved in savePostings, in the
-  current code and in any new code, dependent on saveMode.  Also, make
-  it possible to cause a different format to be used by specifying the
-  same characters allowed in the "Save article" dialog at the
-  beginning of file names.
-- Add a character prefix to the "Save article" code to allow a message
-  to be saved in UNIX Mailbox format even when that's not the default
-  save mode (or vice versa).
-- Wherever articles are saved to files named in X resources or in
-  dialogs, allow all the prefix characters to be used to specify what
-  format to save in.
+- Add a "saveSentMessages" option and command line flag
+  ("-saveSentMessages" to disable, "+saveSentMessages" to enable,
+  disabled by default) to save all successfully sent messages
+  automatically in app_resources.savePostings.
 - getarticle return
 - read updated .newsrc file (XRN detects this, but should allow you to reread)
 - prefetch should occur at end of list, not largest number (sorted subject...)
+- spawn child for posting, sigchld in parent for confirmation...
 - clean up KILL file support
-   - Including one KILL file inside another one.
    - handle '{' correctly
         The regular expression \{<m>,<n>\} is supposed to match between
         m and n occurences of the previous character. To kill an expression
@@ -334,13 +154,36 @@ be nice if they were done.... (and even worse, it's not up to date)
         the other hand complains if the braces are quoted.  Rn, on
         the other hand complains if the braces are quoted since the
         expression is not valid.  Test: /{foo}/:j
+   - allow field names (Subject/From) in an entry
    - prompt for KILL expression in article mode
+	local kill (current subject and typein)
+	global kill (current subject and typein)
+	local author kill (current subject and typein)
+	global author kill (current subject and typein)
+   - kill author globally...
    - edit kill file
    - closer to RN
-   - Support KILLLOCAL and KILLGLOBAL environment variables a la trn.
-   - "Author search".
+   - don't just replace all special characters with '.'.  Some of them
+     should can be quoted with a backslash instead, which will make
+     for more specific (and more correct) regular expressions.
+     However, have to be careful not to quote with backslashes
+     characters that have different meanings when quoted with
+     backslash; note that this is dependent on which regular
+     expression routines are being used (which is probably why
+     replacing with '.' was used in the first place -- to avoid having
+     to get it right).
+- look at input during prefetch to see if it should be cancelled (or handled).
+- remove tmp files as you go, not at the end of the group
+  (necessary for large groups with large postings)
 - replace popen of mailer with something better so status code can be checked
+- fixup postArticle to do Header fixup, not sendFunction...
+- check if follow-to is same as newsgroup, warn if not, option to turn this off.
+- warn if followup will go to more than one group.
 - option to capitalize, not-cap the group name when saving.
+- don't refetch article for saving
+- thread support
+- break up buttons.c into multiple files
+	generic stuff, art buttons, all buttons, ng buttons, add buttons, ...
 - XHDR message on server timeout
 - handle =ng in active file
 - command to skip quoted/included sections
@@ -353,7 +196,4 @@ be nice if they were done.... (and even worse, it's not up to date)
 - local server (clientlib.c replaced with something that accesses local files)
 - reading an MH folder as a newsgroup (suggested by Luigi Semenzato
   <luigi@CS.Berkeley.EDU>).
-- Allow arbitrary articles/newsgroups to be selected when it makes
-  sense to do so, rather than only allowing selection of contiguous
-  ranges.
-- Mousewheel support.
+
