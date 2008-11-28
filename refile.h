@@ -2,7 +2,7 @@
 #define REFILE_H
 
 /*
- * $Id: refile.h,v 1.2 1994-11-23 01:51:12 jik Exp $
+ * $Header: /d/src/cvsroot/xrn/refile.h,v 1.1 1994-10-10 17:23:27 jik Exp $
  */
 
 /*
