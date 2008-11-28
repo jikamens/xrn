@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: utils.c,v 1.36 2006-01-03 16:16:39 jik Exp $";
+static char XRNrcsid[] = "$Id: utils.c,v 1.33 1998-05-12 17:00:24 jik Exp $";
 #endif
 
 /*
@@ -51,8 +51,7 @@ struct passwd *getpwnam();
 #include "news.h"
 #include "server.h"
 #include "resources.h"
-
-extern time_t get_date _ARGUMENTS((char *));
+#include "getdate.h"
 
 #define USER_NAME_SIZE 32
 
@@ -455,7 +454,8 @@ void do_chmod(fp, name, mode)
   * -nntpServer command-line option
   * NNTPSERVER environment variable
   * nntpServer X resource
-  * SERVER_FILE, if it's defined
+  * Server configured into INN, if INN is being used, or SERVER_FILE,
+    if it's defined and INN isn't being used. 
   */
 char *nntpServer()
 {
@@ -467,10 +467,15 @@ char *nntpServer()
 	return(server);
     else if (app_resources.nntpServer)
 	return(app_resources.nntpServer);
-#ifdef SERVER_FILE
+#ifdef INN
+    else if ((server = getserverbyfile("")))
+	return(server);
+#else
+# ifdef SERVER_FILE
     else if ((server = getserverbyfile(SERVER_FILE)))
 	return(server);
-#endif /* SERVER_FILE */
+# endif /* SERVER_FILE */
+#endif /* INN */
     else
 	return(0);
 }

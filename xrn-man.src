@@ -1,5 +1,5 @@
-.TH XRN 1 "$Date: 2008-11-28 17:57:52 $" "X"
-.\" $Id: xrn-man.src,v 1.246 2008-11-28 17:57:52 jik Exp $
+.TH XRN 1 "$Date: 2001-02-02 14:34:56 $" "X"
+.\" $Id: xrn-man.src,v 1.229 2001-02-02 14:34:56 jik Exp $
 .\"
 .\" xrn - an X-based NNTP news reader
 .\"
@@ -42,7 +42,7 @@ and articles on an NNTP server, thus allowing
 users to read news from personal workstations
 by accessing a central news
 repository.
-This manual page applies to version 9.03-beta-15.
+This manual page applies to version 9.03-beta-4.
 .\"
 .SH DESCRIPTION
 .PP
@@ -235,6 +235,9 @@ the \fBnntpServer\fP X resource;
 xSERVER_FILE_STARTx
 the contents of the file "xSERVER_FILEx"
 xSERVER_FILE_ENDx
+xINN_STARTx
+the NNTP server configured into INN
+xINN_ENDx
 (these are listed in the order in which they are checked).
 The name can be either a host name
 (e.g., shambhala.berkeley.edu) or an internet number (e.g.,
