@@ -3,7 +3,6 @@
 
 void		artListInit _ARGUMENTS((struct newsgroup *));
 void		artListSet _ARGUMENTS((struct newsgroup *));
-void		artListExtend _ARGUMENTS((struct newsgroup *, art_num));
 void		artListFree _ARGUMENTS((struct newsgroup *));
 struct article *artStructGet _ARGUMENTS((struct newsgroup *, art_num, Boolean));
 void		artStructSet _ARGUMENTS((struct newsgroup *, struct article **));

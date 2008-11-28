@@ -478,8 +478,6 @@ static int getNearbyArticle(status, file, question, artNum)
 	}
 	move = True;
 
-	/* If this assertion fires, you probably need to put "#define
-	   XAW_REDISPLAY_BUG" in config.h and recompile XRN. */
 	assert(ArtPosition == 0 || SubjectString[ArtPosition - 1] == '\n');
 
 	if (! SubjectString[ArtPosition])
@@ -490,8 +488,6 @@ static int getNearbyArticle(status, file, question, artNum)
 
 	*artNum = atol(&SubjectString[ArtPosition + 2]);
 
-	/* If this assertion fires, you probably need to put "#define
-	   XAW_REDISPLAY_BUG" in config.h and recompile XRN. */
 	assert(*artNum);
 
 	if (getArticle(CurrentGroup, *artNum, file, question) != XRN_OKAY) {
@@ -641,7 +637,6 @@ static int isPrevSubject(subject, file, question, artNum)
 
 	    art = artStructGet(CurrentGroup, *artNum, True);
 	    SET_MAYBE_LISTED(art);
-	    artStructSet(CurrentGroup, &art);
 
 	    if (newSubjects) {
 		tmp = XtMalloc(utStrlen(newSubjects) + utStrlen(newLine) + 1);
@@ -1511,27 +1506,40 @@ void artNextGroupFunction(widget, event, string, count)
 	    mesgPane(XRN_SERIOUS, mesg_name, NO_SUCH_NG_DELETED_MSG, name);
 	    mesgPane(XRN_SERIOUS | XRN_SAME_LINE, mesg_name,
 		     SKIPPING_TO_NEXT_NG_MSG);
-	save_name:
 	    CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(name) + 1);
 	    (void) strcpy(CurrentIndexGroup, name);
 	    continue;
 	}
-	else if ((ret == XRN_NOMORE) || (ret == XRN_NOUNREAD)) {
-	    exitNewsgroup();
+	else if (ret == XRN_NOMORE) {
 	    if ((p = strstr(&ArticleNewsGroupsString[GroupPosition],
-			    (ret == XRN_NOMORE) ? NEWS_IN_MSG : UNREAD_MSG)) &&
+			    NEWS_IN_MSG)) &&
 		(p < strstr(&ArticleNewsGroupsString[GroupPosition], name))) {
-		mesgPane(XRN_INFO, mesg_name, (ret == XRN_NOMORE) ?
-			 PROBABLY_EXPIRED_MSG : PROBABLY_KILLED_MSG, name);
+		mesgPane(XRN_INFO, mesg_name, PROBABLY_EXPIRED_MSG, name);
 		mesgPane(XRN_INFO | XRN_SAME_LINE, mesg_name,
 			 SKIPPING_TO_NEXT_NG_MSG);
 	    }
-	    goto save_name;
+	    CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(name) + 1);
+	    (void) strcpy(CurrentIndexGroup, name);
+	    continue;
+	}
+	else if (ret == XRN_NOUNREAD) {
+	    if ((p = strstr(&ArticleNewsGroupsString[GroupPosition],
+			    UNREAD_MSG)) &&
+		(p < strstr(&ArticleNewsGroupsString[GroupPosition], name))) {
+		mesgPane(XRN_INFO, mesg_name, PROBABLY_KILLED_MSG, name);
+		mesgPane(XRN_INFO | XRN_SAME_LINE, mesg_name,
+			 SKIPPING_TO_NEXT_NG_MSG);
+	    }
+	    CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(name) + 1);
+	    (void) strcpy(CurrentIndexGroup, name);
+	    continue;
 	}
 	else if (ret != GOOD_GROUP) {
 	    mesgPane(XRN_SERIOUS, mesg_name, UNKNOWN_FUNC_RESPONSE_MSG,
 		     ret, "enterNewsgroup", "artNextGroupFunction");
-	    goto save_name;
+	    CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(name) + 1);
+	    (void) strcpy(CurrentIndexGroup, name);
+	    continue;
 	}
 
 	 if (switchToArticleMode() == GOOD_GROUP) {
@@ -2002,7 +2010,7 @@ void artThreadParentFunction(widget, event, string, count)
 	if (art->id && !strcmp(art->id, begin_id) &&
 	    articleIsAvailable(CurrentGroup, checkee)) {
 	  parent = checkee;
-	  goto done;
+	  break;
 	}
       }
       if (abortP()) {
@@ -2365,10 +2373,6 @@ void artListOldHandler(widget, client_data, call_data)
       }
     }
 
-    if (GotoArticleBox) {
-      PopDownDialog(GotoArticleBox);
-      GotoArticleBox = 0;
-    }
     abortClear();
     cancelCreate("CancelListOld");
 
@@ -2414,6 +2418,10 @@ void artListOldHandler(widget, client_data, call_data)
     }
 
 finishedl:
+    if (GotoArticleBox) {
+      PopDownDialog(GotoArticleBox);
+      GotoArticleBox = 0;
+    }
     xrnUnbusyCursor();
     cancelDestroy();
     inCommand = 0;
@@ -2550,31 +2558,36 @@ static void gotoArticleHandler(widget, client_data, call_data)
     inCommand = 1;
     xrnBusyCursor();
     TextUnsetSelection(SubjectText);
-    numberstr = GetDialogValue(GotoArticleBox);
-    PopDownDialog(GotoArticleBox);
-    GotoArticleBox = 0;
     if ((int) client_data == XRNgotoArticle_ABORT) {
-      goto finished;
+	PopDownDialog(GotoArticleBox);
+	GotoArticleBox = 0;
+	xrnUnbusyCursor();
+	inCommand = 0;
+	return;
     }
-    abortClear();
-    cancelCreate("CancelGotoArticle");
+    numberstr = GetDialogValue(GotoArticleBox);
     if (! (numberstr && *numberstr)) {
 	mesgPane(XRN_INFO, 0, NO_ART_NUM_MSG);
-	goto finished;
+	PopDownDialog(GotoArticleBox);
+	GotoArticleBox = 0;
+	xrnUnbusyCursor();
+	inCommand = 0;
+	return;
     }
 
     artNum = atol(numberstr);
     if (artNum == 0) {
 	mesgPane(XRN_SERIOUS, 0, BAD_ART_NUM_MSG, numberstr);
-	goto finished;
+	PopDownDialog(GotoArticleBox);
+	GotoArticleBox = 0;
+	xrnUnbusyCursor();
+	inCommand = 0;
+	return;
     }
 
     status = moveToArticle(CurrentGroup, artNum, &file, &question);
 
     switch (status) {
-
-    case ABORT:
-      break;
 
     case NOMATCH:
     case ERROR:
@@ -2609,10 +2622,10 @@ static void gotoArticleHandler(widget, client_data, call_data)
 	break;
     }
 
- finished:
+    PopDownDialog(GotoArticleBox);
+    GotoArticleBox = 0;
     xrnUnbusyCursor();
     inCommand = 0;
-    cancelDestroy();
     return;
 }
 

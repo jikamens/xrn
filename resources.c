@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $";
+static char XRNrcsid[] = "$Id: resources.c,v 1.63 1998-07-05 15:08:35 jik Exp $";
 #endif
 
 /*
@@ -48,6 +48,7 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #include "xthelper.h"
 #include "mesg.h"
 #include "xrn.h"
+#include "patchlevel.h"
 #include "resources.h"
 #include "error_hnds.h"
 #include "internals.h"
@@ -852,10 +853,10 @@ Widget Initialize(argc, argv)
 
 #if defined(__DATE__) && defined(WANT_DATE)
     (void) sprintf(title, "xrn - version %s (compiled on %s)",
-		   PACKAGE_VERSION, __DATE__);
+		   XRN_VERSION, __DATE__);
 #else
     (void) sprintf(title, "xrn - version %s",
-		   PACKAGE_VERSION);
+		   XRN_VERSION);
 #endif
 
     /* get the resources needed by xrn itself */
