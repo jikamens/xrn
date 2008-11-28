@@ -2,7 +2,7 @@
 #define INTERNALS_H
 
 /*
- * $Id: internals.h,v 1.54 2002-05-14 19:54:43 jik Exp $
+ * $Id: internals.h,v 1.52 2001-10-14 11:22:19 jik Exp $
  */
 
 /*
@@ -86,7 +86,7 @@ extern int enterNewsgroup _ARGUMENTS((char *name, int flags));
 extern void exitNewsgroup _ARGUMENTS((void));
 
 /* subscribe to the current newsgroup */
-extern Boolean subscribe _ARGUMENTS((void));
+extern void subscribe _ARGUMENTS((void));
 /* unsubscribe to the current newsgroup */
 extern void unsubscribe _ARGUMENTS((void));
 
@@ -180,7 +180,6 @@ extern void articleArrayResync _ARGUMENTS((struct newsgroup *, art_num,
 					   art_num, int));
 extern Boolean updateArticleArray _ARGUMENTS((struct newsgroup *, Boolean));
 
-extern void suspendPrefetch _ARGUMENTS((void));
 extern void cancelPrefetch _ARGUMENTS((void));
 extern void resetPrefetch _ARGUMENTS((void));
 extern void finishPrefetch _ARGUMENTS((void));

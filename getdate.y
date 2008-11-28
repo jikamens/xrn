@@ -13,47 +13,6 @@
 /* SUPPRESS 287 on yaccpar_sccsid *//* Unusd static variable */
 /* SUPPRESS 288 on yyerrlab *//* Label unused */
 
-     #define yymaxdepth getdate_maxdepth
-     #define yyparse getdate_parse
-     #define yylex   getdate_lex
-     #define yyerror getdate_error
-     #define yylval  getdate_lval
-     #define yychar  getdate_char
-     #define yydebug getdate_debug
-     #define yypact  getdate_pact
-     #define yyr1    getdate_r1
-     #define yyr2    getdate_r2
-     #define yydef   getdate_def
-     #define yychk   getdate_chk
-     #define yypgo   getdate_pgo
-     #define yyact   getdate_act
-     #define yyexca  getdate_exca
-     #define yyerrflag getdate_errflag
-     #define yynerrs getdate_nerrs
-     #define yyps    getdate_ps
-     #define yypv    getdate_pv
-     #define yys     getdate_s
-     #define yy_yys  getdate_yys
-     #define yystate getdate_state
-     #define yytmp   getdate_tmp
-     #define yyv     getdate_v
-     #define yy_yyv  getdate_yyv
-     #define yyval   getdate_val
-     #define yylloc  getdate_lloc
-     #define yyreds  getdate_reds
-     #define yytoks  getdate_toks
-     #define yylhs   getdate_yylhs
-     #define yylen   getdate_yylen
-     #define yydefred getdate_yydefred
-     #define yydgoto getdate_yydgoto
-     #define yysindex getdate_yysindex
-     #define yyrindex getdate_yyrindex
-     #define yygindex getdate_yygindex
-     #define yytable  getdate_yytable
-     #define yycheck  getdate_yycheck
-     #define yyname   getdate_yyname
-     #define yyrule   getdate_yyrule
-
 #include <sys/types.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -61,6 +20,7 @@
 
 #include "config.h"
 #include "utils.h"
+#include "getdate.h"
 
 static int yylex ();
 static int yyerror ();
