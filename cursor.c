@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: cursor.c,v 1.36 2006-10-17 02:23:12 jik Exp $";
+static char XRNrcsid[] = "$Id: cursor.c,v 1.31 1996-06-11 09:46:05 jik Exp $";
 #endif
 
 /*
@@ -53,7 +53,6 @@ static char XRNrcsid[] = "$Id: cursor.c,v 1.36 2006-10-17 02:23:12 jik Exp $";
 #include "mesg_strings.h"
 #include "Text.h"
 #include "buttons.h"
-#include "file_cache.h"
 
 /*
  * Move the cursor to the beginning of the current line.
@@ -336,16 +335,10 @@ void markAllString(tstring, left, status)
  * Mark a group of articles between left and right as read or unread.
  * Marks the articles in the text string, and marks them internally.
  */
-void markArticles(
-		  _ANSIDECL(char *,	tstring),	/* text string */
-		  _ANSIDECL(long,	left),		/* boundaries of 	 */
-		  _ANSIDECL(long,	right),		/* articles to be marked */
-		  _ANSIDECL(char,	marker)
-		  )
-     _KNRDECL(char *,	tstring)
-     _KNRDECL(long,	left)
-     _KNRDECL(long,	right)
-     _KNRDECL(char,	marker)
+void markArticles(tstring, left, right, marker)
+    char *tstring;		      /* text string */
+    long left, right;      /* boundaries of articles to be marked */
+    char marker;
 {
     long artNum;		/* number of current article to be marked */
 
@@ -379,21 +372,18 @@ void buildString(newString, first, last, oldString)
 int moveToArticle(newsgroup, artNum, file, ques)
     struct newsgroup *newsgroup;
     long artNum;			/* number of new article */
-    file_cache_file **file;		/* cache file for new article */
-    char **ques;			/* status line for new article */
+    char **file, **ques;		/* filename and status line for new article */
 {
-    (void) fillUpArray(newsgroup, artNum, 0, True, False);
+    (void) fillUpArray(newsgroup, artNum, 0, False, False);
 
-    if (abortP())
-      return ABORT;
-
-    if (checkArticle(artNum) != XRN_OKAY)
+    if (checkArticle(artNum) != XRN_OKAY) {
 	return NOMATCH;
+    }
 
-    if (getArticle(newsgroup, artNum, file, ques) != XRN_OKAY)
+    gotoArticle(artNum);
+    if (getArticle(file, ques) != XRN_OKAY) {
 	return ERROR;
-
-    newsgroup->current = artNum;
+    }
 
     return MATCH;
 }
