@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: save.c,v 1.32 2001-09-03 21:22:15 jik Exp $";
+static char XRNrcsid[] = "$Id: save.c,v 1.24 1995-02-20 04:19:31 jik Exp $";
 #endif
 
 /*
@@ -48,7 +48,6 @@ static char XRNrcsid[] = "$Id: save.c,v 1.32 2001-09-03 21:22:15 jik Exp $";
 #include "save.h"
 #include "mesg_strings.h"
 #include "refile.h"
-#include "file_cache.h"
 
 extern int errno;
 
@@ -109,7 +108,7 @@ int createNewsDir()
 	return(1);
     }
     if ((newdir = utTildeExpand(app_resources.saveDir)) == NIL(char)) {
-	mesgPane(XRN_SERIOUS, 0, CANT_EXPAND_DIR_MSG, app_resources.saveDir);
+	mesgPane(XRN_SERIOUS, 0, CANT_EXPAND_SAVE_DIR_MSG, app_resources.saveDir);
 	return(0);
     }
     /*
@@ -204,30 +203,19 @@ static char * buildFileName(filename, savedir, group)
     return(utTildeExpand(dummy));
 }
 
-int saveArticleByNumber(
-			_ANSIDECL(char *,	filename),
-			_ANSIDECL(art_num,	art),
-			_ANSIDECL(Boolean,	printing)
-			)
-     _KNRDECL(char *,	filename)
-     _KNRDECL(art_num,	art)
-     _KNRDECL(Boolean,	printing)
+int saveArticleByNumber(filename, art, printing)
+    char *filename;
+    art_num art;
+    Boolean printing;
 {
     return saveArticle(filename, CurrentGroup, art, False, printing);
 }
 
-int saveArticle(
-		_ANSIDECL(char *,		filename),
-		_ANSIDECL(struct newsgroup *,	newsgroup),
-		_ANSIDECL(art_num,		artnum),
-		_ANSIDECL(Boolean,		temporaryp),
-		_ANSIDECL(Boolean,		printing)
-		)
-     _KNRDECL(char *,			filename)
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artnum)
-     _KNRDECL(Boolean,			temporaryp)
-     _KNRDECL(Boolean,			printing)
+int saveArticle(filename, newsgroup, artnum, temporaryp, printing)
+    char *filename;
+    struct newsgroup *newsgroup;
+    art_num artnum;
+    Boolean temporaryp, printing;
 {
     char timeString[BUFFER_SIZE];
     char inputbuf[BUFSIZ];
@@ -236,10 +224,10 @@ int saveArticle(
     extern time_t time _ARGUMENTS((time_t *));
     time_t clock;
     long pos;
-    file_cache_file *artfile;
-    char *fullName;
+    char *artfile, *fullName;
     FILE *fpart, *fpsave;
-    int xlation = 0, rotation = 0;
+    int xlation = 0;
+    int rotation;
     char mode[2], string[256];
     int c;
     struct stat buf;
@@ -251,20 +239,11 @@ int saveArticle(
 
     /* get the FULL article */
 
-    if (IS_ROTATED(art))
-      rotation = ROTATED;
+    rotation = (IS_ROTATED(art) ? ROTATED : NOT_ROTATED);
 #ifdef XLATE
-    if (IS_XLATED(art))
-      xlation = XLATED;
+    xlation = (IS_XLATED(art) ? XLATED : NOT_XLATED);
 #endif
-    ART_STRUCT_UNLOCK;
-    artfile = getarticle(newsgroup, artnum, &pos,
-			 FULL_HEADER | rotation | xlation);
-    if (! artfile) {
-      mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, artnum);
-      return(0);
-    }
-    art = artStructGet(newsgroup, artnum, True);
+    artfile = getarticle(newsgroup, artnum, &pos, FULL_HEADER, rotation, xlation);
 
     /* 
      * check a few special cases before actually saving the article
@@ -281,9 +260,8 @@ int saveArticle(
 	(void) sprintf(error_buffer, SAVE_PIPE_TO_MSG ,
 		       artnum, &filename[1]);
 	infoNow(error_buffer);
-    	status = processArticle(utTrimSpaces(&filename[1]),
-				file_cache_file_name(FileCache, *artfile));
-	file_cache_file_release(FileCache, *artfile);
+    	status = processArticle(utTrimSpaces(&filename[1]), artfile);
+	(void) unlink(artfile);
 	FREE(artfile);
 	if (status) {
 	    (void) sprintf(error_buffer, ERROR_SAVE_PIPE_MSG ,
@@ -302,9 +280,7 @@ int saveArticle(
     }
 
     if ((filename != NIL(char)) && (filename[0] == '+')) {
-	int status = MHrefile(filename,
-			      file_cache_file_name(FileCache, *artfile));
-	file_cache_file_release(FileCache, *artfile);
+	int status = MHrefile(filename, artfile);
 	FREE(artfile);
 	(void) sprintf(error_buffer, SAVE_MH_REFILE_MSG, filename,
 		       status ? DONE_MSG : FAILED_MSG );
@@ -321,7 +297,7 @@ int saveArticle(
 
     /* XXX not quite right, don't want to try to create it if not used... */
     if (!createNewsDir()) {
-	file_cache_file_release(FileCache, *artfile);
+	(void) unlink(artfile);
 	FREE(artfile);
 	artStructSet(newsgroup, &art);
 	return(0);
@@ -332,35 +308,32 @@ int saveArticle(
 	if ((fullName = buildFileName(filename+1, app_resources.saveDir,
 				      newsgroup->name)) == NIL(char)) {
 	    mesgPane(XRN_SERIOUS, 0, CANT_FIGURE_FILE_NAME_MSG, filename+1);
-	    file_cache_file_release(FileCache, *artfile);
+	    (void) unlink(artfile);
 	    FREE(artfile);
 	    artStructSet(newsgroup, &art);
 	    return(0);
 	}
-	status = RMAILrefile(fullName, filename+1,
-			     file_cache_file_name(FileCache, *artfile), pos);
+	status = RMAILrefile(fullName, filename+1, artfile, pos);
 	(void) sprintf(error_buffer, SAVE_RMAIL_REFILE_MSG ,
 			filename+1, status ? DONE_MSG : FAILED_MSG );
 	infoNow(error_buffer);
-	file_cache_file_release(FileCache, *artfile);
+	(void) unlink(artfile);
 	FREE(artfile);
 	artStructSet(newsgroup, &art);
 	return(status);
     }
     
-    if ((fullName = buildFileName(filename, app_resources.saveDir,
-				  newsgroup->name)) == NIL(char)) {
+    if ((fullName = buildFileName(filename, app_resources.saveDir, newsgroup->name)) == NIL(char)) {
 	mesgPane(XRN_SERIOUS, 0, CANT_FIGURE_FILE_NAME_MSG, filename);
-	file_cache_file_release(FileCache, *artfile);
+	(void) unlink(artfile);
 	FREE(artfile);
 	artStructSet(newsgroup, &art);
 	return(0);
     }
 
-    if ((fpart = fopen(file_cache_file_name(FileCache, *artfile), "r")) == NULL) {
-	mesgPane(XRN_SERIOUS, 0, CANT_OPEN_ART_MSG,
-		 file_cache_file_name(FileCache, *artfile), errmsg(errno));
-	file_cache_file_release(FileCache, *artfile);
+    if ((fpart = fopen(artfile, "r")) == NULL) {
+	mesgPane(XRN_SERIOUS, 0, CANT_OPEN_ART_MSG, artfile, errmsg(errno));
+	(void) unlink(artfile);
 	FREE(artfile);
 	artStructSet(newsgroup, &art);
 	return(0);
@@ -374,7 +347,7 @@ int saveArticle(
     
     if ((fpsave = fopen(fullName, mode)) == NULL) {
 	(void) fclose(fpart);
-	file_cache_file_release(FileCache, *artfile);
+	(void) unlink(artfile);
 	FREE(artfile);
 	mesgPane(XRN_SERIOUS, 0, CANT_CREAT_APPEND_SAVE_FILE_MSG,
 		 (mode[0] == 'w') ? CREATE_MSG : APPEND_MSG,
@@ -411,10 +384,6 @@ int saveArticle(
 	    }
 	}
 	(void) rewind(fpart);
-    } else if ((*mode == 'a') && (app_resources.saveMode & FORMFEED_SAVE) &&
-	       (fputc('\f', fpsave) == EOF)) {
-      error++;
-      goto finished;
     }
 
     if (fprintf(fpsave, SAVE_ARTICLE_MSG , artnum, newsgroup->name) == EOF) {
@@ -455,7 +424,7 @@ int saveArticle(
 
 finished:
     (void) fclose(fpart);
-    file_cache_file_release(FileCache, *artfile);
+    (void) unlink(artfile);
     FREE(artfile);
 
     if (fclose(fpsave) == EOF) {
