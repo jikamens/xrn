@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: dialogs.c,v 1.23 1998-07-05 14:39:13 jik Exp $";
+static char XRNrcsid[] = "$Id: dialogs.c,v 1.21 1997-04-07 02:07:46 jik Exp $";
 /* Modified 2/20/92 dbrooks@osf.org to clean up dialog layout */
 #endif
 
@@ -92,11 +92,6 @@ Widget CreateDialog(parent, title, textField, args, count)
         {XtNtransientFor, (XtArgVal) NULL},
     };
     Widget typein;
-    char *t = XtNewString(title), *p;
-
-    p = t;
-    while ((p = strchr(p, '\t')))
-      *p = ' ';
 
     XtSetArg(shellArgs[2], XtNtransientFor, GetAncestorShell(parent));
     /* override does not get titlebar, transient does */
@@ -105,12 +100,11 @@ Widget CreateDialog(parent, title, textField, args, count)
     
     /* create the dialog box */
     XtSetArg(dargs[cnt], XtNvalue, textField); cnt++;
-    XtSetArg(dargs[cnt], XtNlabel, t); cnt++;
+    XtSetArg(dargs[cnt], XtNlabel, title); cnt++;
     XtSetArg(dargs[cnt], XtNinput, True); cnt++;
     dialog = XtCreateManagedWidget("dialog", dialogWidgetClass, popup, dargs, cnt);
 
     /* add the buttons */
-    XtFree(t);
     for (i = 0; i < count; i++) {
 	Arg bargs[2];
 	static XtCallbackRec callbacks[] = {
@@ -328,10 +322,8 @@ static void passwordHandler(widget, client_data, call_data)
   Widget dialog = XtParent(XtParent(widget));
 
   password_result = (int) client_data;
-  if (password_result == XRN_CB_CONTINUE) {
-    dialog_password = GetDialogValue(dialog);
-    dialog_password = XtNewString(dialog_password);
-  }
+  if (password_result == XRN_CB_CONTINUE)
+    dialog_password = XtNewString(GetDialogValue(dialog));
   PopDownDialog(dialog);
   return;
 }

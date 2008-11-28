@@ -5,7 +5,7 @@
 #include "file_cache.h"
 
 /*
- * $Id: cursor.h,v 1.15 1998-01-22 03:09:00 jik Exp $
+ * $Id: cursor.h,v 1.14 1997-06-30 02:53:14 jik Exp $
  */
 
 /*
@@ -38,7 +38,6 @@
  *           text window
  */
 
-#define JUMP -1
 #define BACK 0
 #define FORWARD 1
 

@@ -4,7 +4,7 @@
 #include "butdefs.h"
 
 /*
- * $Id: compose.h,v 1.12 1998-03-22 23:47:48 jik Exp $
+ * $Id: compose.h,v 1.11 1997-01-12 03:41:22 jik Exp $
  */
 
 /*
@@ -52,9 +52,6 @@ extern Boolean pendingCompositionP _ARGUMENTS((void));
 
 BUTDECL(compAbort);
 BUTDECL(compSave);
-BUTDECL(compSwitchFollowup);
-BUTDECL(compSwitchReply);
-BUTDECL(compSwitchBoth);
 BUTDECL(compSend);
 BUTDECL(compIncludeArticle);
 BUTDECL(compIncludeFile);

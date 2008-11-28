@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.44 2006-01-03 16:38:55 jik Exp $";
+static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.39 1997-08-20 23:44:24 jik Exp $";
 #endif
 
 /*
@@ -33,7 +33,6 @@ static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.44 2006-01-03 16:38:55 jik Exp $
  *
  */
 
-#include <assert.h>
 #include "copyright.h"
 #include "config.h"
 #include "utils.h"
@@ -69,7 +68,7 @@ static ng_num Newsrc_size = 0;
 
 static void freeNewsrc _ARGUMENTS((void));
 
-ng_num checkNewsrcSize(
+void checkNewsrcSize(
 		     _ANSIDECL(ng_num,	size)
 		     )
      _KNRDECL(ng_num,	size)
@@ -79,7 +78,6 @@ ng_num checkNewsrcSize(
 					     sizeof(*Newsrc) * size);
     Newsrc_size = size;
   }
-  return size;
 }
 
 #define OKAY  1
@@ -142,38 +140,26 @@ static int copyNewsrcFile(old, save)
     return OKAY;
 }
 
-int isLongNewsrcFile()
-{
-  static Boolean is_long;
-
-  if (NewsrcFile)
-    return is_long;
-
-  NewsrcFile = findServerFile(app_resources.newsrcFile, False, &is_long);
-  return is_long;
-}
-
 /*
  * read, parse, and process the .newsrc file
  *
  *   returns: 0 for fatal error, non-zero for okay
  *
  */
-int readnewsrc()
+int readnewsrc(newsrcfile, savenewsrcfile)
+    char *newsrcfile;
+    char *savenewsrcfile;
 {
     struct stat buf;
     extern int yyparse _ARGUMENTS((void));
     extern int newsrc_mesg_name;
-    char *SaveNewsrcFile;
 
-    CHECKNEWSRCSIZE(ActiveGroupsCount);
+    checkNewsrcSize(ActiveGroupsCount);
 
     optionsLine = NIL(char);
 
-    /* Make sure NewsrcFile has been set. */
-    (void) isLongNewsrcFile();
-    if (! NewsrcFile) {
-      mesgPane(XRN_SERIOUS, 0, CANT_EXPAND_MSG, app_resources.newsrcFile);
+    if (! (NewsrcFile = findServerFile(newsrcfile, False))) {
+      mesgPane(XRN_SERIOUS, 0, CANT_EXPAND_MSG, newsrcfile);
       return FATAL;
     }
 
@@ -244,18 +230,9 @@ int readnewsrc()
 	return FATAL;
     }
 
-    if (! (SaveNewsrcFile = findServerFile(app_resources.saveNewsrcFile,
-					   isLongNewsrcFile(), NULL))) {
-      mesgPane(XRN_SERIOUS, 0, CANT_EXPAND_MSG, app_resources.saveNewsrcFile);
+    if (!copyNewsrcFile(NewsrcFile, savenewsrcfile)) {
       freeNewsrc();
       XtFree(NewsrcFile);
-      return FATAL;
-    }
-
-    if (!copyNewsrcFile(NewsrcFile, SaveNewsrcFile)) {
-      freeNewsrc();
-      XtFree(NewsrcFile);
-      XtFree(SaveNewsrcFile);
       return FATAL;
     }
 
@@ -267,7 +244,6 @@ int readnewsrc()
 
     Newsrcfp = NIL(FILE);
 
-    XtFree(SaveNewsrcFile);
     return(OKAY);
 }
 
@@ -424,9 +400,7 @@ int updatenewsrc()
 	    }
 	    continue;
 	}
-
-	ART_STRUCT_UNLOCK;
-
+	
 	if (newsgroup->last >= newsgroup->first) {
 	    struct article *art;
 	    Boolean comma = False;
@@ -442,7 +416,7 @@ int updatenewsrc()
 			    continue;
 			}
 		      do_output:
-			FAILIF(fputc(comma ? ',' : ' ', newsrcfp) == EOF);
+			FAILIF(putc(comma ? ',' : ' ', newsrcfp) == EOF);
 			if (last_first == last_last) {
 			  FAILIF(fprintf(newsrcfp, "%ld", last_first) == EOF);
 			}
@@ -466,7 +440,6 @@ int updatenewsrc()
 		else if (last_last)
 		    goto do_output;
 	    }
-	    ART_STRUCT_UNLOCK;
 	    if (last_last)
 		goto do_output;
 	} else {
