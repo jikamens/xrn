@@ -1,12 +1,12 @@
-#include "config.h"
-#include "utils.h"
 #include <stdio.h>
 #include <errno.h>
 #include <X11/Intrinsic.h>
+#include "config.h"
 #include "mesg.h"
 #include "mesg_strings.h"
 #include "error_hnds.h"
 #include "server.h"
+#include "utils.h"
 #include "resources.h"
 #include "news.h"
 #include "activecache.h"
@@ -47,7 +47,7 @@ char *filename;
     }
     ptr = line;
     if (*line == CACHE_ACTIVE_CHAR) {
-      switch (ret = parse_active_line(line + 1, TRUE, 0)) {
+      switch (ret = parse_active_line(line + 1, 0)) {
       case ACTIVE_IGNORED:
       case ACTIVE_NEW:
       case ACTIVE_OLD:
@@ -76,22 +76,15 @@ char *filename;
     mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG, tmpfile, errmsg(errno)); \
     (void) fclose(input); \
     (void) fclose(output); \
-    XtFree(tmpfile); \
     return -1; \
   } \
 }
 
 
-int active_cache_write(
-		       _ANSIDECL(char *,		filename),
-		       _ANSIDECL(struct newsgroup **,	Newsrc),
-		       _ANSIDECL(ng_num,		num_groups),
-		       _ANSIDECL(Boolean,		write_entries)
-		       )
-     _KNRDECL(char *,			filename)
-     _KNRDECL(struct newsgroup **,	Newsrc)
-     _KNRDECL(ng_num,			num_groups)
-     _KNRDECL(Boolean,			write_entries)
+int active_cache_write(filename, Newsrc, num_groups)
+char *filename;
+struct newsgroup **Newsrc;
+ng_num num_groups;
 {
   FILE *input, *output;
   char *tmpfile;
@@ -103,7 +96,6 @@ int active_cache_write(
 
   if (! (output = fopen(tmpfile, "w"))) {
     mesgPane(XRN_SERIOUS, 0, CANT_OPEN_TEMP_MSG, tmpfile, errmsg(errno));
-    XtFree(tmpfile);
     return -1;
   }
 
@@ -136,35 +128,29 @@ int active_cache_write(
       mesgPane(XRN_SERIOUS, 0, CANT_OPEN_FILE_MSG, filename, errmsg(errno));
   }
 
-  if (write_entries) {
-    for (i = 0; i < num_groups; i++) {
-      (void) fprintf(output, "%c%s\n", CACHE_ACTIVE_CHAR,
-		     unparse_active_line(Newsrc[i]));
-      if (ferror(output)) {
-	mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG, tmpfile,
-		 errmsg(errno));
-	(void) fclose(output);
-	XtFree(tmpfile);
-	return -1;
-      }
+  for (i = 0; i < num_groups; i++) {
+    (void) fprintf(output, "%c%s\n", CACHE_ACTIVE_CHAR,
+		   unparse_active_line(Newsrc[i]));
+    if (ferror(output)) {
+      mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG, tmpfile,
+	       errmsg(errno));
+      (void) fclose(output);
+      return -1;
     }
   }
 
   if (fclose(output) == EOF) {
     mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG, tmpfile,
 	     errmsg(errno));
-    XtFree(tmpfile);
     return -1;
   }
 
   if (rename(tmpfile, filename)) {
     mesgPane(XRN_SERIOUS, 0, ERROR_RENAMING_MSG, tmpfile, filename,
 	     errmsg(errno));
-    XtFree(tmpfile);
     return -1;
   }
 
-  XtFree(tmpfile);
   return 0;
 }
 
