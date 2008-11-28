@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: cursor.c,v 1.36 2006-10-17 02:23:12 jik Exp $";
+static char XRNrcsid[] = "$Id: cursor.c,v 1.35 1997-06-30 02:53:17 jik Exp $";
 #endif
 
 /*
@@ -382,10 +382,7 @@ int moveToArticle(newsgroup, artNum, file, ques)
     file_cache_file **file;		/* cache file for new article */
     char **ques;			/* status line for new article */
 {
-    (void) fillUpArray(newsgroup, artNum, 0, True, False);
-
-    if (abortP())
-      return ABORT;
+    (void) fillUpArray(newsgroup, artNum, 0, False, False);
 
     if (checkArticle(artNum) != XRN_OKAY)
 	return NOMATCH;
