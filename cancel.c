@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: cancel.c,v 1.11 1995-09-29 08:02:08 jik Exp $";
+static char XRNrcsid[] = "$Id: cancel.c,v 1.10 1995-09-05 18:29:23 jik Exp $";
 #endif
 
 /*
@@ -70,8 +70,7 @@ void cancelFunction(widget, event, string, count)
 }
 
 
-void cancelCreate(name)
-char *name;
+void cancelCreate()
 {
     Widget box, button;
 
@@ -80,8 +79,7 @@ char *name;
 	{XtNsaveUnder, (XtArgVal) False},
     };
 
-    CancelTopLevel = XtCreatePopupShell(name ? name : "Cancel",
-					transientShellWidgetClass,
+    CancelTopLevel = XtCreatePopupShell("Cancel", transientShellWidgetClass,
 					TopLevel, shellArgs,
 					XtNumber(shellArgs));
 
