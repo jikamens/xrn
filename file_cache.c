@@ -37,7 +37,6 @@
 #endif /* XRN else */
 
 #include "file_cache.h"
-#include <errno.h>
 
 #define MAX_FILES 100	/* if not specified, use this as the maximum
 			   number of files in the cache by default */

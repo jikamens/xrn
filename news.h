@@ -2,7 +2,7 @@
 #define NEWS_H
 
 /*
- * $Id: news.h,v 1.35 2006-01-03 16:38:38 jik Exp $
+ * $Id: news.h,v 1.32 1999-01-06 01:50:12 jik Exp $
  */
 
 /*
@@ -41,7 +41,7 @@
 #include "xrn.h"
 
 typedef long art_num;  /* easy way to pick out variables refering to articles */
-typedef unsigned int ng_num;   /* easy way to pick out newsgroup variables            */
+typedef unsigned short ng_num;   /* easy way to pick out newsgroup variables            */
 typedef unsigned char fetch_flag_t;
 
 extern avl_tree *NewsGroupTable;
@@ -64,7 +64,6 @@ struct article {
     char *approved;	  /* Approved (maybe)			  */
     art_num parent;	  /* parent article, for threading	  */
     art_num *children;	  /* child articles, for threading	  */
-    avl_tree *headers;    /* parsed header, indexed by downcased field name */
 #ifdef ARTSTRUCT_C
     /* These should only be touched in artstruct.c! */
     art_num first;
@@ -161,7 +160,6 @@ struct newsgroup {
 #define _CLEAR_ALL(art,free) \
   _CLEAR_FILE((art),(free)); \
   _CLEAR_BASE_FILE((art),(free)); \
-  _CLEAR_HEADERS((art),(free)); \
   _CLEAR_SUBJECT((art),(free)); \
   _CLEAR_FROM((art),(free)); \
   _CLEAR_AUTHOR((art),(free)); \
@@ -173,30 +171,7 @@ struct newsgroup {
   _CLEAR_XREF((art),(free)); \
   _CLEAR_PARENT((art),(free)); \
   _CLEAR_CHILDREN((art),(free)); \
-  _CLEAR_APPROVED((art),(free))
-
-#ifdef DEBUG_NEWS_CLEARS
-
-static __inline__ void inline_CLEAR_FILE(struct article *art, int free)
-{
-  if ((free) && (art)->file)  {
-    fprintf(stderr, "inline_CLEAR_FILE(first=%d, file=0x%x)\n",
-#ifdef ARTSTRUCT_C
-	    art->first,
-#else
-	    art->dont_touch1,
-#endif
-	    art->file);
-    file_cache_file_release(FileCache, *(art)->file);
-    FREE((art)->file);
-  }
-  SET_UNFETCHED(art);
-  (art)->file = 0;
-}
-
-#define _CLEAR_FILE(art,free) inline_CLEAR_FILE(art,free)
-
-#else /* ! DEBUG_NEWS_CLEARS */
+  _CLEAR_APPROVED((art),(free)); \
 
 #define _CLEAR_FILE(art,free) \
   if ((free) && (art)->file)  { \
@@ -206,26 +181,12 @@ static __inline__ void inline_CLEAR_FILE(struct article *art, int free)
   SET_UNFETCHED(art); \
   (art)->file = 0;
 
-#endif /* DEBUG_NEWS_CLEARS */
-
 #define _CLEAR_BASE_FILE(art,free) \
   if ((free) && (art)->base_file)  { \
     file_cache_file_release(FileCache, *(art)->base_file); \
     FREE((art)->base_file); \
   } \
   (art)->base_file = 0;
-
-#define ART_HEADERS_BASE " base "
-
-#define _CLEAR_HEADERS(art,dofree) \
-  if ((dofree) && (art)->headers) { \
-    char *key = ART_HEADERS_BASE; \
-    char *base; \
-    if (avl_delete((art)->headers, &key, &base)) \
-      free(base); \
-    avl_free_table((art)->headers, 0, 0); \
-  } \
-  (art)->headers = 0;
 
 #define _CLEAR_SUBJECT(art,free) \
   if ((free) && (art)->subject) { \
@@ -301,7 +262,6 @@ static __inline__ void inline_CLEAR_FILE(struct article *art, int free)
 
 #define CLEAR_FILE(art)		_CLEAR_FILE((art),1)
 #define CLEAR_BASE_FILE(art)	_CLEAR_BASE_FILE((art),1)
-#define CLEAR_HEADERS(art)	_CLEAR_HEADERS((art),1)
 #define CLEAR_SUBJECT(art)	_CLEAR_SUBJECT((art),1)
 #define CLEAR_FROM(art)		_CLEAR_FROM((art),1)
 #define CLEAR_AUTHOR(art)	_CLEAR_AUTHOR((art),1)

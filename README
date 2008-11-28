@@ -178,7 +178,8 @@ look for it at your site.
 
 2. Edit the Imakefile (after making it writeable with chmod) for your
    local configuration.  The comments in the file explain what needs
-   to be edited.
+   to be edited.  Pay particular attention to "INN", which enables and
+   support for InterNetNews (INN).
 
 3. Edit config.h (after making it writeable with chmod) for your local
    configuration.  The file is (sort of) arranged from most
@@ -275,4 +276,4 @@ I hope you find XRN useful!
   Jonathan Kamens
   jik@kamens.brookline.ma.us
 
-# $Id: README,v 1.51 2006-01-03 16:17:06 jik Exp $
+# $Id: README,v 1.50 1999-09-24 16:42:44 jik Exp $
