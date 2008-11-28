@@ -1,6 +1,6 @@
 %{
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: rcyacc.y,v 1.7 2005-12-01 08:51:06 jik Exp $";
+static char XRNrcsid[] = "$Id: newsrc.y,v 1.7 1994-12-05 17:29:31 jik Exp $";
 #endif
 
 /*
@@ -36,8 +36,6 @@ static char XRNrcsid[] = "$Id: rcyacc.y,v 1.7 2005-12-01 08:51:06 jik Exp $";
 #include "config.h"
 #include "utils.h"
 #include <X11/Xos.h>
-#include <X11/Intrinsic.h>
-#include <assert.h>
 #include "avl.h"
 #include "mesg.h"
 #include "news.h"
@@ -47,7 +45,7 @@ static char XRNrcsid[] = "$Id: rcyacc.y,v 1.7 2005-12-01 08:51:06 jik Exp $";
 
 extern int yylineno;
 
-int newsrc_mesg_name;
+static char *mesg_name = "parsing .newsrc";
 
 %}
     
@@ -80,30 +78,21 @@ newsrc_file : newsrc_line
 newsrc_line : NAME SEPARATOR artlist EOL
                 {
 		    struct newsgroup *newsgroup;
+		    char *dummy;
 
-		    if (! verifyGroup($1, &newsgroup, False)) {
-		      struct list *current, *next;
-
-		      mesgPane(XRN_SERIOUS, newsrc_mesg_name,
-			       BOGUS_NG_REMOVING_MSG, $1);
-
-		      for (current = $3; current; current = next) {
-			next = current->next;
-			XtFree((char *) current);
-		      }
+		    if (!avl_lookup(NewsGroupTable, $1, &dummy)) {
+			mesgPane(XRN_SERIOUS, mesg_name, BOGUS_NG_REMOVING_MSG, $1);
 		    } else {
-			if (IS_NOENTRY(newsgroup) || IS_NEW(newsgroup)) {
+			newsgroup = (struct newsgroup *) dummy;
+			if (IS_NOENTRY(newsgroup)) {
 			    CLEAR_NOENTRY(newsgroup);
-			    CLEAR_NEW(newsgroup);
-			    if ($2 == ':')
-				SET_SUB(newsgroup);
+			    newsgroup->status |= ($2 == ':' ? NG_SUB : NG_UNSUB);
 			    newsgroup->nglist = $3;
-			    (void) updateArticleArray(newsgroup, False);
+			    updateArticleArray(newsgroup);
 			    newsgroup->newsrc = MaxGroupNumber;
-			    Newsrc[MaxGroupNumber] = newsgroup;
-			    INC_MAXGROUPNUMBER();
+			    Newsrc[MaxGroupNumber++] = newsgroup;
 			} else {
-			    mesgPane(XRN_SERIOUS, newsrc_mesg_name,
+			    mesgPane(XRN_SERIOUS, mesg_name,
 				     DUP_NEWSRC_ENTRY_MSG, $1);
 			}
 		    }
@@ -112,30 +101,28 @@ newsrc_line : NAME SEPARATOR artlist EOL
             | NAME SEPARATOR EOL
                 {
 		    struct newsgroup *newsgroup;
+		    char *dummy;
 
-		    if (! verifyGroup($1, &newsgroup, False))
-		      mesgPane(XRN_SERIOUS, newsrc_mesg_name,
-			       BOGUS_NG_REMOVING_MSG, $1);
-		    else {
-			if (IS_NOENTRY(newsgroup) || IS_NEW(newsgroup)) {
+		    if (!avl_lookup(NewsGroupTable, $1, &dummy)) {
+			mesgPane(XRN_SERIOUS, mesg_name, BOGUS_NG_REMOVING_MSG, $1);
+		    } else {
+			newsgroup = (struct newsgroup *) dummy;
+			if (IS_NOENTRY(newsgroup)) {
 			    CLEAR_NOENTRY(newsgroup);
-			    CLEAR_NEW(newsgroup);
-			    if ($2 == ':')
-				SET_SUB(newsgroup);
+			    newsgroup->status |= ($2 == ':' ? NG_SUB : NG_UNSUB);
 			    newsgroup->nglist = NIL(struct list);
-			    (void) updateArticleArray(newsgroup, False);
+			    updateArticleArray(newsgroup);
 			    newsgroup->newsrc = MaxGroupNumber;
-			    Newsrc[MaxGroupNumber] = newsgroup;
-			    INC_MAXGROUPNUMBER();
+			    Newsrc[MaxGroupNumber++] = newsgroup;
 			} else {
-			    mesgPane(XRN_SERIOUS, newsrc_mesg_name,
+			    mesgPane(XRN_SERIOUS, mesg_name,
 				     DUP_NEWSRC_ENTRY_MSG, $1);
 			}
 		    }
 		    XtFree($1);
 	        }
 	    | error EOL {
-		mesgPane(XRN_SERIOUS, newsrc_mesg_name, BAD_NEWSRC_LINE_MSG,
+		mesgPane(XRN_SERIOUS, mesg_name, BAD_NEWSRC_LINE_MSG,
 			 yylineno - 1);	/* yylineno stepped at EOL */
 		yyerrok;
 		yyclearin;
@@ -179,3 +166,5 @@ articles  : NUMBER
 
    
 %%
+#include "lex.yy.c"
+

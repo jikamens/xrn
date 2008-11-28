@@ -1,11 +1,8 @@
 #ifndef CURSOR_H
 #define CURSOR_H
 
-#include "news.h"
-#include "file_cache.h"
-
 /*
- * $Id: cursor.h,v 1.15 1998-01-22 03:09:00 jik Exp $
+ * $Id: cursor.h,v 1.5 1994-11-23 01:47:13 jik Exp $
  */
 
 /*
@@ -38,26 +35,37 @@
  *           text window
  */
 
-#define JUMP -1
 #define BACK 0
 #define FORWARD 1
 
-extern void moveBeginning _ARGUMENTS((char *,long *));
-extern void moveEnd _ARGUMENTS((char *,long *));
-extern int moveCursor _ARGUMENTS((int,char *,long *));
-extern int moveUpWrap _ARGUMENTS((char *,long *));
-extern void endInsertionPoint _ARGUMENTS((char *,long *));
-extern int getArtSelection _ARGUMENTS((void));
-extern void removeLine _ARGUMENTS((char *, long *));
-extern int setCursorCurrent _ARGUMENTS((char *,long *));
-extern void currentGroup _ARGUMENTS((int,char *,char **,long));
-extern void currentMode _ARGUMENTS((char *,char **,int *,long));
-extern int markStringRead _ARGUMENTS((char *,long));
-extern void markAllString _ARGUMENTS((char *,long, char *));
-extern void markArticles _ARGUMENTS((char *, long, long, char));
-extern void buildString _ARGUMENTS((char **,long,long,
+#define NEWS_GROUP_LINE "%*15c%s"
+
+#ifdef MOTIF
+#include "MotifXawHack.h"
+#endif
+
+extern void moveBeginning _ARGUMENTS((char *,XawTextPosition *));
+extern void moveEnd _ARGUMENTS((char *,XawTextPosition *));
+extern int moveCursor _ARGUMENTS((int,char *,XawTextPosition *));
+extern int moveUpWrap _ARGUMENTS((char *,XawTextPosition *));
+extern void endInsertionPoint _ARGUMENTS((char *,XawTextPosition *));
+extern int getSelection _ARGUMENTS((Widget,char *,XawTextPosition *,
+    XawTextPosition *));
+extern int getArtSelection _ARGUMENTS(());
+extern void removeLine _ARGUMENTS((char *,Widget,Widget *,XawTextPosition,
+    XawTextPosition*));
+extern int setCursorCurrent _ARGUMENTS((char *,XawTextPosition *));
+extern void currentGroup _ARGUMENTS((int,char *,char *,XawTextPosition));
+extern void currentMode _ARGUMENTS((char *,char *,int *,XawTextPosition));
+extern int markStringRead _ARGUMENTS((char *,XawTextPosition));
+extern void markAllString _ARGUMENTS((char *,XawTextPosition,XawTextPosition,
     char *));
-extern int moveToArticle _ARGUMENTS((struct newsgroup *, long,
-				     file_cache_file **, char **));
+extern void markArticles _ARGUMENTS((char *, XawTextPosition, XawTextPosition,
+				     /* char */ int));
+extern void buildString _ARGUMENTS((char **,XawTextPosition,XawTextPosition,
+    char *));
+extern void findArticle _ARGUMENTS((char *,long,XawTextPosition *));
+extern int subjectSearch _ARGUMENTS((int,char **,Widget,XawTextPosition *,XawTextPosition,char *,char **,char **,long *));
+extern int moveToArticle _ARGUMENTS((long, char **, char **));
 
 #endif /* CURSOR_H */
