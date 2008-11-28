@@ -2,7 +2,7 @@
 #define CANCEL_H
 
 /*
- * $Id: cancel.h,v 1.5 1995-09-29 08:02:08 jik Exp $
+ * $Id: cancel.h,v 1.4 1995-01-25 03:17:52 jik Exp $
  */
 
 /*
@@ -35,7 +35,7 @@
  * cancel.h: cancel functions
  */
 
-extern void cancelCreate _ARGUMENTS((char *));
+extern void cancelCreate _ARGUMENTS((void));
 extern void cancelDestroy _ARGUMENTS((void));
 
 #endif
