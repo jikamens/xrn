@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: dialogs.c,v 1.23 1998-07-05 14:39:13 jik Exp $";
+static char XRNrcsid[] = "$Id: dialogs.c,v 1.22 1998-02-26 18:43:16 jik Exp $";
 /* Modified 2/20/92 dbrooks@osf.org to clean up dialog layout */
 #endif
 
@@ -328,10 +328,8 @@ static void passwordHandler(widget, client_data, call_data)
   Widget dialog = XtParent(XtParent(widget));
 
   password_result = (int) client_data;
-  if (password_result == XRN_CB_CONTINUE) {
-    dialog_password = GetDialogValue(dialog);
-    dialog_password = XtNewString(dialog_password);
-  }
+  if (password_result == XRN_CB_CONTINUE)
+    dialog_password = XtNewString(GetDialogValue(dialog));
   PopDownDialog(dialog);
   return;
 }
