@@ -3,16 +3,9 @@
 
 #include <X11/Intrinsic.h>
 
-#ifdef MOTIF
-# define TEXT_PANE_CHILD(w)	XtParent(w)
-#else
-# define TEXT_PANE_CHILD(w)	w
-#endif
-
 typedef enum { TextSearchLeft, TextSearchRight } TextDirection;
 
-extern Widget	TextCreate			_ARGUMENTS((String,
-							    Boolean,
+extern Widget	TextCreate			_ARGUMENTS((String, Boolean,
 							    Widget));
 extern void	TextDestroy			_ARGUMENTS((Widget));
 extern void	TextClear			_ARGUMENTS((Widget));
@@ -46,7 +39,6 @@ extern void	TextScrollLine			_ARGUMENTS((Widget, int));
 extern void	TextMoveLine			_ARGUMENTS((Widget, int));
 extern void	TextSetLines			_ARGUMENTS((Widget, int));
 extern int	TextGetLines			_ARGUMENTS((Widget));
-extern int	TextGetColumns			_ARGUMENTS((Widget));
 extern Boolean	TextLastPage			_ARGUMENTS((Widget));
 extern Boolean	TextPastLastPage		_ARGUMENTS((Widget));
 extern void	TextSetLineSelections		_ARGUMENTS((Widget));
@@ -55,10 +47,5 @@ extern void	TextSelectAll			_ARGUMENTS((Widget));
 extern long	TextSearch			_ARGUMENTS((Widget, long,
 							    TextDirection,
 							    String));
-extern void	TextSearchInteractive		_ARGUMENTS((Widget, XEvent *,
-							    long, TextDirection,
-							    String));
-extern void	TextEnableWordWrap		_ARGUMENTS((Widget));
-extern void	TextDisableWordWrap		_ARGUMENTS((Widget));
 
 #endif /* _TEXT_H_ */

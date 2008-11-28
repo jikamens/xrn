@@ -1,17 +1,10 @@
-#include <X11/Intrinsic.h>
-#include <X11/Xaw/Box.h>
-#include <X11/Xaw/Paned.h>
-
 #include <assert.h>
 
-#include "config.h"
 #include "artMode.h"
 #include "buttons.h"
 #include "news.h"
 #include "butexpl.h"
 #include "Text.h"
-#include "InfoLine.h"
-#include "ButtonBox.h"
 #include "mesg.h"
 #include "cursor.h"
 #include "mesg_strings.h"
@@ -26,16 +19,12 @@
 #include "compose.h"
 #include "dialogs.h"
 #include "save.h"
+#include "ngMode.h"
 #include "allMode.h"
 #include "snapshot.h"
 #include "utils.h"
-#include "artstruct.h"
-#include "killfile.h"
-#include "sort.h"
-#include "file_cache.h"
 
 static int getPrevious _ARGUMENTS((art_num *));
-static long findArticle _ARGUMENTS((char *, art_num, Boolean));
 
 /*
   The string to which the list of newsgroups is moved when switching
@@ -43,13 +32,10 @@ static long findArticle _ARGUMENTS((char *, art_num, Boolean));
   can behave consistently with what was displayed when in newsgroup
   mode.
 */
-static char *ArticleNewsGroupsString = 0;
+char *ArticleNewsGroupsString = 0;
 
 static String SubjectString;
 static art_num FirstListedArticle;
-static Widget ArticleFrame;
-static Widget SubjectText, SubjectInfoLine, SubjectButtonBox;
-static Widget ArticleText, ArticleInfoLine, ArtSpecButtonBox;
 
 /*
   These two variables are maintained by exitArticleMode,
@@ -71,9 +57,6 @@ static int LastSearch;		/* the direction of the last regular */
 
 static char *SaveString = 0;	/* last input to save box */
 
-/* Is the article list currently sorted? */
-static Boolean list_sorted_p;
-
 /* article mode "modes" ... determines what to do: jump out of article */
 /* mode, change the subject string, or do nothing */
 #define art_DONE 0
@@ -94,25 +77,17 @@ static Boolean list_sorted_p;
 				   the subject index */
 #define art_UNREAD	(1<<4)	/* retrieve only unread articles */
 
-static Boolean cursorOnCurrent _ARGUMENTS((void));
-static void setListSorted _ARGUMENTS((Boolean));
-static void setListed _ARGUMENTS((art_num, art_num, Boolean));
-
 BUTTON(artQuit,quit);
-BUTTON(artNextUnread,next unread);
 BUTTON(artNext,next);
+BUTTON(artNextUnread,next unread);
 BUTTON(artPrev,prev);
 BUTTON(artLast,last);
-BUTTON(artCurrent,current);
-BUTTON(artUp,up);
-BUTTON(artDown,down);
 BUTTON(artNextGroup,next newsgroup);
 BUTTON(artGotoArticle,goto article);
 BUTTON(artCatchUp,catch up);
 BUTTON(artFedUp,fed up);
 BUTTON(artMarkRead,mark read);
 BUTTON(artMarkUnread,mark unread);
-BUTTON(artSub,subscribe);
 BUTTON(artUnsub,unsubscribe);
 BUTTON(artScroll,scroll forward);
 BUTTON(artScrollBack,scroll backward);
@@ -124,21 +99,17 @@ BUTTON(artScrollIndex, scroll index);
 BUTTON(artScrollIndexBack, scroll index back);
 BUTTON(artSubNext,subject next);
 BUTTON(artSubPrev,subject prev);
-BUTTON(artThreadParent,parent);
-BUTTON(artKillSubject,subject kill);
+BUTTON(artKillSession,session kill);
+BUTTON(artKillLocal,local kill);
+BUTTON(artKillGlobal,global kill);
 BUTTON(artKillAuthor,author kill);
-BUTTON(artKillThread,thread kill);
-BUTTON(artKillSubthread,subthread kill);
 BUTTON(artSubSearch,subject search);
 BUTTON(artContinue,continue);
 BUTTON(artPost,post);
-BUTTON(artPostAndMail,post and mail);
-BUTTON(artMail,mail);
 BUTTON(artExit,exit);
 BUTTON(artCheckPoint,checkpoint);
 BUTTON(artGripe,gripe);
 BUTTON(artListOld,list old);
-BUTTON(artResort, resort);
 
 BUTTON(artSave,save);
 BUTTON(artReply,reply);
@@ -156,20 +127,6 @@ BUTTON(artPrint,print);
 XtActionsRec ArtActions[] = {
     {"artQuit",		artQuitAction},
     {"artNextUnread",	artNextUnreadAction},
-    {"artNext",		artNextAction},
-    {"artPrev",		artPrevAction},
-    {"artLast",		artLastAction},
-    {"artCurrent",	artCurrentAction},
-    {"artUp",		artUpAction},
-    {"artDown",		artDownAction},
-    {"artNextGroup",	artNextGroupAction},
-    {"artGotoArticle",	artGotoArticleAction},
-    {"artCatchUp",	artCatchUpAction},
-    {"artFedUp",	artFedUpAction},
-    {"artMarkRead",	artMarkReadAction},
-    {"artMarkUnread",	artMarkUnreadAction},
-    {"artSub",		artSubAction},
-    {"artUnsub",	artUnsubAction},
     {"artScroll",	artScrollAction},
     {"artScrollBack",	artScrollBackAction},
     {"artScrollLine",	artScrollLineAction},
@@ -178,23 +135,27 @@ XtActionsRec ArtActions[] = {
     {"artScrollBeginning",	artScrollBeginningAction},
     {"artScrollIndex",	artScrollIndexAction},
     {"artScrollIndexBack",	artScrollIndexBackAction},
+    {"artNext",		artNextAction},
+    {"artPrev",		artPrevAction},
+    {"artLast",		artLastAction},
+    {"artNextGroup",	artNextGroupAction},
+    {"artCatchUp",	artCatchUpAction},
+    {"artFedUp",	artFedUpAction},
+    {"artGotoArticle",	artGotoArticleAction},
+    {"artMarkRead",	artMarkReadAction},
+    {"artMarkUnread",	artMarkUnreadAction},
+    {"artUnsub",	artUnsubAction},
     {"artSubNext",	artSubNextAction},
     {"artSubPrev",	artSubPrevAction},
-    {"artThreadParent",	artThreadParentAction},
-    {"artKillSubject",	artKillSubjectAction},
+    {"artKillSession",	artKillSessionAction},
+    {"artKillLocal",	artKillLocalAction},
+    {"artKillGlobal",	artKillGlobalAction},
     {"artKillAuthor",	artKillAuthorAction},
-    {"artKillThread",	artKillThreadAction},
-    {"artKillSubthread",	artKillSubthreadAction},
     {"artSubSearch",	artSubSearchAction},
     {"artContinue",	artContinueAction},
     {"artPost",		artPostAction},
-    {"artPostAndMail",	artPostAndMailAction},
-    {"artMail",		artMailAction},
     {"artExit",		artExitAction},
     {"artCheckPoint",	artCheckPointAction},
-    {"artGripe",	artGripeAction},
-    {"artListOld",	artListOldAction},
-    {"artResort",	artResortAction},
     {"artSave",		artSaveAction},
     {"artReply",	artReplyAction},
     {"artForward",	artForwardAction},
@@ -207,173 +168,109 @@ XtActionsRec ArtActions[] = {
 #endif /* XLATE */
     {"artHeader",	artHeaderAction},
     {"artPrint",	artPrintAction},
+    {"artGripe",	artGripeAction},
+    {"artListOld",	artListOldAction},
 };
 
 int ArtActionsCount = XtNumber(ArtActions);
 
-static ButtonList ArtButtonList[] = {
-  {"artQuit",		 artQuitCallbacks,	      ARTQUIT_EXSTR,	     True},
-  {"artNextUnread",	 artNextUnreadCallbacks,      ARTNEXTUNREAD_EXSTR,   True},
-  {"artNext",		 artNextCallbacks,	      ARTNEXT_EXSTR,	     True},
-  {"artPrev",		 artPrevCallbacks,	      ARTPREV_EXSTR,	     True},
-  {"artLast",		 artLastCallbacks,	      ARTLAST_EXSTR,	     True},
-  {"artCurrent",	 artCurrentCallbacks,	      ARTCURRENT_EXSTR,	     True},
-  {"artUp",		 artUpCallbacks,	      ARTUP_EXSTR,	     True},
-  {"artDown",		 artDownCallbacks,	      ARTDOWN_EXSTR,	     True},
-  {"artNextGroup",	 artNextGroupCallbacks,	      ARTNEXTGROUP_EXSTR,    True},
-  {"artGotoArticle",	 artGotoArticleCallbacks,     ARTGOTOARTICLE_EXSTR,  True},
-  {"artCatchUp",	 artCatchUpCallbacks,	      ARTCATCHUP_EXSTR,	     True},
-  {"artFedUp",		 artFedUpCallbacks,	      ARTFEEDUP_EXSTR,	     True},
-  {"artMarkRead",	 artMarkReadCallbacks,	      ARTMARKREAD_EXSTR,     True},
-  {"artMarkUnread",	 artMarkUnreadCallbacks,      ARTMARKUNREAD_EXSTR,   True},
-  {"artSub",		 artSubCallbacks,	      ARTSUB_EXSTR,	     True},
-  {"artUnsub",		 artUnsubCallbacks,	      ARTUNSUB_EXSTR,	     True},
-  {"artScroll",		 artScrollCallbacks,	      ARTSCROLL_EXSTR,	     True},
-  {"artScrollBack",	 artScrollBackCallbacks,      ARTSCROLLBACK_EXSTR,   True},
-  {"artScrollLine",	 artScrollLineCallbacks,      ARTSCROLLLINE_EXSTR,   True},
-  {"artScrollBackLine",	 artScrollBackLineCallbacks,  ARTSCROLLBCKLN_EXSTR,  True},
-  {"artScrollEnd",	 artScrollEndCallbacks,	      ARTSCROLLEND_EXSTR,    True},
-  {"artScrollBeginning", artScrollBeginningCallbacks, ARTSCROLLBEG_EXSTR,    True},
-  {"artScrollIndex",	 artScrollIndexCallbacks,     ARTSCROLLINDEX_EXSTR,  True},
-  {"artScrollIndexBack", artScrollIndexBackCallbacks, ARTSCROLLINDBCK_EXSTR, True},
-  {"artSubNext",	 artSubNextCallbacks,	      ARTSUBNEXT_EXSTR,	     True},
-  {"artSubPrev",	 artSubPrevCallbacks,	      ARTSUBPREV_EXSTR,	     True},
-  {"artThreadParent",	 artThreadParentCallbacks,    ARTPARENT_EXSTR,	     True},
-  {"artKillSubject",	 artKillSubjectCallbacks,     ARTKILLSUBJECT_EXSTR,  True},
-  {"artKillAuthor",	 artKillAuthorCallbacks,      ARTKILLAUTHOR_EXSTR,   True},
-  {"artKillThread",	 artKillThreadCallbacks,      ARTKILLTHREAD_EXSTR,   True},
-  {"artKillSubthread",	 artKillSubthreadCallbacks,   ARTKILLSUBTHREAD_EXSTR,True},
-  {"artSubSearch",	 artSubSearchCallbacks,	      ARTSUBSEARCH_EXSTR,    True},
-  {"artContinue",	 artContinueCallbacks,	      ARTCONTINUE_EXSTR,     True},
-  {"artPost",		 artPostCallbacks,	      ARTPOST_EXSTR,	     True},
-  {"artPostAndMail",	 artPostAndMailCallbacks,     ARTPOST_MAIL_EXSTR,    True},
-  {"artMail",		 artMailCallbacks,	      MAIL_EXSTR,	     True},
-  {"artExit",		 artExitCallbacks,	      ARTEXIT_EXSTR,	     True},
-  {"artCheckPoint",	 artCheckPointCallbacks,      ARTCHECKPOINT_EXSTR,   True},
-  {"artGripe",		 artGripeCallbacks,	      ARTGRIPE_EXSTR,	     True},
-  {"artListOld",	 artListOldCallbacks,	      ARTLISTOLD_EXSTR,	     True},
-  {"artResort",		 artResortCallbacks,	      ARTRESORT_EXSTR,	     True},
+ButtonList ArtButtonList[] = {
+    {artQuitArgs, XtNumber(artQuitArgs),
+    ARTQUIT_EXSTR},
+    {artNextUnreadArgs, XtNumber(artNextUnreadArgs),
+    ARTNEXTUNREAD_EXSTR},
+    {artNextArgs, XtNumber(artNextArgs),
+    ARTNEXT_EXSTR},
+    {artScrollArgs, XtNumber(artScrollArgs),
+    ARTSCROLL_EXSTR},
+    {artScrollBackArgs, XtNumber(artScrollBackArgs),
+    ARTSCROLLBACK_EXSTR},
+    {artScrollLineArgs, XtNumber(artScrollLineArgs),
+    ARTSCROLLLINE_EXSTR},
+    {artScrollBackLineArgs, XtNumber(artScrollBackLineArgs),
+    ARTSCROLLBACKLINE_EXSTR},
+    {artScrollEndArgs, XtNumber(artScrollEndArgs),
+    ARTSCROLLEND_EXSTR},
+    {artScrollBeginningArgs, XtNumber(artScrollBeginningArgs),
+    ARTSCROLLBEGINNING_EXSTR},
+    {artScrollIndexArgs, XtNumber(artScrollIndexArgs),
+    ARTSCROLLINDEX_EXSTR},
+    {artScrollIndexBackArgs, XtNumber(artScrollIndexBackArgs),
+    ARTSCROLLINDEXBACK_EXSTR},
+    {artPrevArgs, XtNumber(artPrevArgs),
+    ARTPREV_EXSTR},
+    {artLastArgs, XtNumber(artLastArgs),
+    ARTLAST_EXSTR},
+    {artNextGroupArgs, XtNumber(artNextGroupArgs),
+    ARTNEXTGROUP_EXSTR},
+    {artCatchUpArgs, XtNumber(artCatchUpArgs),
+    ARTCATCHUP_EXSTR},
+    {artFedUpArgs, XtNumber(artFedUpArgs),
+    ARTFEEDUP_EXSTR},
+    {artGotoArticleArgs, XtNumber(artGotoArticleArgs),
+    ARTGOTOARTICLE_EXSTR},
+    {artMarkReadArgs, XtNumber(artMarkReadArgs),
+    ARTMARKREAD_EXSTR},
+    {artMarkUnreadArgs, XtNumber(artMarkUnreadArgs),
+    ARTMARKUNREAD_EXSTR},
+    {artUnsubArgs, XtNumber(artUnsubArgs),
+    ARTUNSUB_EXSTR},
+    {artSubNextArgs, XtNumber(artSubNextArgs),
+    ARTSUBNEXT_EXSTR},
+    {artSubPrevArgs, XtNumber(artSubPrevArgs),
+    ARTSUBPREV_EXSTR},
+    {artKillSessionArgs, XtNumber(artKillSessionArgs),
+    ARTKILLSESSION_EXSTR},
+    {artKillLocalArgs, XtNumber(artKillLocalArgs),
+    ARTKILLLOCAL_EXSTR},
+    {artKillGlobalArgs, XtNumber(artKillGlobalArgs),
+    ARTKILLGLOBAL_EXSTR},
+    {artKillAuthorArgs, XtNumber(artKillAuthorArgs),
+    ARTKILLAUTHOR_EXSTR},
+    {artSubSearchArgs, XtNumber(artSubSearchArgs),
+    ARTSUBSEARCH_EXSTR},
+    {artContinueArgs, XtNumber(artContinueArgs),
+    ARTCONTINUE_EXSTR},
+    {artPostArgs, XtNumber(artPostArgs),
+    ARTPOST_EXSTR},
+    {artExitArgs, XtNumber(artExitArgs),
+    ARTEXIT_EXSTR},
+    {artCheckPointArgs, XtNumber(artCheckPointArgs),
+    ARTCHECKPOINT_EXSTR},
+    {artGripeArgs, XtNumber(artGripeArgs),
+    ARTGRIPE_EXSTR},
+    {artListOldArgs, XtNumber(artListOldArgs),
+    ARTLISTOLD_EXSTR},
 };
 
-static int ArtButtonListCount = XtNumber(ArtButtonList);
+int ArtButtonListCount = XtNumber(ArtButtonList);
 
-static ButtonList ArtSpecButtonList[] = {
-  {"artSave",             artSaveCallbacks,             ARTSAVE_EXSTR,	     True},
-  {"artReply",            artReplyCallbacks,            ARTREPLY_EXSTR,	     True},
-  {"artForward",          artForwardCallbacks,          ARTFORWARD_EXSTR,    True},
-  {"artFollowup",         artFollowupCallbacks,         ARTFOLLOWUP_EXSTR,   True},
-  {"artFollowupAndReply", artFollowupAndReplyCallbacks, ARTFOLLOWREPL_EXSTR, True},
-  {"artCancel",           artCancelCallbacks,           ARTCANCEL_EXSTR,     True},
-  {"artRot13",            artRot13Callbacks,            ARTROT13_EXSTR,	     True},
+ButtonList ArtSpecButtonList[] = {
+    {artSaveArgs, XtNumber(artSaveArgs),
+    ARTSAVE_EXSTR},
+    {artReplyArgs, XtNumber(artReplyArgs),
+    ARTREPLY_EXSTR},
+    {artForwardArgs, XtNumber(artForwardArgs),
+    ARTFORWARD_EXSTR},
+    {artFollowupArgs, XtNumber(artFollowupArgs),
+    ARTFOLLOWUP_EXSTR},
+    {artFollowupAndReplyArgs, XtNumber(artFollowupAndReplyArgs),
+    ARTFOLLOWUPANDREPLY_EXSTR},
+    {artCancelArgs, XtNumber(artCancelArgs),
+    ARTCANCEL_EXSTR},
+    {artRot13Args, XtNumber(artRot13Args),
+    ARTROT13_EXSTR},
 #ifdef XLATE
-  {"artXlate",            artXlateCallbacks,            ARTXLATE_EXSTR,	     True},
+    {artXlateArgs, XtNumber(artXlateArgs),
+    ARTXLATE_EXSTR},
 #endif /*XLATE */
-  {"artHeader",           artHeaderCallbacks,           ARTHEADER_EXSTR,     True},
-  {"artPrint",            artPrintCallbacks,            ARTPRINT_EXSTR,	     True},
+    {artHeaderArgs, XtNumber(artHeaderArgs),
+    ARTHEADER_EXSTR},
+    {artPrintArgs, XtNumber(artPrintArgs),
+    ARTPRINT_EXSTR},
 };
 
-static int ArtSpecButtonListCount = XtNumber(ArtSpecButtonList);
-
-/*
-  Adjust the upper text window so that the number of lines above the
-  cursor is greater than or equal to minLines and less than or equal
-  to maxLines, if possible.  If the number of lines is within the
-  valid range,	don't do anything; otherwise, scroll so that
-  defaultLines are above the cursor, if defaultLines is within the
-  valid range, or just enough to put us within the valid range,
-  otherwise.  In any case, the cursor will be visible when done.
-
-  If motion is FORWARD, then we'll only scroll forwards as long as the
-  cursor is visible.  If motion os BACK, then we'll only scroll
-  backwards as long as the cursor is visible.
-  */
-static void adjustMinMaxLines(motion)
-     int motion;
-{
-    long CursorPosition = TextGetInsertionPoint(SubjectText);
-    long top = TextGetTopPosition(SubjectText), TopPosition = top, end;
-    int height = TextGetLines(SubjectText);
-    int min = app_resources.minLines, max = app_resources.maxLines;
-    int def = app_resources.defaultLines;
-    int numLines, below;
-    Boolean off_screen = False;
-
-    if (height == 0)
-	return;
-    if (max < 0)
-	max += height;
-
-    /*
-      Sanitize the parameters.
-      */
-    if (min < 1)
-	min = 1;
-    if (max > height)
-	max = height;
-    if (min > max)
-	min = max;
-    if (def < min)
-	def = min;
-    if (def > max)
-	def = max;
-    /*
-      If the cursor isn't even currently visible, it should be.
-      */
-    if (top > CursorPosition) {
-	top = CursorPosition;
-	off_screen = True;
-    }
-
-    /*
-      Figure out how many lines are above the cursor.
-      */
-    for (numLines = 1; top < CursorPosition; numLines++) {
-	int ret = moveCursor(FORWARD, SubjectString, &top);
-	assert(ret);
-    }
-
-    while (numLines > height) {
-      /* We've scrolled down, but the Text widget hasn't realized it yet. */
-      numLines -= 1;
-      (void) moveCursor(FORWARD, SubjectString, &TopPosition);
-      off_screen = True;
-    }
-
-    /*
-      Figure out how many lines are below the cursor.
-      */
-    below = 0;
-    end = top;
-    while (moveCursor(FORWARD, SubjectString, &end) && (below < height))
-	below++;
-    if (! below) 
-      /* Special case: if the cursor is at the end of the Subject
-	string, it'll be on a line by itself, and "below" will
-	therefore be 0 (since there's nothing after the cursor), but
-	we want the empty line that the cursor is on to count as a
-	line so that it'll be displayed properly.  */
-      below = 1;
-
-    /*
-      If necessary, reposition.
-      */
-    if ((numLines < min) || (max < numLines)) {
-	for (numLines = 1; numLines < def; numLines++) {
-	    if (! moveCursor(BACK, SubjectString, &top))
-		break;
-	}
-	for (below += numLines; below <= height; below++) {
-	    if (! moveCursor(BACK, SubjectString, &top))
-		break;
-	}
-	if ((TopPosition != top) &&
-	    (off_screen ||
-	     (motion == JUMP) ||
-	     (motion == FORWARD && TopPosition < top) ||
-	     (motion == BACK && top < TopPosition)))
-	  TextSetTopPosition(SubjectText, top);
-    }
-}
+int ArtSpecButtonListCount = XtNumber(ArtSpecButtonList);
 
 /*
   If left == right, then set the text in the subject window to the
@@ -386,51 +283,34 @@ static void adjustMinMaxLines(motion)
   constraints are met, if update_top is true.
   */
 static void updateSubjectWidget _ARGUMENTS((String, long,
-					    long, Boolean, Boolean,
-					    int));
-
-static void updateSubjectWidget(
-				_ANSIDECL(String,	string),
-				_ANSIDECL(long,		left),
-				_ANSIDECL(long,		right),
-				_ANSIDECL(Boolean,	update_top),
-				_ANSIDECL(Boolean,	preserve_top),
-				_ANSIDECL(int,		motion)
-				)
-     _KNRDECL(String,	string)
-     _KNRDECL(long,	left)
-     _KNRDECL(long,	right)
-     _KNRDECL(Boolean,	update_top)
-     _KNRDECL(Boolean,	preserve_top)
-     _KNRDECL(int,	motion)
+					    long, /* Boolean */ int));
+    
+static void updateSubjectWidget(string, left, right, update_top)
+    String string;
+    long left, right;
+    Boolean update_top;
 {
     Boolean disable = False;
-    long top WALL(= 0);
 
-    if (preserve_top)
-	top = TextGetTopPosition(SubjectText);
-
-    if ((left != right) || update_top || preserve_top)
+    if ((left != right) || update_top)
 	disable = True;
 
     if (disable)
-	TextDisableRedisplay(SubjectText);
+	TextDisableRedisplay(Text);
 
     if (left == right)
-	TextSetString(SubjectText, string);
+	TextSetString(Text, string);
     else {
-	long point = TextGetInsertionPoint(SubjectText);
-	TextInvalidate(SubjectText, string, left, right);
-	TextSetInsertionPoint(SubjectText, point);
+	long point = TextGetInsertionPoint(Text);
+	TextInvalidate(Text, string, left, right);
+	TextSetInsertionPoint(Text, point);
     }
 
-    if (preserve_top)
-	TextSetTopPosition(SubjectText, top);
-    else if (update_top)
-	adjustMinMaxLines(motion);
+    if (update_top)
+	adjustMinMaxLines(SubjectString);
 
     if (disable)
-	TextEnableRedisplay(SubjectText);
+	TextEnableRedisplay(Text);
 }
 
 
@@ -440,16 +320,15 @@ static void updateSubjectWidget(
   article, depending on the value of status.  Return the filename,
   question and number of the article obtained.
   */
-static int getNearbyArticle _ARGUMENTS((int, file_cache_file **, char **, long *));
+static int getNearbyArticle _ARGUMENTS((int, char **, char **, long *));
 
-static int getNearbyArticle(status, file, question, artNum)
+static int getNearbyArticle(status, filename, question, artNum)
     int status;
-    file_cache_file **file;
-    char **question;
+    char **filename, **question;
     long *artNum;
 {
     int mesg_name = newMesgPaneName();
-    long ArtPosition = TextGetInsertionPoint(SubjectText);
+    long ArtPosition = TextGetInsertionPoint(Text);
     long beginning = ArtPosition;
     int ret;
     Boolean move = (! (status & art_CURRENT));
@@ -478,10 +357,6 @@ static int getNearbyArticle(status, file, question, artNum)
 	}
 	move = True;
 
-	/* If this assertion fires, you probably need to put "#define
-	   XAW_REDISPLAY_BUG" in config.h and recompile XRN. */
-	assert(ArtPosition == 0 || SubjectString[ArtPosition - 1] == '\n');
-
 	if (! SubjectString[ArtPosition])
 	    continue;
 
@@ -490,63 +365,22 @@ static int getNearbyArticle(status, file, question, artNum)
 
 	*artNum = atol(&SubjectString[ArtPosition + 2]);
 
-	/* If this assertion fires, you probably need to put "#define
-	   XAW_REDISPLAY_BUG" in config.h and recompile XRN. */
-	assert(*artNum);
+	gotoArticle(*artNum);
 
-	if (getArticle(CurrentGroup, *artNum, file, question) != XRN_OKAY) {
+	if (getArticle(filename, question) != XRN_OKAY) {
 	    mesgPane(XRN_SERIOUS, mesg_name, ART_NOT_AVAIL_MSG, *artNum);
-	    TextRemoveLine(SubjectText, ArtPosition);
+	    TextRemoveLine(Text, ArtPosition);
 	    removeLine(SubjectString, &ArtPosition);
-	    setListed(*artNum, *artNum, False);
 	    if (status & art_FORWARD)
 		move = False;
 	    continue;
 	}
-	CurrentGroup->current = *artNum;
 	ret = art_CHANGE;
 	break;
     }
 
-    TextSetInsertionPoint(SubjectText, ArtPosition);
+    TextSetInsertionPoint(Text, ArtPosition);
     return ret;
-}
-
-static void setListSorted(
-			  _ANSIDECL(Boolean,	sorted)
-			  )
-     _KNRDECL(Boolean, 	sorted)
-{
-  setButtonSensitive(SubjectButtonBox, "artResort", !sorted);
-  list_sorted_p = sorted;
-}
-
-static void setListed(
-		      _ANSIDECL(art_num,	first),
-		      _ANSIDECL(art_num,	last),
-		      _ANSIDECL(Boolean,	listed)
-		      )
-     _KNRDECL(art_num,	first)
-     _KNRDECL(art_num,	last)
-     _KNRDECL(Boolean,	listed)
-{
-  art_num i;
-
-  if (! first)
-    return;
-
-  for (i = first; i <= last; i++) {
-    struct article *art = artStructGet(CurrentGroup, i, True);
-    if (IS_MAYBE_LISTED(art) || IS_LISTED(art)) {
-      /* Clear MAYBE_LISTED */
-      SET_UNLISTED(art);
-      /* Maybe set LISTED */
-      if (listed)
-	SET_LISTED(art);
-    }
-    artStructSet(CurrentGroup, &art);
-  }
-  return;
 }
 
 #define CHANGE 0		/* subject window has changed */
@@ -555,16 +389,17 @@ static void setListed(
 				/* EXIT is already defined, it implies */
 				/* there are no articles left at all */
 
-static int isPrevSubject _ARGUMENTS((char *, file_cache_file **, char **,
-				     art_num *));
+/*
+ *
+ */
+static int isPrevSubject _ARGUMENTS((char *, char **, char **, art_num *));
 
-static int isPrevSubject(subject, file, question, artNum)
+static int isPrevSubject(subject, filename, question, artNum)
     char *subject;
-    file_cache_file **file;
-    char **question;
+    char **filename, **question;
     art_num *artNum;
 {
-    long ArtPosition = TextGetInsertionPoint(SubjectText);
+    long ArtPosition = TextGetInsertionPoint(Text);
 
     char *newsubject;
     char *newLine;
@@ -572,17 +407,15 @@ static int isPrevSubject(subject, file, question, artNum)
     char *newSubjects = 0;
     int count = 0;
     int ret;
-    int line_length = TextGetColumns(SubjectText);
-    art_num first_new = 0, last_new = 0;
 
     startSearch();
     abortClear();
-
+    
     for (;;) {
 	count++;
 
 	if (count == app_resources.cancelCount) {
-	    cancelCreate(0);
+	    cancelCreate();
 	}
 
 	if (abortP()) {
@@ -599,50 +432,31 @@ static int isPrevSubject(subject, file, question, artNum)
 	if (ArtPosition != 0) {
 	    (void) moveCursor(BACK, SubjectString, &ArtPosition);
 	    *artNum = atol(&SubjectString[ArtPosition+2]);
-	    if (! (newsubject = getSubject(*artNum)))
-		goto art_unavailable;
+	    newsubject = getSubject(*artNum);
 	    if (utSubjectCompare(newsubject, subject) == 0) {
-		if (getArticle(CurrentGroup, *artNum, file, question)
-		    != XRN_OKAY) {
-		  art_unavailable:
+		gotoArticle(*artNum);
+		if (getArticle(filename, question) != XRN_OKAY) {
 		    mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
-		    TextRemoveLine(SubjectText, ArtPosition);
+		    TextRemoveLine(Text, ArtPosition);
 		    removeLine(SubjectString, &ArtPosition);
-		    setListed(*artNum, *artNum, False);
 		    continue;
 		}
-		CurrentGroup->current = *artNum;
 		cancelDestroy();
-		TextSetInsertionPoint(SubjectText, ArtPosition);
+		TextSetInsertionPoint(Text, ArtPosition);
 		ret = NOCHANGE;
 		goto done;
 	    }
 	    continue;
 	} else {
-	    struct article *art;
-
-	    if ((newLine = getPrevSubject(line_length)) == NIL(char)) {
+	    if ((newLine = getPrevSubject()) == NIL(char)) {
 		failedSearch();
 		cancelDestroy();
-		setListed(first_new, last_new, False);
 		ret = DONE;
+		FREE(newSubjects);
 		goto done;
 	    }
 	    *artNum = atol(&newLine[2]);
-	    if (! (newsubject = getSubject(*artNum))) {
-		mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
-		continue;
-	    }
-
-	    if (! last_new)
-	      first_new = last_new = *artNum;
-	    else
-	      first_new = *artNum;
-
-	    art = artStructGet(CurrentGroup, *artNum, True);
-	    SET_MAYBE_LISTED(art);
-	    artStructSet(CurrentGroup, &art);
-
+	    newsubject = getSubject(*artNum);
 	    if (newSubjects) {
 		tmp = XtMalloc(utStrlen(newSubjects) + utStrlen(newLine) + 1);
 		(void) strcpy(tmp, newLine);
@@ -655,32 +469,27 @@ static int isPrevSubject(subject, file, question, artNum)
 	    if (utSubjectCompare(newsubject, subject) == 0) {
 		/* found a match, go with it */
 
-		if (getArticle(CurrentGroup, *artNum, file, question)
-		    != XRN_OKAY) {
+		gotoArticle(*artNum);
+		if (getArticle(filename, question) != XRN_OKAY) {
 		    mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
 		    (void) strcpy(newSubjects, index(newSubjects, '\n'));
-		    setListed(*artNum, *artNum, False);
 		}
 		else {
-		    CurrentGroup->current = *artNum;
-		    setListed(first_new, last_new, True);
-		    setListSorted(False);
-
 		    tmp = XtMalloc(utStrlen(newSubjects) +
 				   utStrlen(SubjectString) + 1);
 		    (void) strcpy(tmp, newSubjects);
 		    (void) strcat(tmp, SubjectString);
 		    FREE(newSubjects);
 
-		    TextDisableRedisplay(SubjectText);
-		    TextSetString(SubjectText, tmp);
+		    TextDisableRedisplay(Text);
+		    TextSetString(Text, tmp);
 
 		    FREE(SubjectString);
 		    SubjectString = tmp;
 
 		    FirstListedArticle = *artNum;
-		    TextSetInsertionPoint(SubjectText, ArtPosition);
-		    TextEnableRedisplay(SubjectText);
+		    TextSetInsertionPoint(Text, ArtPosition);
+		    TextEnableRedisplay(Text);
 
 		    cancelDestroy();
 		    ret = CHANGE;
@@ -690,7 +499,6 @@ static int isPrevSubject(subject, file, question, artNum)
 	}
     }
   done:
-    FREE(newSubjects);
     return ret;
 }
 
@@ -698,14 +506,12 @@ static int isPrevSubject(subject, file, question, artNum)
 /*
  *
  */
-static int isNextSubject _ARGUMENTS((char *, long, file_cache_file **,
-				     char **, art_num *));
+static int isNextSubject _ARGUMENTS((char *, long, char **, char **, art_num *));
 
-static int isNextSubject(subject, ArtPosition, file, question, artNum)
+static int isNextSubject(subject, ArtPosition, filename, question, artNum)
     char *subject;
     long ArtPosition;
-    file_cache_file **file;
-    char **question;
+    char **filename, **question;
     art_num *artNum;
 {
     char *newsubject;
@@ -713,12 +519,12 @@ static int isNextSubject(subject, ArtPosition, file, question, artNum)
     int ret;
 
     abortClear();
-
+    
     for (;;) {
 	count++;
 
 	if (count == app_resources.cancelCount) {
-	    cancelCreate(0);
+	    cancelCreate();
 	}
 
 	if ((count >= app_resources.cancelCount) && ((count % 10) == 0) &&
@@ -737,20 +543,17 @@ static int isNextSubject(subject, ArtPosition, file, question, artNum)
 	    goto done;
 	}
 	*artNum = atol(&SubjectString[ArtPosition+2]);
-	if (! (newsubject = getSubject(*artNum)))
-	    goto art_unavailable;
+	newsubject = getSubject(*artNum);
 	if (utSubjectCompare(newsubject, subject) == 0) {
-	    if (getArticle(CurrentGroup, *artNum, file, question) != XRN_OKAY) {
-	      art_unavailable:
+	    gotoArticle(*artNum);
+	    if (getArticle(filename, question) != XRN_OKAY) {
 		mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
-		TextRemoveLine(SubjectText, ArtPosition);
+		TextRemoveLine(Text, ArtPosition);
 		removeLine(SubjectString, &ArtPosition);
-		setListed(*artNum, *artNum, False);
 		continue;
 	    }
-	    CurrentGroup->current = *artNum;
 	    cancelDestroy();
-	    TextSetInsertionPoint(SubjectText, ArtPosition);
+	    TextSetInsertionPoint(Text, ArtPosition);
 	    ret = NOCHANGE;
 	    goto done;
 	} else {
@@ -771,46 +574,38 @@ static int getPrevious(artNum)
 {
     char *newLine;
     char *newString;
-    int line_length = TextGetColumns(SubjectText);
 
-    if ((newLine = getPrevSubject(line_length)) != NIL(char)) {
-        struct article *art;
-
+    if ((newLine = getPrevSubject()) != NIL(char)) {
 	newString = XtMalloc(utStrlen(SubjectString) + utStrlen(newLine) + 1);
 	(void) strcpy(newString, newLine);
 	(void) strcat(newString, SubjectString);
 	FREE(SubjectString);
 	SubjectString = newString;
 
-	TextSetString(SubjectText, SubjectString);
+	TextSetString(Text, SubjectString);
 	*artNum = atol(newLine + 2);
 	FirstListedArticle = *artNum;
-
-	art = artStructGet(CurrentGroup, *artNum, True);
-	SET_LISTED(art);
-	artStructSet(CurrentGroup, &art);
-	setListSorted(False);
-
 	return TRUE;
     }
-
+    
     return FALSE;
 }
 
 
 /*
  */
-static Boolean selectedArticle _ARGUMENTS((void));
+static Boolean selectedArticle _ARGUMENTS((int));
 
-static Boolean selectedArticle()
+static Boolean selectedArticle(status)
+    int status;
 {
     long left, right;
 
-    if (TextGetSelectedLines(SubjectText, &left, &right)) {
-	TextDisableRedisplay(SubjectText);
-	TextUnsetSelection(SubjectText);
-	TextSetInsertionPoint(SubjectText, left);
-	TextEnableRedisplay(SubjectText);
+    if (TextGetSelectedLines(Text, &left, &right)) {
+	TextDisableRedisplay(Text);
+	TextUnsetSelection(Text);
+	TextSetInsertionPoint(Text, left);
+	TextEnableRedisplay(Text);
 	return True;
     }
     return False;
@@ -822,16 +617,45 @@ static Boolean selectedArticle()
  */
 int switchToArticleMode()
 {
-    struct newsgroup *newsgroup = CurrentGroup;
     int oldMode;
-    struct article *art;
-    int i;
 
     FREE(SubjectString);
-    FirstListedArticle = newsgroup->current;
+    FirstListedArticle = currentArticle();
+    SubjectString = getSubjects(UNREAD, FirstListedArticle);
+
+    if (! (SubjectString && *SubjectString)) {
+	/*
+	  We must be entering a newsgroup with no unread articles --
+	  display the last read article.
+	  */
+	FREE(SubjectString);
+	SubjectString = getSubjects(ALL, FirstListedArticle);
+    }
+
+    if (! (SubjectString && *SubjectString)) {
+	mesgPane(XRN_INFO, 0, PROBABLY_EXPIRED_MSG, CurrentGroup->name);
+	/*
+	 * the sources and strings have been destroyed at this point
+	 * have to recreate them - the redraw routines check the mode
+	 * so we can call all of them and only the one that is for the
+	 * current mode will do something
+	 */
+	redrawAllWidget();
+	redrawNewsgroupTextWidget(0, True, True);
+	FREE(SubjectString);
+	return BAD_GROUP;
+    }
+
+    /* get rid of previous groups save file string */
+    if (SaveString && app_resources.resetSave) {
+	if (SaveString != app_resources.saveString) {
+		XtFree(SaveString);
+	}
+	SaveString = XtNewString(app_resources.saveString);
+    }	
 
     oldMode = PreviousMode;
-
+    
     PreviousMode = CurrentMode;
     CurrentMode = ARTICLE_MODE;
 
@@ -854,71 +678,16 @@ int switchToArticleMode()
     if (PreviousMode == ARTICLE_MODE) {
 	PreviousMode = oldMode;
     }
-
-    art = artStructGet(newsgroup, FirstListedArticle, True);
-    SET_LISTED(art);
-    artStructSet(newsgroup, &art);
-
-    for (i = FirstListedArticle + 1; i <= newsgroup->last; i++) {
-      art = artStructGet(newsgroup, i, False);
-      if (IS_AVAIL(art) && IS_UNREAD(art)) {
-	struct article copy;
-	copy = *art;
-	SET_LISTED(&copy);
-	artStructReplace(newsgroup, &art, &copy, i);
-      }
-      else
-	ART_STRUCT_UNLOCK;
-    }
-
-    SubjectString = getSubjects(TextGetColumns(SubjectText), FirstListedArticle,
-				False);
-
-    if (! (SubjectString && *SubjectString)) {
-	mesgPane(XRN_INFO, 0, PROBABLY_EXPIRED_MSG, newsgroup->name);
-	CurrentMode = PreviousMode;
-	swapMode();
-	/*
-	 * the sources and strings have been destroyed at this point
-	 * have to recreate them - the redraw routines check the mode
-	 * so we can call all of them and only the one that is for the
-	 * current mode will do something
-	 */
-	redrawAllWidget();
-	redrawNewsgroupTextWidget(0, True);
-	FREE(SubjectString);
-	exitNewsgroup();
-	return BAD_GROUP;
-    }
-
-    /* get rid of previous groups save file string */
-    if (SaveString && app_resources.resetSave) {
-	if (SaveString != app_resources.saveString) {
-		XtFree(SaveString);
-	}
-	SaveString = XtNewString(app_resources.saveString);
-    }
-
-    /* XXX need to detect when height changes and update the variable */
-    server_page_height = TextGetLines(ArticleText);
-
     setTopInfoLine(OPEARATION_APPLY_CURSOR_MSG);
 
-    setButtonSensitive(SubjectButtonBox, "artLast", False);
-    setButtonSensitive(SubjectButtonBox, "artContinue", False);
-    setButtonSensitive(SubjectButtonBox, "artListOld", True);
-    setButtonSensitive(SubjectButtonBox, "artSub", !IS_SUBSCRIBED(newsgroup));
-
-    setListSorted(True);
-
-    TextDisableRedisplay(SubjectText);
+    TextDisableRedisplay(Text);
 
     /* get and display the article */
-    updateSubjectWidget(SubjectString, 0, 0, True, False, JUMP);
+    updateSubjectWidget(SubjectString, 0, 0, True);
     ArtStatus = art_FORWARD | art_CURRENT | art_WRAP;
     artNextFunction(0, 0, 0, 0);
 
-    TextEnableRedisplay(SubjectText);
+    TextEnableRedisplay(Text);
 
     return GOOD_GROUP;
 }
@@ -929,29 +698,21 @@ int switchToArticleMode()
  * window and redraw the mode line
  */
 
-static void redrawArticleWidget _ARGUMENTS((file_cache_file *, char *));
+static void redrawArticleWidget _ARGUMENTS((char *, char *));
 
-static void redrawArticleWidget(file, question)
-    file_cache_file *file;
-    char *question;
+static void redrawArticleWidget(filename, question)
+    char *filename, *question;
 {
     String old = TextGetFile(ArticleText);
-
-    if ((! old) || strcmp(old, file_cache_file_name(FileCache, *file))) {
-	TextSetFile(ArticleText, file_cache_file_name(FileCache, *file));
+    
+    if ((! old) || strcmp(old, filename)) {
+	TextSetFile(ArticleText, filename);
 
 	setBottomInfoLine(question);
-
-#ifdef CANCEL_CHECK
-	if (canCancelArticle())
-	    setButtonSensitive(ArtSpecButtonBox, "artCancel", True);
-	else
-	    setButtonSensitive(ArtSpecButtonBox, "artCancel", False);
-#endif
-
 	/* force the screen to update before prefetching */
-	xthHandlePendingExposeEvents();
-
+	/* Currently disabled because of a bug in the Xaw Text widget. */
+	/* xthHandlePendingExposeEvents(); */
+	
 	prefetchNextArticle();
     }
     FREE(old);
@@ -966,15 +727,14 @@ static void exitArticleMode()
     PrevArticle = CurrentArticle = 0;
 
     FREE(SubjectString);
-    TextSetString(SubjectText, "");
-    TextSetString(ArticleText, "");
 
+    setBottomInfoLine("");
+    
     releaseNewsgroupResources(CurrentGroup);
     if (app_resources.updateNewsrc == TRUE) {
 	while (!updatenewsrc())
           ehErrorRetryXRN(ERROR_CANT_UPDATE_NEWSRC_MSG, True);
     }
-    exitNewsgroup();
 
     if (PreviousMode == NEWSGROUP_MODE) {
 	switchToNewsgroupMode(True);
@@ -1005,31 +765,18 @@ static void maybeExitArticleMode()
 /*
  * Display new article, mark as read.
  */
-static void foundArticle _ARGUMENTS((file_cache_file *, char *, int));
+static void foundArticle _ARGUMENTS((char *, char *));
 
-static void foundArticle(file, ques, motion)
-    file_cache_file *file;
-    char *ques;
-    int motion;
+static void foundArticle(file, ques)
+    char *file, *ques;
 {
-    long ArtPosition = TextGetInsertionPoint(SubjectText);
+    long ArtPosition = TextGetInsertionPoint(Text);
 
-    if ((PrevArticle = CurrentArticle)) {
-	struct article *art = artStructGet(CurrentGroup, PrevArticle, False);
+    PrevArticle = CurrentArticle;
+    gotoArticle(markStringRead(SubjectString, ArtPosition));
+    CurrentArticle = currentArticle();
 
-	setButtonSensitive(SubjectButtonBox, "artLast", True);
-
-	ART_STRUCT_UNLOCK;
-
-	if (art->file)
-	  file_cache_file_unlock(FileCache, *art->file);
-    }
-
-    CurrentGroup->current = markStringRead(SubjectString, ArtPosition);
-    CurrentArticle = CurrentGroup->current;
-
-    updateSubjectWidget(SubjectString, ArtPosition, ArtPosition + 1,
-			True, False, motion);
+    updateSubjectWidget(SubjectString, ArtPosition, ArtPosition + 1, True);
 
     /*
       This is necessary because of a bug in the Xaw Text widget -- it
@@ -1037,9 +784,20 @@ static void foundArticle(file, ques, motion)
       redisplay is disabled, and redrawArticleWidget() causes pending
       expose events to be processed.
       */
-    TextDisplay(SubjectText);
+    TextDisplay(Text);
 
     redrawArticleWidget(file, ques);
+}
+
+
+/*
+ * Catch up group, and exit article mode
+ */
+void catchUpART()
+{
+    catchUp();
+    exitArticleMode();
+    return;   
 }
 
 
@@ -1048,13 +806,11 @@ static void foundArticle(file, ques, motion)
  * Get the next unread article and display it, quit
  * if there are no more unread articles.
  */
-void _catchUpPartART(exit_mode)
-    Boolean exit_mode;
+void catchUpPartART()
 {
-    long ArtPosition = TextGetInsertionPoint(SubjectText);
+    long ArtPosition = TextGetInsertionPoint(Text);
 
-    file_cache_file *file;
-    char *question;
+    char *filename, *question;
     long artNum;
     long left = 0;
 
@@ -1066,45 +822,23 @@ void _catchUpPartART(exit_mode)
 	(void) moveCursor(FORWARD, SubjectString, &left);
     }
     (void) moveCursor(BACK, SubjectString, &left);
-    updateSubjectWidget(SubjectString, 0, ArtPosition, True, False, JUMP);
+    updateSubjectWidget(SubjectString, 0, ArtPosition, True);
     if (getNearbyArticle(art_FORWARD | art_CURRENT | art_WRAP | art_UNREAD,
-			 &file, &question, &artNum) ==
+			 &filename, &question, &artNum) ==
 	art_DONE) {
-	if (exit_mode)
-	    exitArticleMode();
-	else
-	    artNextGroupFunction(NULL, NULL, NULL, NULL);
+	exitArticleMode();
 	return;
     }
-    foundArticle(file, question, JUMP);
-
+    foundArticle(filename, question);
+    
     return;
-}
-
-void catchUpPartART()
-{
-    _catchUpPartART(True);
-}
-
-
-/*
- * Catch up group, and exit article mode
- */
-void catchUpART()
-{
-    TextDisableRedisplay(SubjectText);
-    TextSetInsertionPoint(SubjectText, TextGetLength(SubjectText));
-    _catchUpPartART(True);
-    TextEnableRedisplay(SubjectText);
 }
 
 
 void fedUpART()
 {
-    TextDisableRedisplay(SubjectText);
-    TextSetInsertionPoint(SubjectText, TextGetLength(SubjectText));
-    _catchUpPartART(False);
-    TextEnableRedisplay(SubjectText);
+    catchUp();
+    artNextGroupFunction(NULL, NULL, NULL, NULL);
 }
 
 
@@ -1117,7 +851,7 @@ void unsubscribeART()
 {
     unsubscribe();
     maybeExitArticleMode();
-
+    
     return;
 }
 
@@ -1136,7 +870,7 @@ void artQuitFunction(widget, event, string, count)
 	return;
     }
     exitArticleMode();
-
+    
     return;
 }
 
@@ -1150,7 +884,7 @@ void artNextFunction(widget, event, string, count)
     String *string;
     Cardinal *count;
 {
-    file_cache_file *file;	/* the article file */
+    char *filename;		/* name of the article file */
     char *question;		/* question to put in the question box */
     long artNum;
 
@@ -1158,64 +892,23 @@ void artNextFunction(widget, event, string, count)
 	return;
     }
 
-    TextDisableRedisplay(SubjectText);
+    TextDisableRedisplay(Text);
 
-    if (selectedArticle() || !cursorOnCurrent())
+    if (selectedArticle(ArtStatus))
 	ArtStatus |= art_CURRENT;
 
-    if (getNearbyArticle(ArtStatus, &file, &question, &artNum) == art_DONE) {
-	maybeExitArticleMode();
-	goto done;
-    }
-    /* update the text window */
-    foundArticle(file, question, FORWARD);
-
-    ArtStatus = art_FORWARD;
-
-  done:
-    TextEnableRedisplay(SubjectText);
-    return;
-}
-
-/*
- * called when the user wants to view the article currently under the cursor
- */
-/*ARGSUSED*/
-void artCurrentFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    file_cache_file *file;	/* name of the article file */
-    char *question;		/* question to put in the question box */
-    long artNum;
-
-    if (CurrentMode != ARTICLE_MODE) {
-	return;
-    }
-
-    TextDisableRedisplay(SubjectText);
-
-    (void) selectedArticle();
-
-    if (cursorOnCurrent())
-	goto done;
-
-    ArtStatus |= art_CURRENT;
-
-    if (getNearbyArticle(ArtStatus, &file, &question,
+    if (getNearbyArticle(ArtStatus, &filename, &question,
 			 &artNum) == art_DONE) {
 	maybeExitArticleMode();
 	goto done;
     }
     /* update the text window */
-    foundArticle(file, question, JUMP);
+    foundArticle(filename, question);
 
     ArtStatus = art_FORWARD;
 
   done:
-    TextEnableRedisplay(SubjectText);
+    TextEnableRedisplay(Text);
     return;
 }
 
@@ -1269,7 +962,7 @@ void artScrollIndexFunction(widget, event, string, count)
     if (CurrentMode != ARTICLE_MODE) {
 	return;
     }
-    TextScrollPage(SubjectText, FORWARD);
+    TextScrollPage(Text, FORWARD);
     return;
 }
 
@@ -1287,7 +980,7 @@ void artScrollIndexBackFunction(widget, event, string, count)
     if (CurrentMode != ARTICLE_MODE) {
 	return;
     }
-    TextScrollPage(SubjectText, BACK);
+    TextScrollPage(Text, BACK);
     return;
 }
 
@@ -1364,26 +1057,9 @@ void artScrollBeginningFunction(widget, event, string, count)
 }
 
 /*
-  Checks to see if the cursor is on the currently displayed article,
-  and return True if it is.
-  */
-static Boolean cursorOnCurrent ()
-{
-    long cursor_position = TextGetInsertionPoint(SubjectText);
-    long under_cursor;
-
-    if (! SubjectString[cursor_position])
-	return False;
-
-    under_cursor = atoi(SubjectString + cursor_position + 2);
-    return(under_cursor == CurrentGroup->current);
-}
-
-
-/*
  * called when the user wants to go to the next unread news
  * article in the current newsgroup
- *
+ * 
  */
 /*ARGSUSED*/
 void artNextUnreadFunction(widget, event, string, count)
@@ -1412,28 +1088,28 @@ void artPrevFunction(widget, event, string, count)
     Cardinal *count;
 {
     art_num artNum;
-    file_cache_file *file;
-    char *question;
+    char *filename, *question;
 
     if (CurrentMode != ARTICLE_MODE) {
 	return;
     }
 
-    TextDisableRedisplay(SubjectText);
+    TextDisableRedisplay(Text);
 
     ArtStatus = art_BACKWARD | art_WRAP;
 
-    if (selectedArticle() || !cursorOnCurrent())
+    if (selectedArticle(ArtStatus))
 	ArtStatus |= art_CURRENT;
 
-    if (getNearbyArticle(ArtStatus, &file, &question, &artNum) ==
+    if (getNearbyArticle(ArtStatus, &filename, &question, &artNum) ==
 	art_DONE) {
+	maybeExitArticleMode();
 	goto done;
     }
-    foundArticle(file, question, BACK);
+    foundArticle(filename, question);
 
   done:
-    TextEnableRedisplay(SubjectText);
+    TextEnableRedisplay(Text);
     ArtStatus = art_FORWARD;
     return;
 }
@@ -1445,7 +1121,7 @@ void artNextGroupFunction(widget, event, string, count)
     String *string;
     Cardinal *count;
 {
-    char *name = 0;
+    char name[GROUP_NAME_SIZE];
     struct newsgroup *LastGroupStruct = CurrentGroup;
     int ret;
     char *p;
@@ -1455,16 +1131,15 @@ void artNextGroupFunction(widget, event, string, count)
     PrevArticle = CurrentArticle = 0;
 
     if (! ArticleNewsGroupsString)
-	ArticleNewsGroupsString = unreadGroups(0 /* doesn't matter */,
-					       NewsgroupDisplayMode);
+	ArticleNewsGroupsString = unreadGroups(NewsgroupDisplayMode);
 
     /* Use name instead of CurrentIndexGroup to prevent CurrentIndexGroup
        from being overwritten by getNearbyNewsgroup. */
-    name = XtNewString(CurrentIndexGroup);
-    GroupPosition = getNearbyNewsgroup(ArticleNewsGroupsString, &name);
+    (void) strcpy(name, CurrentIndexGroup);
+    GroupPosition = getNearbyNewsgroup(ArticleNewsGroupsString, name);
 
     while (1) {
-	currentGroup(CurrentMode, ArticleNewsGroupsString, &name, GroupPosition);
+	currentGroup(CurrentMode, ArticleNewsGroupsString, name, GroupPosition);
         if (STREQ(name, CurrentIndexGroup)) {
 	    /* last group not fully read */
 	    if (! moveCursor(FORWARD, ArticleNewsGroupsString,
@@ -1511,34 +1186,41 @@ void artNextGroupFunction(widget, event, string, count)
 	    mesgPane(XRN_SERIOUS, mesg_name, NO_SUCH_NG_DELETED_MSG, name);
 	    mesgPane(XRN_SERIOUS | XRN_SAME_LINE, mesg_name,
 		     SKIPPING_TO_NEXT_NG_MSG);
-	save_name:
-	    CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(name) + 1);
 	    (void) strcpy(CurrentIndexGroup, name);
 	    continue;
 	}
-	else if ((ret == XRN_NOMORE) || (ret == XRN_NOUNREAD)) {
-	    exitNewsgroup();
+	else if (ret == XRN_NOMORE) {
 	    if ((p = strstr(&ArticleNewsGroupsString[GroupPosition],
-			    (ret == XRN_NOMORE) ? NEWS_IN_MSG : UNREAD_MSG)) &&
+			    NEWS_IN_MSG)) &&
 		(p < strstr(&ArticleNewsGroupsString[GroupPosition], name))) {
-		mesgPane(XRN_INFO, mesg_name, (ret == XRN_NOMORE) ?
-			 PROBABLY_EXPIRED_MSG : PROBABLY_KILLED_MSG, name);
+		mesgPane(XRN_INFO, mesg_name, PROBABLY_EXPIRED_MSG, name);
 		mesgPane(XRN_INFO | XRN_SAME_LINE, mesg_name,
 			 SKIPPING_TO_NEXT_NG_MSG);
 	    }
-	    goto save_name;
+	    (void) strcpy(CurrentIndexGroup, name);
+	    continue;
+	}
+	else if (ret == XRN_NOUNREAD) {
+	    if ((p = strstr(&ArticleNewsGroupsString[GroupPosition],
+			    UNREAD_MSG)) &&
+		(p < strstr(&ArticleNewsGroupsString[GroupPosition], name))) {
+		mesgPane(XRN_INFO, mesg_name, PROBABLY_KILLED_MSG, name);
+		mesgPane(XRN_INFO | XRN_SAME_LINE, mesg_name,
+			 SKIPPING_TO_NEXT_NG_MSG);
+	    }
+	    (void) strcpy(CurrentIndexGroup, name);
+	    continue;
 	}
 	else if (ret != GOOD_GROUP) {
-	    mesgPane(XRN_SERIOUS, mesg_name, UNKNOWN_FUNC_RESPONSE_MSG,
-		     ret, "enterNewsgroup", "artNextGroupFunction");
-	    goto save_name;
+	    mesgPane(XRN_SERIOUS, mesg_name, UNKNOWN_ENTER_NG_RESPONSE_MSG,
+		     ret);
+	    (void) strcpy(CurrentIndexGroup, name);
+	    continue;
 	}
 
 	 if (switchToArticleMode() == GOOD_GROUP) {
 	      releaseNewsgroupResources(LastGroupStruct);
-	      LastGroup = XtRealloc(LastGroup, strlen(name) + 1);
 	      (void) strcpy(LastGroup, name);
-	      CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(name) + 1);
 	      (void) strcpy(CurrentIndexGroup, name);
 	      if (app_resources.updateNewsrc == TRUE) {
 		   while (!updatenewsrc())
@@ -1556,7 +1238,6 @@ void artNextGroupFunction(widget, event, string, count)
     }
 
   done:
-    XtFree(name);
     return;
 }
 
@@ -1586,41 +1267,15 @@ void artCatchUpFunction(widget, event, string, count)
 	return;
     }
 
-    if (TextGetSelectedLines(SubjectText, &left, &right))
-	TextUnsetSelection(SubjectText);
+    if (TextGetSelectedLines(Text, &left, &right))
+	TextUnsetSelection(Text);
     if (left == right) {
 	confirmBox(OK_CATCHUP_MSG, ARTICLE_MODE, ART_CATCHUP, catchUpART);
     }
     else {
-	TextSetInsertionPoint(SubjectText, right);
+	TextSetInsertionPoint(Text, right);
 	confirmBox(OK_CATCHUP_CUR_MSG, ARTICLE_MODE, ART_CATCHUP, catchUpPartART);
     }
-}
-
-/*
- * called when the user wants to subscribe to the current group
- */
-/*ARGSUSED*/
-void artSubFunction(widget, event, string, count)
-     Widget widget;
-     XEvent *event;
-     String *string;
-     Cardinal *count;
-{
-  struct newsgroup *newsgroup = CurrentGroup;
-
-  if (CurrentMode != ARTICLE_MODE)
-    return;
-
-  if (IS_SUBSCRIBED(newsgroup))
-    return;
-
-  if (IS_NOENTRY(newsgroup))
-    addToNewsrcEnd(newsgroup->name, SUBSCRIBE);
-
-  SET_SUB(newsgroup);
-
-  mesgPane(XRN_INFO, 0, SUB_DONE_MSG, newsgroup->name);
 }
 
 /*
@@ -1639,28 +1294,24 @@ void artUnsubFunction(widget, event, string, count)
 /*
  * Get selection region, mark articles, redisplay subject window.
  */
-static void markFunction _ARGUMENTS((char));
+static void markFunction _ARGUMENTS((/* char */ int));
 
-static void markFunction(
-			 _ANSIDECL(char,	marker)
-			 )
-     _KNRDECL(char,	marker)
+static void markFunction(marker)
+    char marker;
 {
     long left, right;
-    long ArtPosition;
+    long ArtPosition = 0;
 
-    TextDisableRedisplay(SubjectText);
+    TextDisableRedisplay(Text);
 
-    if (TextGetSelectedOrCurrentLines(SubjectText, &left, &right))
-	TextUnsetSelection(SubjectText);
+    if (TextGetSelectedOrCurrentLines(Text, &left, &right))
+	TextUnsetSelection(Text);
     markArticles(SubjectString, left, right, marker);
-    ArtPosition = findArticle(SubjectString, CurrentGroup->current, False);
-    TextSetInsertionPoint(SubjectText, ArtPosition);
-    updateSubjectWidget(SubjectString, left, right,
-			app_resources.subjectScrollBack,
-			!app_resources.subjectScrollBack, JUMP);
+    findArticle(SubjectString, currentArticle(), &ArtPosition);
+    TextSetInsertionPoint(Text, ArtPosition);
+    updateSubjectWidget(SubjectString, left, right, True);
 
-    TextEnableRedisplay(SubjectText);
+    TextEnableRedisplay(Text);
 
     return;
 }
@@ -1714,47 +1365,8 @@ void artPostFunction(widget, event, string, count)
     if (CurrentMode != ARTICLE_MODE) {
 	return;
     }
-    post(True);
-
-    return;
-}
-
-
-/*
- * allow user to post to the newsgroup currently being read and send
- * the same message via mail
- */
-/*ARGSUSED*/
-void artPostAndMailFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    if (CurrentMode != ARTICLE_MODE) {
-	return;
-    }
-    post_and_mail(True);
-
-    return;
-}
-
-
-/*
- * allow user to send a mail message
- */
-/*ARGSUSED*/
-void artMailFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    if (CurrentMode != ARTICLE_MODE) {
-	return;
-    }
-    mail();
-
+    post(1);
+    
     return;
 }
 
@@ -1769,9 +1381,8 @@ void artSubNextFunction(widget, event, string, count)
     String *string;
     Cardinal *count;
 {
-    long ArtPosition;
-    file_cache_file *file;
-    char *question;
+    long left, right, ArtPosition;
+    char *filename, *question;
     char *subject = 0;
     art_num artNum;
     int status;
@@ -1780,33 +1391,29 @@ void artSubNextFunction(widget, event, string, count)
 	return;
     }
 
-    TextDisableRedisplay(SubjectText);
+    TextDisableRedisplay(Text);
 
-    if (selectedArticle() || !cursorOnCurrent()) {
-	if (getNearbyArticle(art_FORWARD | art_CURRENT | art_WRAP, &file,
-			     &question, &artNum) == art_DONE)
+    if (TextGetSelectedLines(Text, &left, &right)) {
+	TextUnsetSelection(Text);
+	TextSetInsertionPoint(Text, left);
+	if (getNearbyArticle(art_FORWARD | art_CURRENT, &filename,
+			      &question, &artNum) == art_DONE)
 	    maybeExitArticleMode();
     }
     else {
-	ArtPosition = TextGetInsertionPoint(SubjectText);
+	ArtPosition = TextGetInsertionPoint(Text);
 
 	if (! SubjectString[ArtPosition])
 	    goto done;
 
 	artNum = atol(&SubjectString[ArtPosition+2]);
-	if (! (subject = getSubject(artNum))) {
-	    mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, artNum);
-	    status = DONE;
-	}
-	else {
-	    subject = XtNewString(subject);
+	subject = getSubject(artNum);
+	subject = XtNewString(subject);
 
-	    (void) moveCursor(FORWARD, SubjectString, &ArtPosition);
+	(void) moveCursor(FORWARD, SubjectString, &ArtPosition);
 
-	    status = isNextSubject(subject, ArtPosition, &file, &question,
-				   &artNum);
-	}
-
+	status = isNextSubject(subject, ArtPosition, &filename, &question,
+			       &artNum);
 	switch (status) {
 	case ABORT:
 	    infoNow(ERROR_SUBJ_ABORT_MSG);
@@ -1814,15 +1421,15 @@ void artSubNextFunction(widget, event, string, count)
 
 	case NOCHANGE:
 	    (void) sprintf(error_buffer, ERROR_SUBJ_SEARCH_MSG, subject);
-	    INFO(error_buffer);
-	    foundArticle(file, question, FORWARD);
+	    info(error_buffer);
+	    foundArticle(filename, question);
 	    goto done;
 
 	case DONE:
 	    infoNow(ERROR_SUBJ_EXH_MSG);
-	    TextSetInsertionPoint(SubjectText, 0);
+	    TextSetInsertionPoint(Text, 0);
 	    if (getNearbyArticle(art_FORWARD | art_CURRENT | art_WRAP |
-				 art_UNREAD, &file,
+				 art_UNREAD, &filename,
 				 &question, &artNum) == art_DONE) {
 		maybeExitArticleMode();
 		goto done;
@@ -1835,10 +1442,10 @@ void artSubNextFunction(widget, event, string, count)
 	}
     }
 
-    foundArticle(file, question, FORWARD);
+    foundArticle(filename, question);
 
   done:
-    TextEnableRedisplay(SubjectText);
+    TextEnableRedisplay(Text);
     FREE(subject);
     return;
 }
@@ -1853,10 +1460,10 @@ void artSubPrevFunction(widget, event, string, count)
     String *string;
     Cardinal *count;
 {
+    long left, right;
     char *subject = 0;
     art_num artNum;
-    file_cache_file *file;
-    char *question;
+    char *filename, *question;
     int status;
     long ArtPosition;
 
@@ -1864,28 +1471,26 @@ void artSubPrevFunction(widget, event, string, count)
 	return;
     }
 
-    TextDisableRedisplay(SubjectText);
+    TextDisableRedisplay(Text);
 
-    if (selectedArticle() || !cursorOnCurrent()) {
-	if (getNearbyArticle(art_FORWARD | art_CURRENT | art_WRAP, &file,
+    if (TextGetSelectedLines(Text, &left, &right)) {
+	TextUnsetSelection(Text);
+	TextSetInsertionPoint(Text, left);
+	if (getNearbyArticle(art_FORWARD | art_CURRENT, &filename,
 			     &question, &artNum) == art_DONE)
 	    maybeExitArticleMode();
     }
     else {
-	ArtPosition = TextGetInsertionPoint(SubjectText);
+	ArtPosition = TextGetInsertionPoint(Text);
 
 	if (! SubjectString[ArtPosition])
 	    goto done;
-
+	
 	artNum = atol(&SubjectString[ArtPosition+2]);
-	if (! (subject = getSubject(artNum))) {
-	    mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, artNum);
-	    goto done;
-	}
-
+	subject = getSubject(artNum);
 	subject = XtNewString(subject);
 
-	status = isPrevSubject(subject, &file, &question, &artNum);
+	status = isPrevSubject(subject, &filename, &question, &artNum);
 	switch (status) {
 	case ABORT:
 	    infoNow(ERROR_SUBJ_ABORT_MSG);
@@ -1893,7 +1498,7 @@ void artSubPrevFunction(widget, event, string, count)
 	case NOCHANGE:
 	case CHANGE:
 	    (void) sprintf(error_buffer, ERROR_SUBJ_SEARCH_MSG, subject);
-	    INFO(error_buffer);
+	    info(error_buffer);
 	    break;
 	case DONE:
 	    infoNow(ERROR_SUBJ_EXH_MSG);
@@ -1904,612 +1509,196 @@ void artSubPrevFunction(widget, event, string, count)
 	}
     }
 
-    foundArticle(file, question, BACK);
+    foundArticle(filename, question);
 
   done:
     FREE(subject);
-    TextEnableRedisplay(SubjectText);
+    TextEnableRedisplay(Text);
     return;
 }
-
-void artThreadParentFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-  long left, right;
-  art_num artNum, parent = 0;
-  struct article *art;
-  char *refs = 0, *begin_id, *end_id;
-  file_cache_file *file;
-  char *question;
-  Boolean cancel_created = False;
-  Boolean prefer_listed = True;
-
-  if (CurrentMode != ARTICLE_MODE)
-    return;
-
-  if (event || (widget && (event = XtLastEventProcessed(XtDisplay(widget))))) {
-    unsigned int *state = 0;
-    if ((event->type == KeyPress) || (event->type == KeyRelease))
-      state = &event->xkey.state;
-    else if ((event->type == ButtonPress) || (event->type == ButtonRelease))
-      state = &event->xbutton.state;
-    assert(state);
-    if ((*state & ShiftMask) || (count && *count))
-      prefer_listed = False;
-  }
-
-  TextDisableRedisplay(SubjectText);
-
-  if (TextGetSelectedOrCurrentLines(SubjectText, &left, &right)) {
-    TextUnsetSelection(SubjectText);
-    TextSetInsertionPoint(SubjectText, left);
-  }
-  else
-    goto done;
-
-  artNum = atol(&SubjectString[left+2]);
-
-  art = artStructGet(CurrentGroup, artNum, False);
-  assert(art);
-
-  if (prefer_listed && (parent = art->parent)) {
-    ART_STRUCT_UNLOCK;
-    if (articleIsAvailable(CurrentGroup, parent))
-      goto done;
-    art = artStructGet(CurrentGroup, artNum, False);
-  }
-
-  ART_STRUCT_UNLOCK;
-
-  if (! ((refs = XtNewString(art->references)) && *refs))
-    goto done;
-
-  for (end_id = strchr(refs, '\0'); end_id > refs; end_id--) {
-    art_num block_end, block_start, checkee;
-
-    while ((end_id > refs) && (*end_id != '>'))
-      end_id--;
-    if (end_id == refs)
-      break;
-    end_id[1] = '\0';
-    for (begin_id = end_id; (begin_id >= refs) && (*begin_id != '<'); begin_id--)
-      /* empty */;
-    if (begin_id < refs)
-      break;
-    if ((parent = getArticleNumberFromIdXref(CurrentGroup, begin_id))) {
-      if ((parent < 0) || !articleIsAvailable(CurrentGroup, parent)) {
-	parent = 0;
-	continue;
-      }
-      else
-	break;
-    }
-    if (! cancel_created) {
-      abortClear();
-      cancelCreate("CancelThreadParent");
-      cancel_created = True;
-    }
-    for (block_end = CurrentGroup->last; block_end >= CurrentGroup->first;
-	 block_end = block_start - 1) {
-      block_start = MAX(block_end - 10, CurrentGroup->first);
-      (void) getidlist(CurrentGroup, block_start, block_end, False, 0);
-      for (checkee = block_end ; checkee >= block_start; checkee--) {
-	art = artStructGet(CurrentGroup, checkee, False);
-	ART_STRUCT_UNLOCK;
-	if (art->id && !strcmp(art->id, begin_id) &&
-	    articleIsAvailable(CurrentGroup, checkee)) {
-	  parent = checkee;
-	  goto done;
-	}
-      }
-      if (abortP()) {
-	parent = -1;
-	break;
-      }
-    }
-  }
-
-done:
-  if (cancel_created)
-    cancelDestroy();
-  if (parent > 0) {
-    long ArtPosition;
-
-    (void) fillUpArray(CurrentGroup, parent, parent, False, False);
-    art = artStructGet(CurrentGroup, parent, True);
-    SET_LISTED(art);
-    artStructSet(CurrentGroup, &art);
-
-    if ((ArtPosition = findArticle(SubjectString, parent, True)) < 0) {
-      FREE(SubjectString);
-      FirstListedArticle = MIN(FirstListedArticle, parent);
-      SubjectString = getSubjects(TextGetColumns(SubjectText), FirstListedArticle,
-				  True);
-      TextSetString(SubjectText, SubjectString);
-      ArtPosition = findArticle(SubjectString, parent, False);
-    }
-    TextSetInsertionPoint(SubjectText, ArtPosition);
-
-    if (getArticle(CurrentGroup, parent, &file, &question) != XRN_OKAY) {
-      mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, parent);
-      TextRemoveLine(SubjectText, ArtPosition);
-      removeLine(SubjectString, &ArtPosition);
-      setListed(parent, parent, False);
-    }
-    else {
-      foundArticle(file, question, BACK);
-    }
-  }
-  else if (parent == 0) {
-    infoNow((refs && *refs) ? ERROR_PARENT_UNAVAIL_MSG : ERROR_NO_PARENT_MSG);
-  }
-  XtFree(refs);
-  TextEnableRedisplay(SubjectText);
-  return;
-}
-
-typedef char * (*_fixfunction) _ARGUMENTS((char *));
 
 /*
   Mark all articles with the current subject or author as read.
   */
-static String artKillSession _ARGUMENTS((int, _fixfunction, int, Boolean));
+static String _artKillSession _ARGUMENTS((Widget, /* Boolean */ int));
 
 /*ARGSUSED*/
-static String artKillSession(
-			     _ANSIDECL(int,		source_offset),
-			     _ANSIDECL(_fixfunction,	source_fix_function),
-			     _ANSIDECL(int,		target_offset),
-			     _ANSIDECL(Boolean,		show_error)
-			     )
-     _KNRDECL(int,		source_offset)
-     _KNRDECL(_fixfunction,	source_fix_function)
-     _KNRDECL(int,		target_offset)
-     _KNRDECL(Boolean,		show_error)
+static String _artKillSession(widget, author)
+    Widget widget;
+    Boolean author;
 {
     long left, right;
-    char *match_val = 0;
-    char *cur_val;
-    file_cache_file *file;
-    char *question;
+    char *subject = 0;
+    char *cursubject;
+    char *filename, *question;
     art_num artNum;
-    struct article *art;
 
     if (CurrentMode != ARTICLE_MODE) {
 	return 0;
     }
 
-    TextDisableRedisplay(SubjectText);
+    TextDisableRedisplay(Text);
 
-    if (TextGetSelectedOrCurrentLines(SubjectText, &left, &right)) {
-	TextUnsetSelection(SubjectText);
-	TextSetInsertionPoint(SubjectText, left);
+    if (TextGetSelectedOrCurrentLines(Text, &left, &right)) {
+	TextUnsetSelection(Text);
+	TextSetInsertionPoint(Text, left);
     }
     else
 	goto done;
-
+    
     artNum = atol(&SubjectString[left+2]);
+    subject = author ? getAuthor(artNum) : getSubject(artNum);
+    subject = XtNewString(subject);
 
-    art = artStructGet(CurrentGroup, artNum, False);
-    assert(art);
-
-    match_val = *(char **)((char *)art + source_offset);
-    ART_STRUCT_UNLOCK;
-
-    if (source_fix_function)
-      match_val = (*source_fix_function)(match_val);
-    if (! match_val) {
-      if (show_error)
-	mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, artNum);
-    }
-    else {
-#ifdef POSIX_REGEX
-	int reRet;
-	regex_t reStruct;
-#else
-	char *reRet;
-#endif
-
-	match_val = stringToRegexp(match_val,
-				   MAX_KILL_PATTERN_VALUE_LENGTH);
-
-#ifdef POSIX_REGEX
-	reRet = regcomp(&reStruct, match_val, REG_NOSUB);
-	assert (! reRet);
-#else /* ! POSIX_REGEX */
-# ifdef SYSV_REGEX
-	reRet = regcmp(match_val, 0);
-	assert(reRet);
-# else /* ! SYSV_REGEX */
-	reRet = re_comp(match_val);
-	assert(! reRet);
-# endif /* SYSV_REGEX */
-#endif /* POSIX_REGEX */
-
-	left = 0;
-	while (SubjectString[left] != '\0') {
-	    if ((SubjectString[left] != UNREAD_MARKER) &&
-		(SubjectString[left] != READ_MARKER)) {
-		artNum = atol(&SubjectString[left+2]);
-		art = artStructGet(CurrentGroup, artNum, False);
-		assert(art);
-		cur_val = *(char **)((char *)art + target_offset);
-		if (! cur_val) {
-		  /* XXX See above. */
-		    struct article copy;
-		    copy = *art;
-		    mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, artNum);
-		    TextRemoveLine(SubjectText, left);
-		    removeLine(SubjectString, &left);
-		    SET_UNLISTED(&copy);
-		    artStructReplace(CurrentGroup, &art, &copy, artNum);
-		}
-		else {
-		  ART_STRUCT_UNLOCK;
-
-		  if
-#ifdef POSIX_REGEX
-		        (! regexec(&reStruct, cur_val, 0, 0, 0))
-#else
-# ifdef SYSV_REGEX
-	                (regex(reRet, cur_val))
-# else
-	                (re_exec(cur_val))
-# endif
-#endif
-		    {
-			markArticleAsRead(artNum);
-			(void) markStringRead(SubjectString, left);
-			TextInvalidate(SubjectText, SubjectString, left, left + 1);
-		    }
-		}
-	    }
-	    if (!moveCursor(FORWARD, SubjectString, &left)) {
-		break;
-	    }
+    left = 0;
+    while (SubjectString[left] != '\0') {
+	artNum = atol(&SubjectString[left+2]);
+	cursubject = author ? getAuthor(artNum) : getSubject(artNum);
+	/* only kill those that have not been marked as unread */
+	if ((STREQ(subject, cursubject)) &&
+	    (SubjectString[left] != UNREAD_MARKER)) {
+	    markArticleAsRead(artNum);
+	    (void) markStringRead(SubjectString, left);
+	    TextInvalidate(Text, SubjectString, left, left + 1);
 	}
-
-#ifdef POSIX_REGEX
-	regfree(&reStruct);
-#else
-# ifdef SYSV_REGEX
-	free(reRet);
-# endif
-#endif
-
-	if (getNearbyArticle(art_FORWARD | art_CURRENT | art_WRAP | art_UNREAD,
-			     &file, &question, &artNum)
-	    == art_DONE) {
-	  maybeExitArticleMode();
-	  goto done;
+	if (!moveCursor(FORWARD, SubjectString, &left)) {
+	    break;
 	}
-
-	foundArticle(file, question, FORWARD);
     }
+
+    infoNow(ERROR_SUB_KILL_MSG);
+
+    if (getNearbyArticle(art_FORWARD | art_CURRENT | art_WRAP | art_UNREAD,
+			 &filename, &question, &artNum)
+	== art_DONE) {
+	maybeExitArticleMode();
+	goto done;
+    }
+
+    foundArticle(filename, question);
 
   done:
-    TextEnableRedisplay(SubjectText);
-    return match_val;
+    TextEnableRedisplay(Text);
+    return subject;
 }
-
-static Boolean do_field_kill _ARGUMENTS((Widget, char *, int, _fixfunction, int,
-					 XEvent *, String *, Cardinal *, Boolean));
-
-static Boolean do_field_kill(
-			     _ANSIDECL(Widget,		widget),
-			     _ANSIDECL(char *,		field_name),
-			     _ANSIDECL(int,		source_offset),
-			     _ANSIDECL(_fixfunction,	source_fix_function),
-			     _ANSIDECL(int,		target_offset),
-			     _ANSIDECL(XEvent *,	event),
-			     _ANSIDECL(String *,	string),
-			     _ANSIDECL(Cardinal *,	count),
-			     _ANSIDECL(Boolean,		show_error)
-			  )
-     _KNRDECL(Widget,		widget)
-     _KNRDECL(char *,		field_name)
-     _KNRDECL(int,		source_offset)
-     _KNRDECL(_fixfunction,	source_fix_function)
-     _KNRDECL(int,		target_offset)
-     _KNRDECL(XEvent *,		event)
-     _KNRDECL(String *,		string)
-     _KNRDECL(Cardinal *,	count)
-     _KNRDECL(Boolean,		show_error)
-{
-  struct newsgroup *newsgroup = CurrentGroup;
-  int what = KILL_SESSION;
-  unsigned int *state = 0, *button = 0;
-  char *value_killed;
-
-  if (CurrentMode != ARTICLE_MODE)
-    return True;
-
-  if (count && *count) {
-    if (! strcasecmp(string[0], "session"))
-      what = KILL_SESSION;
-    else if (! strcasecmp(string[0], "local"))
-      what = KILL_LOCAL;
-    else if (! strcasecmp(string[0], "global"))
-      what = KILL_GLOBAL;
-    else {
-      mesgPane(XRN_SERIOUS, 0, UNKNOWN_KILL_TYPE_MSG, string[0],
-	       field_name);
-      return True;
-    }
-  }
-  else if (event || (widget &&
-		     (event = XtLastEventProcessed(XtDisplay(widget))))) {
-    if ((event->type == KeyPress) || (event->type == KeyRelease)) {
-      state = &event->xkey.state;
-    }
-    else if ((event->type == ButtonPress) ||
-	     (event->type == ButtonRelease)) {
-      state = &event->xbutton.state;
-      button = &event->xbutton.button;
-    }
-    assert(state);
-
-    if ((*state & ShiftMask) || (button && (*button == 3)))
-      what = KILL_LOCAL;
-    else if ((*state & ControlMask) || (button && *button == 2))
-      what = KILL_GLOBAL;
-  }
-
-  value_killed = artKillSession(source_offset, source_fix_function,
-				target_offset, show_error);
-  if (value_killed && (what != KILL_SESSION))
-      add_kill_entry(newsgroup, what, field_name, value_killed);
-  return value_killed ? True : False;
-}
-
-#define SUBJ_OFFSET XtOffsetOf(struct article, subject)
-#define FROM_OFFSET XtOffsetOf(struct article, from)
-#define REFS_OFFSET XtOffsetOf(struct article, references)
-#define ID_OFFSET XtOffsetOf(struct article, id)
-
-void artKillSubjectFunction(widget, event, string, count)
+    
+/*ARGSUSED*/
+void artKillSessionFunction(widget, event, string, count)
     Widget widget;
     XEvent *event;
     String *string;
     Cardinal *count;
 {
-  (void) do_field_kill(widget, "Subject", SUBJ_OFFSET, subjectStrip, SUBJ_OFFSET,
-		       event, string, count, True);
+    String SubjectKilled;
+
+    if (CurrentMode != ARTICLE_MODE)
+	return;
+
+    SubjectKilled = _artKillSession(widget, False);
+    FREE(SubjectKilled);
+    return;
 }
 
+/*
+ * Allow user to mark all articles with the current author as read
+ *
+ * XXX get author, kill using data structures, rebuild SubjectString
+ * XXX merge this with artKillSession
+ */
+/*ARGSUSED*/
 void artKillAuthorFunction(widget, event, string, count)
     Widget widget;
     XEvent *event;
     String *string;
     Cardinal *count;
 {
-  (void) do_field_kill(widget, "From", FROM_OFFSET, 0, FROM_OFFSET,
-		       event, string, count, True);
+    String AuthorKilled = _artKillSession(widget, True);
+    FREE(AuthorKilled);
 }
 
-void artKillThreadFunction(widget, event, string, count)
-     Widget widget;
-     XEvent *event;
-     String *string;
-     Cardinal *count;
-{
-  if (! art_sort_need_threads())
-    return;
-
-  if (! do_field_kill(widget, "References", REFS_OFFSET, getFirstReference,
-		      REFS_OFFSET, event, string, count, False))
-    (void) do_field_kill(widget, "References", ID_OFFSET, getFirstReference,
-			 REFS_OFFSET, event, string, count, True);
-}
-
-void artKillSubthreadFunction(widget, event, string, count)
-     Widget widget;
-     XEvent *event;
-     String *string;
-     Cardinal *count;
-{
-  if (! art_sort_need_threads())
-    return;
-
-  (void) do_field_kill(widget, "References", ID_OFFSET, getFirstReference,
-		       REFS_OFFSET, event, string, count, True);
-}
-
-#define XRNgotoArticle_ABORT	0
-#define XRNgotoArticle_DOIT	1
-#define XRNgotoArticle_DEFAULT	2
-
-static Widget GotoArticleBox = (Widget) 0;
-
-void artListOldHandler(widget, client_data, call_data)
-    Widget widget;
-    XtPointer client_data;
-    XtPointer call_data;
-{
-    long ArtPosition;
-    int finished;
-    art_num artNum;
-    char *numberstr;
-
-    if (inCommand && ((int) client_data != XRNgotoArticle_DEFAULT))
-      return;
-    inCommand = 1;
-    xrnBusyCursor();
-
-    TextUnsetSelection(SubjectText);
-
-    if ((int) client_data == XRNgotoArticle_ABORT) {
-      goto finishedl;
-    }
-    else if ((int) client_data == XRNgotoArticle_DEFAULT) {
-      artNum = CurrentGroup->first;
-    }
-    else {
-      numberstr = GetDialogValue(GotoArticleBox);
-      if (! (numberstr && *numberstr))
-	artNum = FirstListedArticle;
-      else {
-	if (*numberstr == '+')
-	  artNum = atol(numberstr + 1);
-	else
-	  artNum = atol(numberstr);
-	if (! artNum) {
-	  mesgPane(XRN_SERIOUS, 0, BAD_ART_NUM_MSG, numberstr);
-	  goto finishedl;
-	}
-	if (*numberstr == '+')
-	  artNum = MAX(FirstListedArticle - artNum, CurrentGroup->first);
-      }
-    }
-
-    if (GotoArticleBox) {
-      PopDownDialog(GotoArticleBox);
-      GotoArticleBox = 0;
-    }
-    abortClear();
-    cancelCreate("CancelListOld");
-
-    finished = ((! abortP()) &&
-		(fillUpArray(CurrentGroup, artNum, 0, True, False) != ABORT));
-
-    if (finished) {
-      int i;
-      struct article *art, copy;
-
-      FREE(SubjectString);
-
-      for (i = artNum; i <= CurrentGroup->last; i++) {
-	art = artStructGet(CurrentGroup, i, False);
-	if (IS_AVAIL(art) && !IS_LISTED(art)) {
-	  copy = *art;
-	  SET_LISTED(&copy);
-	  artStructReplace(CurrentGroup, &art, &copy, i);
-	  FirstListedArticle = MIN(FirstListedArticle, i);
-	}
-	else
-	  ART_STRUCT_UNLOCK;
-      }
-      SubjectString = getSubjects(TextGetColumns(SubjectText),
-				  FirstListedArticle, True);
-    }
-
-    ArtPosition = findArticle(SubjectString, CurrentGroup->current, False);
-    TextDisableRedisplay(SubjectText);
-
-    if (finished) {
-      TextSetString(SubjectText, SubjectString);
-      TextSetInsertionPoint(SubjectText, ArtPosition);
-    }
-
-    adjustMinMaxLines(JUMP);
-    TextEnableRedisplay(SubjectText);
-
-    if (finished) {
-      if (artNum == CurrentGroup->first)
-	setButtonSensitive(SubjectButtonBox, "artListOld", False);
-      setListSorted(True);
-    }
-
-finishedl:
-    xrnUnbusyCursor();
-    cancelDestroy();
-    inCommand = 0;
-    return;
-}
-
-void artListOldFunction(widget, event, string, count)
-  Widget widget;
-  XEvent *event;
-  String *string;
-  Cardinal *count;
-{
-  static struct DialogArg args[] = {
-    {ABORT_STRING, artListOldHandler, (XtPointer) XRNgotoArticle_ABORT},
-    {DOIT_STRING, artListOldHandler, (XtPointer) XRNgotoArticle_DOIT},
-  };
-  unsigned int *state = 0;
-
-  if (CurrentMode != ARTICLE_MODE)
-    return;
-
-  if (event || (widget && (event = XtLastEventProcessed(XtDisplay(widget))))) {
-    if ((event->type == KeyPress) || (event->type == KeyRelease))
-      state = &event->xkey.state;
-    else if ((event->type == ButtonPress) || (event->type == ButtonRelease))
-      state = &event->xbutton.state;
-    assert(state);
-  }
-
-  if ((state && (*state & ControlMask)) || (count && *count)) {
-    if (! GotoArticleBox)
-      GotoArticleBox = CreateDialog(TopLevel, LIST_OLD_NUMBER_MSG,
-				    DIALOG_TEXT, args, XtNumber(args));
-    PopUpDialog(GotoArticleBox);
-  }
-  else
-    artListOldHandler(0, (XtPointer) XRNgotoArticle_DEFAULT, 0);
-}
-    
-void artResortFunction(widget, event, string, count)
+/*ARGSUSED*/
+void artKillLocalFunction(widget, event, string, count)
     Widget widget;
     XEvent *event;
     String *string;
     Cardinal *count;
 {
-  long ArtPosition;
-  char *newsort = NULL;
+    struct newsgroup *newsgroup = CurrentGroup;
+    String SubjectKilled;
 
-  if (CurrentMode != ARTICLE_MODE)
-    return;
-
-  if (count && *count) {
-    int i, len;
-    for (len = 0, i = 0; i < *count; i++)
-      len += strlen(string[i]) + 1;
-    newsort = XtMalloc(len);
-    for (len = 0, i = 0; i < *count; i++) {
-      (void) strcpy(&newsort[len], string[i]);
-      len += strlen(string[i]);
-      newsort[len++] = ' ';
+    if (CurrentMode != ARTICLE_MODE) {
+	return;
     }
-    newsort[--len] = '\0';
-  }
 
-  if (list_sorted_p && !newsort)
+    SubjectKilled = _artKillSession(widget, False);
+    killItem(newsgroup, SubjectKilled, KILL_LOCAL);
+    FREE(SubjectKilled);
     return;
+}
 
-  xrnBusyCursor();
+/*ARGSUSED*/
+void artKillGlobalFunction(widget, event, string, count)
+    Widget widget;
+    XEvent *event;
+    String *string;
+    Cardinal *count;
+{
+    struct newsgroup *newsgroup = CurrentGroup;
+    String SubjectKilled;
 
-  if (newsort)
-    art_sort_parse_sortlist(newsort);
+    if (CurrentMode != ARTICLE_MODE) {
+	return;
+    }
 
-  TextUnsetSelection(SubjectText);
-  TextDisableRedisplay(SubjectText);
-  FREE(SubjectString);
-  SubjectString = getSubjects(TextGetColumns(SubjectText),
-			      FirstListedArticle, True);
-  TextSetString(SubjectText, SubjectString);
+    SubjectKilled = _artKillSession(widget, False);
+    killItem(newsgroup, SubjectKilled, KILL_GLOBAL);
+    FREE(SubjectKilled);
+    return;
+}
 
-  ArtPosition = findArticle(SubjectString, CurrentArticle, False);
-  TextSetInsertionPoint(SubjectText, ArtPosition);
 
-  adjustMinMaxLines(JUMP);
+#define XRNgotoArticle_ABORT	0
+#define XRNgotoArticle_DOIT	1
 
-  if (newsort) {
-    XtFree(newsort);
-    art_sort_parse_sortlist(app_resources.sortedSubjects);
-    setListSorted(False);
-  } else
-    setListSorted(True);
+static Widget GotoArticleBox = (Widget) 0;
 
-  TextEnableRedisplay(SubjectText);
+/*ARGSUSED*/
+void artListOldFunction(widget, event, string, count)
+    Widget widget;
+    XEvent *event;
+    String *string;
+    Cardinal *count;
+{
+    long ArtPosition = 0;
+
+    busyCursor();
+    TextUnsetSelection(Text);
+
+    fillUpArray(firstArticle());
+
+    /*
+      This is cheating, perhaps, but it works.  Set the current
+      article to the first article, so that getSubjects() will
+      retrieve all articles in the newsgroup.
+      */
+    FREE(SubjectString);
+    FirstListedArticle = firstArticle();
+    SubjectString = getSubjects(ALL, FirstListedArticle);
+
+    findArticle(SubjectString, currentArticle(), &ArtPosition);
+
+    TextDisableRedisplay(Text);
+    TextSetString(Text, SubjectString);
+    TextSetInsertionPoint(Text, ArtPosition);
+    adjustMinMaxLines(SubjectString);
+    TextEnableRedisplay(Text);
+
+    unbusyCursor();
+    return;
 }
 
 /*
- * Update the .newsrc file
+ * update the .newsrc file
  */
 /*ARGSUSED*/
 void artCheckPointFunction(widget, event, string, count)
@@ -2537,8 +1726,7 @@ static void gotoArticleHandler(widget, client_data, call_data)
     XtPointer call_data;
 {
     char *numberstr;
-    file_cache_file *file;
-    char *question;
+    char *filename, *question;
     int status;
     long artNum;
     String new;
@@ -2548,33 +1736,38 @@ static void gotoArticleHandler(widget, client_data, call_data)
 	return;
     }
     inCommand = 1;
-    xrnBusyCursor();
-    TextUnsetSelection(SubjectText);
-    numberstr = GetDialogValue(GotoArticleBox);
-    PopDownDialog(GotoArticleBox);
-    GotoArticleBox = 0;
+    busyCursor();
+    TextUnsetSelection(Text);
     if ((int) client_data == XRNgotoArticle_ABORT) {
-      goto finished;
+	PopDownDialog(GotoArticleBox);
+	GotoArticleBox = 0;
+	unbusyCursor();
+	inCommand = 0;
+	return;
     }
-    abortClear();
-    cancelCreate("CancelGotoArticle");
-    if (! (numberstr && *numberstr)) {
+    numberstr = GetDialogValue(GotoArticleBox);
+    if (numberstr == NIL(char)) {
 	mesgPane(XRN_INFO, 0, NO_ART_NUM_MSG);
-	goto finished;
+	PopDownDialog(GotoArticleBox);
+	GotoArticleBox = 0;
+	unbusyCursor();
+	inCommand = 0;
+	return;
     }
 
     artNum = atol(numberstr);
     if (artNum == 0) {
 	mesgPane(XRN_SERIOUS, 0, BAD_ART_NUM_MSG, numberstr);
-	goto finished;
+	PopDownDialog(GotoArticleBox);
+	GotoArticleBox = 0;
+	unbusyCursor();
+	inCommand = 0;
+	return;
     }
-
-    status = moveToArticle(CurrentGroup, artNum, &file, &question);
+    
+    status = moveToArticle(artNum, &filename, &question);
 
     switch (status) {
-
-    case ABORT:
-      break;
 
     case NOMATCH:
     case ERROR:
@@ -2582,37 +1775,35 @@ static void gotoArticleHandler(widget, client_data, call_data)
 	break;
 
     case MATCH:
-	TextDisableRedisplay(SubjectText);
+	TextDisableRedisplay(Text);
 
-	if ((ArtPosition = findArticle(SubjectString, artNum, True)) == -1) {
-	  struct article *art = artStructGet(CurrentGroup, artNum, True);
-	  SET_LISTED(art);
-	  artStructSet(CurrentGroup, &art);
-	  FirstListedArticle = MIN(FirstListedArticle, artNum);
-	  new = getSubjects(TextGetColumns(SubjectText), FirstListedArticle,
-			    True);
-	  FREE(SubjectString);
-	  SubjectString = new;
-	  TextSetString(SubjectText, SubjectString);
-
-	  setListSorted(True);
+	FirstListedArticle = MIN(FirstListedArticle, artNum);
+	new = getSubjects(ALL, FirstListedArticle);
+	if (strcmp(SubjectString, new)) {
+	    FREE(SubjectString);
+	    SubjectString = new;
+	    TextSetString(Text, SubjectString);
+	}
+	else {
+	    FREE(new);
 	}
 
-	ArtPosition = findArticle(SubjectString, artNum, False);
+	ArtPosition = 0;
+	findArticle(SubjectString, artNum, &ArtPosition);
 
-	TextSetInsertionPoint(SubjectText, ArtPosition);
+	TextSetInsertionPoint(Text, ArtPosition);
 
-	foundArticle(file, question, JUMP);
+	foundArticle(filename, question);
 
-	TextEnableRedisplay(SubjectText);
+	TextEnableRedisplay(Text);
 
 	break;
     }
 
- finished:
-    xrnUnbusyCursor();
+    PopDownDialog(GotoArticleBox);
+    GotoArticleBox = 0;
+    unbusyCursor();
     inCommand = 0;
-    cancelDestroy();
     return;
 }
 
@@ -2627,7 +1818,7 @@ void artGotoArticleFunction(widget, event, string, count)
       {ABORT_STRING,   gotoArticleHandler, (XtPointer) XRNgotoArticle_ABORT},
       {DOIT_STRING, gotoArticleHandler, (XtPointer) XRNgotoArticle_DOIT},
     };
-
+    
     if (CurrentMode != ARTICLE_MODE) {
 	return;
     }
@@ -2639,134 +1830,108 @@ void artGotoArticleFunction(widget, event, string, count)
     return;
 }
 
-static int subjectSearch _ARGUMENTS((int, long *, char *, file_cache_file **,
-				     char **, art_num *));
+static int subjectSearch _ARGUMENTS((int, long *, char *, char **, char **,
+				     art_num *));
 
 static int subjectSearch(dir, position, expr, file, ques, artNum)
     int dir;			     /* direction, either FORWARD or BACK */
     long *position;	     /* cursor position */
     char *expr;			     /* regular expression to search for */
-    file_cache_file **file;
-    char **ques;	     /* status line for new article */
+    char **file, **ques;	     /* filename and status line for
+					new article */
     art_num *artNum;		     /* number of new article */
 {
-#ifdef POSIX_REGEX
-    regex_t reStruct;
-    int reRet;
-#else
-# ifdef SYSV_REGEX
-    char *reRet = 0;
-# else
-    char *reRet;	/* returned by re_comp/regcmp */
-# endif
+    static char *reRet = 0;	/* returned by re_comp/regcmp */
+#ifndef NDEBUG
+    static int done_search = 0;
 #endif
     char *newsubject;		/* subject of current line */
-    char *oldString = 0, *newString; /* strings used to build up new text string */
+    char *oldString, *newString; /* strings used to build up new text string */
     char *newLine;
-    int ret;
-    int line_length = TextGetColumns(SubjectText);
 
-    assert(expr);
-
-    if (
-#ifdef POSIX_REGEX
-	(reRet = regcomp(&reStruct, expr, REG_NOSUB))
-#else
-# ifdef SYSV_REGEX
-	! (reRet = regcmp(expr, NULL))
-# else
-	(reRet = re_comp(expr))
-# endif
-#endif
-	) {
-      /* bad regular expression */
-#ifdef SYSV_REGEX
-      mesgPane(XRN_SERIOUS, 0, UNKNOWN_REGEXP_ERROR_MSG, expr);
-#else
-# ifdef POSIX_REGEX
-      regerror(reRet, &reStruct, error_buffer,
-	       sizeof(error_buffer));
-# endif
-      mesgPane(XRN_SERIOUS, 0, KNOWN_REGEXP_ERROR_MSG, expr,
-# ifdef POSIX_REGEX
-	       error_buffer
-# else
-	       reRet
-# endif /* POSIX_REGEX */
-	       );
-#endif /* SYSV_REGEX */
-      return ERROR;
-    }
+    oldString = NIL(char);
 
     abortClear();
-    cancelCreate(0);
+    cancelCreate();
+
+    if (expr != NIL(char)) {
+#ifdef SYSV_REGEX
+	FREE(reRet);
+	if ((reRet = regcmp(expr, NULL)) == NULL)
+#else
+	if ((reRet = re_comp(expr)) != NULL)
+#endif
+        {
+	    /* bad regular expression */
+#ifdef SYSV_REGEX
+	    mesgPane(XRN_SERIOUS, 0, UNKNOWN_REGEXP_ERROR_MSG, expr);
+#else
+	    mesgPane(XRN_SERIOUS, 0, KNOWN_REGEXP_ERROR_MSG, expr, reRet);
+#endif
+	    failedSearch();
+	    cancelDestroy();
+	    return ERROR;
+	}
+#ifndef NDEBUG
+	done_search++;
+#endif
+    }
+#ifndef NDEBUG
+    else {
+	assert(done_search);
+    }
+#endif
 
     if (dir == FORWARD) {
 	for (;;) {
 	    if (abortP()) {
 		cancelDestroy();
-		ret = ABORT;
-		goto done;
+		return ABORT;
 	    }
 	    if (SubjectString[*position] == '\0') {
 		cancelDestroy();
 		if (*position == 0) {
+
 		    /* the string is null, no more articles are left */
-		    ret = EXIT;
-		    goto done;
+
+		    return EXIT;
 		}
-		ret = NOMATCH;
-		goto done;
+		return NOMATCH;
 	    }
 	    (void) moveCursor(FORWARD, SubjectString, position);
 	    if (SubjectString[*position] == '\0') {
 
 		/* reached end of string */
 		cancelDestroy();
-		ret = NOMATCH;
-		goto done;
+		return NOMATCH;
 	    }
 	    *artNum = atol(&SubjectString[*position + 2]);
 	    newsubject = getSubject(*artNum);
-	    if (! newsubject) {
-		mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
-		TextRemoveLine(SubjectText, *position);
-		removeLine(SubjectString, position);
-		setListed(*artNum, *artNum, False);
-		continue;
-	    }
 
-#ifdef POSIX_REGEX
-	    if (! regexec(&reStruct, newsubject, 0, 0, 0))
-#else
-# ifdef SYSV_REGEX
+#ifdef SYSV_REGEX
 	    if (regex(reRet, newsubject) != NULL)
-# else /* ! SYSV_REGEX */
+#else
 	    if (re_exec(newsubject))
-# endif /* SYSV_REGEX */
-#endif /* POSIC_REGEX */
+#endif
             {
 		/* found a match to the regular expression */
 
-		if (getArticle(CurrentGroup, *artNum, file, ques) != XRN_OKAY) {
+		gotoArticle(*artNum);
+		if (getArticle(file, ques) != XRN_OKAY) {
 		    /* the matching article was invalid */
+
 		    mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
 
-		    TextRemoveLine(SubjectText, *position);
+		    TextRemoveLine(Text, *position);
 		    removeLine(SubjectString, position);
-		    setListed(*artNum, *artNum, False);
 		    continue;
 		}
-		CurrentGroup->current = *artNum;
 		cancelDestroy();
-		TextSetInsertionPoint(SubjectText, *position);
-		ret = MATCH;
-		goto done;
+		TextSetInsertionPoint(Text, *position);
+		return MATCH;
 	    }
 	}
     } else {
-	art_num first_new = 0, last_new = 0;
-
 	startSearch();
 	for (;;) {
 	    if (abortP()) {
@@ -2776,19 +1941,13 @@ static int subjectSearch(dir, position, expr, file, ques, artNum)
 
 		failedSearch();
 		cancelDestroy();
-		FREE(oldString);
-		setListed(first_new, last_new, False);
-		ret = ABORT;
-		goto done;
+		return ABORT;
 	    }
 	    if ((*position == 0) && (SubjectString[*position] == '\0')) {
 
 		/* no more articles remain, return to Newgroup mode */
-		FREE(oldString);
-		setListed(first_new, last_new, False);
 		cancelDestroy();
-		ret = EXIT;
-		goto done;
+		return EXIT;
 	    }
 	    if (*position != 0) {
 
@@ -2797,66 +1956,46 @@ static int subjectSearch(dir, position, expr, file, ques, artNum)
 		(void) moveCursor(BACK, SubjectString, position);
 		*artNum = atol(&SubjectString[*position + 2]);
 		newsubject = getSubject(*artNum);
-		if (! newsubject) {
-		    mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
 
-		    TextRemoveLine(SubjectText, *position);
-		    removeLine(SubjectString, position);
-		    setListed(*artNum, *artNum, False);
-		    continue;
-		}
-
-#ifdef POSIX_REGEX
-		if (! regexec(&reStruct, newsubject, 0, 0, 0))
-#else
-# ifdef SYSV_REGEX
+#ifdef SYSV_REGEX
 		if (regex(reRet, newsubject) != NULL)
-# else
+#else
 		if (re_exec(newsubject))
-# endif
 #endif
                 {
 		    /* an article matching the regular expression was found */
 
-		    if (getArticle(CurrentGroup, *artNum, file, ques) != XRN_OKAY) {
+		    gotoArticle(*artNum);
+		    if (getArticle(file, ques) != XRN_OKAY) {
 			/* article is invalid, remove it from the text string*/
+
 			mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
 
-			TextRemoveLine(SubjectText, *position);
+			TextRemoveLine(Text, *position);
 			removeLine(SubjectString, position);
-			setListed(*artNum, *artNum, False);
 			continue;
 		    }
-		    CurrentGroup->current = *artNum;
 		    cancelDestroy();
-		    TextSetInsertionPoint(SubjectText, *position);
-		    ret = MATCH;
-		    goto done;
+		    TextSetInsertionPoint(Text, *position);
+		    return MATCH;
 		}
 	    } else {
-		struct article *art;
 
 		/* must query the news server for articles not shown */
 		/* on the current subject screen */
 
-		if ((newLine = getPrevSubject(line_length)) == NIL(char)) {
-
+		if ((newLine = getPrevSubject()) == NIL(char)) {
+		    
 		    /* all articles have been exhausted, reset variables */
 		    /* to what they were before the search was started */
 
 		    failedSearch();
 		    cancelDestroy();
 		    FREE(oldString);
-		    setListed(first_new, last_new, False);
-		    ret = NOMATCH;
-		    goto done;
+		    return NOMATCH;
 		}
 		*artNum = atol(&newLine[2]);
 		newsubject = getSubject(*artNum);
-		if (! newsubject) {
-		    mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
-		    continue;
-		}
 		if (oldString != NIL(char)) {
 
 		    /* add the newest subject line (newLine) to the */
@@ -2875,38 +2014,19 @@ static int subjectSearch(dir, position, expr, file, ques, artNum)
 		    newString = XtNewString(newLine);
 		}
 
-		art = artStructGet(CurrentGroup, *artNum, True);
-		SET_MAYBE_LISTED(art);
-		artStructSet(CurrentGroup, &art);
-		if (! last_new)
-		  first_new = last_new = *artNum;
-		else
-		  first_new = *artNum;
-
-#ifdef POSIX_REGEX
-		if (! regexec(&reStruct, newsubject, 0, 0, 0))
-#else
-# ifdef SYSV_REGEX
+#ifdef SYSV_REGEX
 		if (regex(reRet, newsubject) != NULL)
-# else
+#else
 		if (re_exec(newsubject))
-# endif
 #endif
                 {
-		    if (getArticle(CurrentGroup, *artNum, file, ques) != XRN_OKAY) {
+		    gotoArticle(*artNum);
+		    if (getArticle(file, ques) != XRN_OKAY) {
 			mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, *artNum);
 			removeLine(newString, 0);
-			art = artStructGet(CurrentGroup, *artNum, True);
-			SET_UNLISTED(art);
-			artStructSet(CurrentGroup, &art);
 			continue;
 		    }
-
-		    CurrentGroup->current = *artNum;
-		    setListed(first_new, last_new, True);
-		    setListSorted(False);
-
-		    TextReplace(SubjectText, newString, strlen(newString), 0, 0);
+		    TextReplace(Text, newString, strlen(newString), 0, 0);
 		    cancelDestroy();
 		    oldString = newString;
 		    newString = XtMalloc(strlen(SubjectString) +
@@ -2917,26 +2037,13 @@ static int subjectSearch(dir, position, expr, file, ques, artNum)
 		    FREE(SubjectString);
 		    SubjectString = newString;
 		    FirstListedArticle = *artNum;
-		    *position = 0;
-		    TextSetInsertionPoint(SubjectText, *position);
-		    ret = MATCH;
-		    goto done;
+		    return MATCH;
 		}
 		oldString = newString;
 		continue;
 	    }
 	}
     }
-
-  done:
-#ifdef POSIX_REGEX
-    regfree(&reStruct);
-#else
-# ifdef SYSV_REGEX
-    free(reRet);
-# endif /* SYSV_REGEX */
-#endif /* POSIX_REGEX */
-    return ret;
 }
 
 
@@ -2953,18 +2060,15 @@ static void doSubSearch(regexp, direction)
     int direction;
 {
     long ArtPosition;
-    file_cache_file *file;
-    char *question;
+    char *filename, *question;
     art_num artNum;
     int status;
 
-    TextDisableRedisplay(SubjectText);
-
-    TextUnsetSelection(SubjectText);
-    ArtPosition = TextGetInsertionPoint(SubjectText);
+    TextUnsetSelection(Text);
+    ArtPosition = TextGetInsertionPoint(Text);
 
     status = subjectSearch(direction, &ArtPosition,
-			   regexp, &file, &question, &artNum);
+			   regexp, &filename, &question, &artNum);
     switch (status) {
     case ABORT:
 	infoNow(ERROR_SUBJ_ABORT_MSG);
@@ -2972,24 +2076,22 @@ static void doSubSearch(regexp, direction)
 
     case NOMATCH:
 	(void) sprintf(error_buffer, ERROR_SUBJ_EXPR_MSG,
-		       regexp);
+		       regexp ? regexp : LastRegexp);
 	infoNow(error_buffer);
     case ERROR:
 	break;
 
     case MATCH:
 	(void) sprintf(error_buffer, ERROR_SEARCH_MSG,
-		       regexp);
+		       regexp ? regexp : LastRegexp);
 	infoNow(error_buffer);
-	foundArticle(file, question, direction);
+	foundArticle(filename, question);
 	break;
 
     case EXIT:
 	maybeExitArticleMode();
 	break;
     }
-
-    TextEnableRedisplay(SubjectText);
 }
 
 
@@ -3004,47 +2106,40 @@ static void subSearchHandler(widget, client_data, call_data)
 {
     char *regexpr;
     int direction;
-    Boolean do_search = True;
 
     if (inCommand) {
 	return;
     }
     inCommand = 1;
-    xrnBusyCursor();
+    busyCursor();
 
     if ((int) client_data == XRNsubSearch_ABORT) {
-	do_search = False;
+	goto done;
     }
-    else {
-	regexpr = GetDialogValue(SubSearchBox);
-	if (*regexpr == 0) {
-	    if (LastRegexp == NIL(char)) {
-		mesgPane(XRN_INFO, 0, NO_PREV_REGEXP_MSG);
-		do_search = False;
-	    }
-	    else {
-		regexpr = LastRegexp;
-	    }
-	} else {
-	    FREE(LastRegexp);
-	    LastRegexp = XtNewString(regexpr);
-	    setButtonSensitive(SubjectButtonBox, "artContinue", True);
+    regexpr = GetDialogValue(SubSearchBox);
+    if (*regexpr == 0) {
+	if (LastRegexp == NIL(char)) {
+	    mesgPane(XRN_INFO, 0, NO_PREV_REGEXP_MSG);
+	    goto done;
 	}
+	regexpr = LastRegexp;
+    } else {
+	if (LastRegexp != NIL(char)) {
+	    FREE(LastRegexp);
+	}
+	LastRegexp = XtNewString(regexpr);
     }
 
+    direction = ((int) client_data == XRNsubSearch_FORWARD) ? FORWARD : BACK;
+    LastSearch = direction;
+    doSubSearch(LastRegexp, direction);
+
+  done:
     if (SubSearchBox)
 	PopDownDialog(SubSearchBox);
     SubSearchBox = 0;
-
-    if (do_search) {
-	direction = ((int) client_data == XRNsubSearch_FORWARD) ?
-	    FORWARD : BACK;
-	LastSearch = direction;
-	doSubSearch(LastRegexp, direction);
-    }
-
     inCommand = 0;
-    xrnUnbusyCursor();
+    unbusyCursor();
     return;
 }
 
@@ -3060,7 +2155,7 @@ void artSubSearchFunction(widget, event, string, count)
       {FORWARD_STRING, subSearchHandler, (XtPointer) XRNsubSearch_FORWARD},
       {BACK_STRING,    subSearchHandler, (XtPointer) XRNsubSearch_BACK},
     };
-
+    
     if (CurrentMode != ARTICLE_MODE) {
 	return;
     }
@@ -3092,9 +2187,9 @@ void artContinueFunction(widget, event, string, count)
 	return;
     }
 
-    doSubSearch(LastRegexp, LastSearch);
+    doSubSearch(0, LastSearch);
 }
-
+	
 /*
  * Display the article accessed before the current one
  */
@@ -3105,8 +2200,7 @@ void artLastFunction(widget, event, string, count)
     String *string;
     Cardinal *count;
 {
-    file_cache_file *file;
-    char *question;
+    char *filename, *question;
     long ArtPosition;
 
     if (CurrentMode != ARTICLE_MODE) {
@@ -3118,21 +2212,21 @@ void artLastFunction(widget, event, string, count)
 	return;
     }
 
-    TextDisableRedisplay(SubjectText);
+    TextDisableRedisplay(Text);
 
-    ArtPosition = findArticle(SubjectString, PrevArticle, False);
-    if (getArticle(CurrentGroup, PrevArticle, &file, &question) != XRN_OKAY) {
+    ArtPosition = 0;
+    findArticle(SubjectString, PrevArticle, &ArtPosition);
+    gotoArticle(PrevArticle);
+    if (getArticle(&filename, &question) != XRN_OKAY) {
 	mesgPane(XRN_SERIOUS, 0, ART_NOT_AVAIL_MSG, PrevArticle);
-	TextRemoveLine(SubjectText, ArtPosition);
+	TextRemoveLine(Text, ArtPosition);
 	removeLine(SubjectString, &ArtPosition);
-	setListed(PrevArticle, PrevArticle, False);
     } else {
-	CurrentGroup->current = PrevArticle;
-	TextSetInsertionPoint(SubjectText, ArtPosition);
-	foundArticle(file, question, JUMP);
+	TextSetInsertionPoint(Text, ArtPosition);
+	foundArticle(filename, question);
     }
 
-    TextEnableRedisplay(SubjectText);
+    TextEnableRedisplay(Text);
 }
 
 
@@ -3155,47 +2249,35 @@ void artExitFunction(widget, event, string, count)
 #define XRNsave_ABORT          0
 #define XRNsave_SAVE           1
 
-static String articleIterator(start, left)
-    Boolean start;
-    long *left;
-{
-    return anyIterator(SubjectText, SubjectString, False, start, False, left);
-}
-
 static void doSave(template, printing)
     String template;
     Boolean printing;
 {
     String name;
     char buffer[1024];
-    long left, top WALL(= 0);
+    long left;
     art_num article;
 
-    TextDisableRedisplay(SubjectText);
+    TextDisableRedisplay(Text);
 
-    if (! app_resources.subjectScrollBack)
-	top = TextGetTopPosition(SubjectText);
-
-    if (articleIterator(True, &left)) {
-	while ((name = articleIterator(False, &left))) {
+    if (articleIterator(SubjectString, True, False, &left)) {
+	while ((name = articleIterator(SubjectString, False, False, &left))) {
 	    article = atol(name);
 	    (void) sprintf(buffer, template, article);
 	    if (saveArticleByNumber(buffer, article, printing)) {
 		SubjectString[left + 1] = (printing ? PRINTED_MARKER : SAVED_MARKER);
-		TextInvalidate(SubjectText, SubjectString,
+		TextInvalidate(Text, SubjectString,
 				 left + 1, left + 2);
-
+		
 	    }
 	}
-	left = findArticle(SubjectString, CurrentGroup->current, False);
-	TextSetInsertionPoint(SubjectText, left);
-	if (app_resources.subjectScrollBack)
-	    adjustMinMaxLines(JUMP);
-	else
-	    TextSetTopPosition(SubjectText, top);
+	left = 0;
+	findArticle(SubjectString, currentArticle(), &left);
+	TextSetInsertionPoint(Text, left);
+	adjustMinMaxLines(SubjectString);
     }
 
-    TextEnableRedisplay(SubjectText);
+    TextEnableRedisplay(Text);
 }
 
 
@@ -3218,7 +2300,7 @@ static void saveHandler(widget, client_data, call_data)
 	return;
     }
     inCommand = 1;
-    xrnBusyCursor();
+    busyCursor();
 
     if ((int) client_data != XRNsave_ABORT) {
 	template = GetDialogValue(SaveBox);
@@ -3231,10 +2313,10 @@ static void saveHandler(widget, client_data, call_data)
 
     PopDownDialog(SaveBox);
     SaveBox = 0;
-    xrnUnbusyCursor();
+    unbusyCursor();
     inCommand = 0;
     return;
-}
+}    
 
 /*
  * query the user about saving an article
@@ -3260,7 +2342,7 @@ void artSaveFunction(widget, ev, params, num_params)
 	return;
     }
 
-
+    
     if (num_params && *num_params == 1) {
 	doSave(params[0], False);
     }
@@ -3289,15 +2371,14 @@ void artXlateFunction(widget, event, string, count)
     String *string;
     Cardinal *count;
 {
-    file_cache_file *file;
-    char *question;
+    char *filename, *question;
 
     if (CurrentMode != ARTICLE_MODE) {
 	return;
     }
-    if (toggleXlation(&file, &question) == XRN_OKAY) {
+    if (toggleXlation(&filename, &question) == XRN_OKAY) {
 	TextClear(ArticleText);
-	redrawArticleWidget(file, question);
+	redrawArticleWidget(filename, question);
     }
     return;
 }
@@ -3435,15 +2516,14 @@ void artRot13Function(widget, event, string, count)
     String *string;
     Cardinal *count;
 {
-    file_cache_file *file;
-    char *question;
+    char *filename, *question;
 
     if (CurrentMode != ARTICLE_MODE) {
 	return;
     }
-    if (toggleRotation(&file, &question) == XRN_OKAY) {
+    if (toggleRotation(&filename, &question) == XRN_OKAY) {
 	TextClear(ArticleText);
-	redrawArticleWidget(file, question);
+	redrawArticleWidget(filename, question);
     }
     return;
 }
@@ -3455,273 +2535,14 @@ void artHeaderFunction(widget, event, string, count)
     String *string;
     Cardinal *count;
 {
-    file_cache_file *file;
-    char *question;
+    char *filename, *question;
 
     if (CurrentMode != ARTICLE_MODE) {
 	return;
     }
-    if (toggleHeaders(&file, &question) == XRN_OKAY) {
+    if (toggleHeaders(&filename, &question) == XRN_OKAY) {
 	TextClear(ArticleText);
-	redrawArticleWidget(file, question);
+	redrawArticleWidget(filename, question);
     }
     return;
-}
-
-static void resizeSubjectText _ARGUMENTS((Widget, XtPointer, XEvent *,
-					  Boolean *));
-
-static void resizeSubjectText(widget, client_data, event,
-			      continue_to_dispatch)
-     Widget widget;
-     XtPointer client_data;
-     XEvent *event;
-     Boolean *continue_to_dispatch;
-{
-  long ArtPosition;
-
-  if (event->type == ConfigureNotify && CurrentArticle) {
-    TextDisableRedisplay(SubjectText);
-    FREE(SubjectString);
-    SubjectString = getSubjects(TextGetColumns(SubjectText),
-				FirstListedArticle, False);
-    TextSetString(SubjectText, SubjectString);
-
-    ArtPosition = findArticle(SubjectString, CurrentArticle, False);
-
-    TextSetInsertionPoint(SubjectText, ArtPosition);
-
-    adjustMinMaxLines(JUMP);
-
-    setListSorted(True);
-
-    TextEnableRedisplay(SubjectText);
-  }
-}
-
-void displayArticleWidgets()
-{
-    ArticleNewsGroupsString = getNewsgroupString();
-
-    if (! ArticleFrame) {
-	Dimension height;
-
-	ArticleFrame = XtCreateManagedWidget("artFrame", panedWidgetClass,
-					     TopLevel, 0, 0);
-
-	XawPanedSetRefigureMode(ArticleFrame, False);
-
-	setButtonActive(ArtButtonList, "artPost", PostingAllowed);
-	setButtonActive(ArtButtonList, "artPostAndMail", PostingAllowed);
-	setButtonActive(ArtButtonList, "artKillThread", art_sort_need_threads());
-	setButtonActive(ArtButtonList, "artKillSubthread", art_sort_need_threads());
-	setButtonActive(ArtSpecButtonList, "artFollowup", PostingAllowed);
-	setButtonActive(ArtSpecButtonList, "artFollowupAndReply", PostingAllowed);
-	setButtonActive(ArtSpecButtonList, "artCancel", PostingAllowed);
-	setButtonActive(ArtSpecButtonList, "artHeader",
-			app_resources.displayLocalTime ||
-			app_resources.leaveHeaders || app_resources.stripHeaders);
-	setButtonActive(ArtButtonList, "artResort", app_resources.sortedSubjects &&
-			*app_resources.sortedSubjects);
-
-	/*
-	  This Box widget and the one below are managed only after
-	  their children have been placed in them because there is a
-	  bug in the Xaw Box widget (as of 05/06/95) which prevents it
-	  from doing geometry management properly when children are
-	  added to it.  A patch has been submitted to the X
-	  Consortium, but it'll be a long time before it's in
-	  widespread use.
-	  */
-#define TOP_BUTTON_BOX() {\
-	  SubjectButtonBox = ButtonBoxCreate("buttons", ArticleFrame);\
-	  doButtons(app_resources.artButtonList, SubjectButtonBox,\
-		    ArtButtonList, &ArtButtonListCount, TOP);\
-	}
-
-#define TOP_INFO_LINE() {\
-	  SubjectInfoLine = InfoLineCreate("info", 0, ArticleFrame);\
-	}
-
-#define BOTTOM_BUTTON_BOX() {\
-	  ArtSpecButtonBox = ButtonBoxCreate("artButtons", ArticleFrame);\
-	  doButtons(app_resources.artSpecButtonList, ArtSpecButtonBox,\
-		    ArtSpecButtonList, &ArtSpecButtonListCount, BOTTOM);\
-	}
-
-#define BOTTOM_INFO_LINE() {\
-	  ArticleInfoLine = InfoLineCreate("artInfo", 0, ArticleFrame);\
-	}
-
-	if (app_resources.buttonsOnTop) {
-	  TOP_BUTTON_BOX();
-	  TOP_INFO_LINE();
-	}
-
-	SubjectText = TextCreate("subjects", True, ArticleFrame);
-
-	if (app_resources.buttonsOnTop) {
-	  BOTTOM_BUTTON_BOX();
-	  BOTTOM_INFO_LINE();
-	}
-	else {
-	  TOP_INFO_LINE();
-	  TOP_BUTTON_BOX();
-	}
-
-	ArticleText = TextCreate("text", True, ArticleFrame);
-
-	if (! app_resources.buttonsOnTop) {
-	  BOTTOM_INFO_LINE();
-	  BOTTOM_BUTTON_BOX();
-	}
-
-#undef TOP_BUTTON_BOX
-#undef TOP_INFO_LINE
-#undef BOTTOM_BUTTON_BOX
-#undef BUTTOM_INFO_LINE
-
-	TextSetLineSelections(SubjectText);
-	TextDisableWordWrap(SubjectText);
-	XawPanedAllowResize(TEXT_PANE_CHILD(SubjectText), True);
-	TextSetLines(SubjectText, app_resources.topLines);
-	XawPanedAllowResize(TEXT_PANE_CHILD(SubjectText), False);
-	XtVaGetValues(SubjectText, XtNheight, &height, 0);
-	XtVaSetValues(SubjectText, XtNpreferredPaneSize, height, 0);
-
-	TopInfoLine = SubjectInfoLine;
-	BottomInfoLine = ArticleInfoLine;
-
-	XawPanedSetRefigureMode(ArticleFrame, True);
-
-	XtInstallAccelerators(SubjectText, ArticleText);
-	XtSetKeyboardFocus(ArticleFrame, SubjectText);
-
-	XtAddEventHandler(SubjectText, StructureNotifyMask, FALSE,
-			  resizeSubjectText, NULL);
-    }
-    else {
-	TopInfoLine = SubjectInfoLine;
-	BottomInfoLine = ArticleInfoLine;
-	XtManageChild(ArticleFrame);
-    }
-}
-
-void hideArticleWidgets()
-{
-    FREE(ArticleNewsGroupsString);
-    XtUnmanageChild(ArticleFrame);
-}
-
-void artDoTheRightThing(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    if (event &&
-	(event->type == ButtonPress || event->type == ButtonRelease)) {
-	artNextFunction(widget, event, string, count);
-    }
-    else if (!app_resources.pageArticles) {
-	if (app_resources.subjectRead == False) {
-	    artNextUnreadFunction(widget, event, string, count);
-	} else {
-	    artSubNextFunction(widget, event, string, count);
-	}
-    } else {
-	if (TextLastPage(ArticleText)) {
-	  next_article:
-	    if (app_resources.subjectRead == False) {
-		artNextUnreadFunction(widget, event, string, count);
-	    } else {
-		artSubNextFunction(widget, event, string, count);
-	    }
-	}
-	else {
-	    long top_position = TextGetTopPosition(ArticleText);
-	    artScrollFunction(widget, event, string, count);
-	    if (TextPastLastPage(ArticleText) ||
-		(top_position == TextGetTopPosition(ArticleText)))
-		goto next_article;
-	}
-    }
-}
-
-/*
-  Move the cursor up a line without changing the current article.
-  */
-void artUpFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    if (CurrentMode != ARTICLE_MODE)
-	return;
-
-    TextDisableRedisplay(SubjectText);
-    TextMoveLine(SubjectText, BACK);
-    adjustMinMaxLines(BACK);
-    TextEnableRedisplay(SubjectText);
-}
-
-/*
-  Move the cursor down a line without changing the current article.
-  */
-void artDownFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    if (CurrentMode != ARTICLE_MODE)
-	return;
-
-    TextDisableRedisplay(SubjectText);
-    TextMoveLine(SubjectText, FORWARD);
-    adjustMinMaxLines(FORWARD);
-    TextEnableRedisplay(SubjectText);
-}
-
-void resetArticleNewsgroupsList()
-{
-  FREE(ArticleNewsGroupsString);
-}
-
-/*
- Move the cursor to the position of the article "num".  If if the
- article is not found, exit XRN with an error if allow_failure is
- False, or return -1 otherwise.
- */
-static long findArticle(
-			_ANSIDECL(char *,	tstring),
-			_ANSIDECL(art_num,	num),
-			_ANSIDECL(Boolean,	allow_failure)
-			)
-     _KNRDECL(char *,	tstring)
-     _KNRDECL(art_num,	num)
-     _KNRDECL(Boolean,	allow_failure)
-{
-    long artNum;		/* number of current article */
-    long position = 0;
-    long pos;
-
-    while (TRUE) {
-      pos = position + 1;
-      /* move over S[aved] / P[rinted] marking */
-      if ((tstring[pos] == SAVED_MARKER) || (tstring[pos] == PRINTED_MARKER)) {
-	pos++;
-      }
-      artNum = atol(&tstring[pos]);
-      if (artNum == num)
-	break;
-      if (! (moveCursor(FORWARD, tstring, &position) && tstring[position])) {
-	if (allow_failure)
-	  return -1;
-	else
-	  ehErrorExitXRN( ERROR_FINDARTICLE_MSG );
-      }
-    }
-    return position;
 }
