@@ -1,12 +1,6 @@
 #include <X11/Intrinsic.h>
-#ifdef MOTIF
-# include <Xm/PanedW.h>
-#else
-# include <X11/Xaw/Paned.h>
-#endif
-/*
+#include <X11/Xaw/Paned.h>
 #include <X11/Xaw/Box.h>
-*/
 
 #include "config.h"
 #include "buttons.h"
@@ -378,27 +372,26 @@ void switchToAddMode(groups)
 void displayAddWidgets()
 {
     if (! AddFrame) {
-	AddFrame = XtCreateManagedWidget("addFrame",
-#ifdef MOTIF
-                                         xmPanedWindowWidgetClass,
-#else
-                                         panedWidgetClass,
-#endif
+	AddFrame = XtCreateManagedWidget("addFrame", panedWidgetClass,
 					 TopLevel, 0, 0);
 
-#ifndef MOTIF
 	XawPanedSetRefigureMode(AddFrame, False);
-#endif /* MOTIF */
 
 	if (app_resources.fullNewsrc) {
 	  setButtonActive(AddButtonList, "addIgnoreRest", False);
 	  setButtonActive(AddButtonList, "addIgnore", False);
 	}
 
+	/*
+	  The Box widget is managed only after
+	  its children have been placed in them because there is a
+	  bug in the Xaw Box widget (as of 05/06/95).
+	  */
 #define BUTTON_BOX() {\
 	  AddButtonBox = ButtonBoxCreate("buttons", AddFrame);\
 	  doButtons(app_resources.addButtonList, AddButtonBox,\
 		    AddButtonList, &AddButtonListCount, TOP);\
+	  XtManageChild(AddButtonBox);\
 	}
 	
 #define INFO_LINE() {\
@@ -430,12 +423,9 @@ void displayAddWidgets()
 	    setButtonSensitive(AddButtonBox, "addIgnore", False);
 	}
 
-#ifdef MOTIF
-        XmProcessTraversal(AddFrame, XmTRAVERSE_CURRENT);
-#else
 	XawPanedSetRefigureMode(AddFrame, True);
+
 	XtSetKeyboardFocus(AddFrame, AddText);
-#endif
     }
     else {
 	TopInfoLine = AddInfoLine;
