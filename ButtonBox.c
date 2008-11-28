@@ -12,9 +12,7 @@
 #endif
 
 #include "config.h"
-#include "utils.h"
 #include "xrn.h"
-#include "ButtonBox.h"
 
 Widget ButtonBoxCreate(name, parent)
     String name;
@@ -69,19 +67,6 @@ void ButtonBoxDoneAdding(w)
     if (XtIsRealized(XtParent(w)))
       XtRealizeWidget(w);
     XtManageChild(w);
-}
-
-void ButtonBoxEmpty(w)
-     Widget w;
-{
-  WidgetList children;
-  Cardinal num_children;
-  
-  XtVaGetValues(w, XtNchildren, &children,
-		XtNnumChildren, &num_children, 0);
-
-  while (num_children-- >= 1)
-    XtDestroyWidget(children[num_children]);
 }
 
 void ButtonBoxDestroy(w)
