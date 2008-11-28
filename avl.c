@@ -1,6 +1,6 @@
 
-#if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: avl.c,v 1.9 1994-12-15 15:47:15 jik Exp $";
+#if !defined(lint) && !defined(SABER)
+static char XRNrcsid[] = "$Header: /d/src/cvsroot/xrn/avl.c,v 1.5 1994-10-12 17:40:13 jik Exp $";
 #endif
 
 /*
@@ -30,6 +30,7 @@ static char XRNrcsid[] = "$Id: avl.c,v 1.9 1994-12-15 15:47:15 jik Exp $";
 
 #include "copyright.h"
 #include "config.h"
+#include <sys/types.h>
 #include "utils.h"
 #include "avl.h"
 
@@ -467,27 +468,27 @@ static int do_check_tree(node, compar, error)
     
     if (comp_height != node->height) {
 	(void) printf("Bad height for 0x%08x: computed=%d stored=%d\n",
-	    (unsigned int) node, comp_height, node->height);
+	    node, comp_height, node->height);
 	++*error;
     }
 
     if (bal > 1 || bal < -1) {
 	(void) printf("Out of balance at node 0x%08x, balance = %d\n", 
-	    (unsigned int) node, bal);
+	    node, bal);
 	++*error;
     }
 
     if (node->left != NIL(avl_node) && 
 		    (*compar)(node->left->key, node->key) > 0) {
 	(void) printf("Bad ordering between 0x%08x and 0x%08x", 
-	    (unsigned int) node, (unsigned int) node->left);
+	    node, node->left);
 	++*error;
     }
     
     if (node->right != NIL(avl_node) && 
 		    (*compar)(node->key, node->right->key) > 0) {
 	(void) printf("Bad ordering between 0x%08x and 0x%08x", 
-	    (unsigned int) node, (unsigned int) node->right);
+	    node, node->right);
 	++*error;
     }
 
