@@ -1,30 +1,7 @@
 
-$Id: COMMON-PROBLMS,v 1.14 2000-03-09 21:57:22 jik Exp $
+$Id: COMMON-PROBLMS,v 1.7 1995-03-13 20:28:29 jik Exp $
 
 List of Common Problems:
-
-*.  XRN is crashing because of long lines in your newsrc file.
-
-    On some UNIX platforms, the "lex" pre-compiler, which XRN uses to
-    produce the code which parses newsrc files, has limit on line
-    lengths which is too small for some lines in newsrc files.
-
-    If XRN crashes or performs unpredictably when you run it, and you
-    have long lines in your newsrc file (200 characters long is the
-    most common limit), then you may be running into this problem.  If
-    so, the easiest way to fix it is to install the GNU "flex" package
-    and use it, rather than lex, when compiling XRN.  After installing
-    flex, you can use it when compiling XRN by adding "LEX=flex" to
-    the end of the "make" command you use to compile XRN.
-
-*.  XRN compiled and installed just fine, and you can use it with the
-    mouse, but none of the key bindings work.
-
-    You are using an old version of the X11 libraries (e.g., you're
-    using SunOS 4.x).  As noted in the README file, XRN requires at
-    least X11R5 to work properly.  You need to get a newer version of
-    X11 (e.g., the X11R6.3 release from the Open Group), compile and
-    install it, and link XRN against it.
 
 *.  Part of the Subject index occasionally fails to redraw properly in
     article mode.
@@ -127,18 +104,13 @@ List of Common Problems:
 
 	"Caught signal (XX), cleaned up .newsrc and removed temp files"
 
-    If you're using XRN on a Linux system, see README.Linux for
-    information about what may be causing the crash and how to fix it.
-
-    If you're not using Linux, or if the problem described in
-    README.Linux doesn't apply, then you've found a bug.  Try to get
-    XRN to dump core (by running it with the "+dumpCore" command-line
-    option or with the "xrn.dumpCore" X resource set to "true", and
-    then duplicating the circumstances that led to the message above;
-    click on "abort" when it asks you want to do), and then use "gdb",
-    "dbx" or some other debugger to get a backtrace of the coredump,
-    and then mail it to the maintainer of XRN.  DO NOT send the
-    coredump.
+    You've found a bug.  Try to get XRN to dump core (by running it
+    with the "+dumpCore" command-line option or with the
+    "xrn.dumpCore" X resource set to "true", and then duplicating the
+    circumstances that led to the message above; click on "abort" when
+    it asks you want to do), and then use "gdb", "dbx" or some other
+    debugger to get a backtrace of the coredump, and then mail it to
+    the maintainer of XRN.  DO NOT send the coredump.
 
     Note that a backtrace will not be useful unless you compiled XRN
     with "-g".  If you didn't, recompile it with "-g" before trying to
@@ -146,9 +118,8 @@ List of Common Problems:
 
     If XRN doesn't dump core even when you click on "abort" after
     running it with "+dumpCore", you probably have coredump sizes
-    limited in your shell.  Try typing "unlimit core" or "ulimit -c
-    unlimited" and running XRN again.  If that doesn't work, get help
-    from someone at your site.
+    limited in your shell.  Try typing "unlimit core" and running XRN
+    again.  If that doesn't work, get help from someone at your site.
 
     If you send a backtrace, please keep the coredump and the XRN
     binary that generated it around until you hear back from me, in
