@@ -29,7 +29,6 @@
 
 #include "busyCursor.h"
 #ifdef XRN
-#include "config.h"
 #include "utils.h"
 #ifndef TEST
 #include "resources.h"
@@ -118,12 +117,9 @@ static Cursor get_cursor(root)
 }
 
 
-void BusyCursor(
-		_ANSIDECL(Widget,	root),
-		_ANSIDECL(Boolean,	do_popups)
-		)
-     _KNRDECL(Widget,	root)
-     _KNRDECL(Boolean,	do_popups)
+void BusyCursor(root, do_popups)
+    Widget root;
+    Boolean do_popups;
 {
     static Cursor the_cursor = 0;
     cursor_info *info_p;
@@ -169,12 +165,9 @@ void BusyCursor(
 	XFlush(XtDisplay(root));
 }
 
-void UnbusyCursor(
-		  _ANSIDECL(Widget,	root),
-		  _ANSIDECL(Boolean,	do_popups)
-		  )
-     _KNRDECL(Widget,	root)
-     _KNRDECL(Boolean,	do_popups)
+void UnbusyCursor(root, do_popups)
+    Widget root;
+    Boolean do_popups;
 {
     cursor_info *info_p;
     static int in_unbusy = 0;

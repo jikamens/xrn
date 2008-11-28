@@ -1,17 +1,14 @@
-#include "config.h"
-#include "utils.h"
 #include <stdio.h>
 #include <X11/Intrinsic.h>
-#include <errno.h>
+#include "config.h"
+#include "utils.h"
 #include "error_hnds.h"
 #include "mesg.h"
 #include "mesg_strings.h"
 #include "varfile.h"
-#include "cache.h"
 
 #ifdef TESTING
 #define utTempnam tempnam
-#define utTempnamFree free
 #define mesgPane(a,b,c,d,e) fprintf(stderr, c, d, e)
 #define mesgPane6(a,b,c,d,e,f) fprintf(stderr, c, d, e, f)
 #define XtMalloc malloc
@@ -48,7 +45,7 @@ char *line, **name, **value;
 {
     char *end;
 
-    if (*line++ != CACHE_VAR_CHAR)
+    if (*line++ != '&')
 	return 0;
 
     *name = line;
@@ -66,7 +63,7 @@ char *line, **name, **value;
 #define CLEANUP { \
 	    (void) fclose(input); \
 	    (void) fclose(output); \
-	    XtFree(tmpfile); \
+	    free(tmpfile); \
 	    return 0; \
 	    }
 #define WRITE_LINE { \
@@ -84,11 +81,7 @@ struct var_rec *vars;
 {
     FILE *input, *output = 0;
     struct var_rec *this_var;
-    char line[BUFSIZ], *name, *val, last_chopped = 0, *tmpfile = 0;
-
-#ifdef GCC_WALL
-    tmpfile = 0;
-#endif
+    char line[BUFSIZ], *name, *val, *slash, last_chopped = 0, *tmpfile = 0;
 
     if (! (input = fopen(filename, "r"))) {
 	if (errno != ENOENT)
@@ -98,11 +91,16 @@ struct var_rec *vars;
     }
 
     if (vars) {
-      tmpfile = utTempFile(filename);
+	if ((slash = strrchr(filename, '/'))) {
+	    *slash = '\0';
+	    tmpfile = utTempnam(filename, slash + 1);
+	    *slash = '/';
+	} else
+	    tmpfile = utTempnam(".", filename);
 	if (! (output = fopen(tmpfile, "w"))) {
 	    mesgPane(XRN_SERIOUS, 0, CANT_OPEN_TEMP_MSG, tmpfile, errmsg(errno));
 	    (void) fclose(input);
-	    XtFree(tmpfile);
+	    free(tmpfile);
 	    return 0;
 	}
 	for (this_var = vars; this_var->name; this_var++)
@@ -112,71 +110,66 @@ struct var_rec *vars;
 	vars->name = 0;
     }
 
-    if (input) {
-	while (fgets(line, sizeof(line), input)) {
-	    if (line[strlen(line) - 1] != '\n') {
-		last_chopped = 1;
-		WRITE_LINE;
-		continue;
-	    }
-	    if (last_chopped) {
-		last_chopped = 0;
-		WRITE_LINE;
-		continue;
-	    }
-	    if (parse_line(line, &name, &val)) {
-		if (output) {
-		    if ((this_var = find_var(vars, name))) {
-			if (this_var->written)
-			    continue;
-			if (fprintf(output, "%c%s %s\n", CACHE_VAR_CHAR,
-				    name, this_var->value) == EOF) {
-			    mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG,
-				     tmpfile, errmsg(errno));
-			    CLEANUP;
-			}
-			this_var->written = 1;
-		    } else if (fprintf(output, "%c%s %s\n", CACHE_VAR_CHAR,
-				       name, val) == EOF) {
+    while (fgets(line, sizeof(line), input)) {
+	if (line[strlen(line) - 1] != '\n') {
+	    last_chopped = 1;
+	    WRITE_LINE;
+	    continue;
+	}
+	if (last_chopped) {
+	    last_chopped = 0;
+	    WRITE_LINE;
+	    continue;
+	}
+	if (parse_line(line, &name, &val)) {
+	    if (output) {
+		if ((this_var = find_var(vars, name))) {
+		    if (this_var->written)
+			continue;
+		    if (! fprintf(output, "&%s %s\n", name, this_var->value)) {
 			mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG,
 				 tmpfile, errmsg(errno));
 			CLEANUP;
 		    }
-		} else
-		    var_set_value(&vars, name, val);
+		    this_var->written = 1;
+		} else if (! fprintf(output, "&%s %s\n", name, val)) {
+		    mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG,
+			     tmpfile, errmsg(errno));
+		    CLEANUP;
+		}
 	    } else
-		WRITE_LINE;
-	}
-
-	(void) fclose(input);
+		var_set_value(&vars, name, val);
+	} else
+	    WRITE_LINE;
     }
-    
+
+    (void) fclose(input);
+
     if (output) {
 	for (this_var = vars; this_var->name; this_var++)
 	    if ((! this_var->written) &&
-		(fprintf(output, "%c%s %s\n", CACHE_VAR_CHAR,
-			 this_var->name, this_var->value) == EOF)) {
+		(! fprintf(output, "&%s %s\n", this_var->name, this_var->value))) {
 		mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG, tmpfile,
 			 errmsg(errno));
+		free(tmpfile);
 		(void) fclose(output);
-		XtFree(tmpfile);
 		return 0;
 	    }
 	if (fclose(output) == EOF) {
 	    mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_SAVE_FILE_MSG, tmpfile,
 		     errmsg(errno));
-	    XtFree(tmpfile);
+	    free(tmpfile);
 	    return 0;
 	}
 	if (rename(tmpfile, filename)) {
 	    mesgPane6(XRN_SERIOUS, 0, ERROR_RENAMING_MSG, tmpfile, filename,
 		     errmsg(errno));
-	    XtFree(tmpfile);
+	    free(tmpfile);
 	    return 0;
 	}
+	free(tmpfile);
     }
 
-    XtFree(tmpfile);
     return vars;
 }
 
@@ -293,7 +286,7 @@ int main()
 	    if (! retval) {
 		fprintf(stderr, "var_write_file returned non-zero\n");
 	    }
-	} else if (*inline == CACHE_VAR_CHAR) {			/* set a variable */
+	} else if (*inline == '&') {				/* set a variable */
 	    if (parse_line(inline, &name, &value)) {
 		var_set_value(&vars, name, value);
 		if (! vars)

@@ -21,7 +21,6 @@ BUTDECL(artCatchUp);
 BUTDECL(artFedUp);
 BUTDECL(artMarkRead);
 BUTDECL(artMarkUnread);
-BUTDECL(artSub);
 BUTDECL(artUnsub);
 BUTDECL(artScroll);
 BUTDECL(artScrollBack);
@@ -33,11 +32,10 @@ BUTDECL(artScrollIndex);
 BUTDECL(artScrollIndexBack);
 BUTDECL(artSubNext);
 BUTDECL(artSubPrev);
-BUTDECL(artThreadParent);
-BUTDECL(artKillSubject);
+BUTDECL(artKillSession);
+BUTDECL(artKillLocal);
+BUTDECL(artKillGlobal);
 BUTDECL(artKillAuthor);
-BUTDECL(artKillThread);
-BUTDECL(artKillSubthread);
 BUTDECL(artSubSearch);
 BUTDECL(artContinue);
 BUTDECL(artPost);
@@ -47,7 +45,6 @@ BUTDECL(artExit);
 BUTDECL(artCheckPoint);
 BUTDECL(artGripe);
 BUTDECL(artListOld);
-BUTDECL(artResort);
 
 BUTDECL(artSave);
 BUTDECL(artReply);
@@ -69,7 +66,6 @@ extern int switchToArticleMode _ARGUMENTS((void));
 
 extern void displayArticleWidgets _ARGUMENTS((void));
 extern void hideArticleWidgets _ARGUMENTS((void));
-extern void resetArticleNewsgroupsList _ARGUMENTS((void));
 
 extern void artDoTheRightThing _ARGUMENTS((Widget, XEvent *, String *,
 					   Cardinal *));
