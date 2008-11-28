@@ -15,7 +15,7 @@
 #endif
 #endif /* !_ARGUMENTS */
 
-extern void	BusyCursor	_ARGUMENTS((Widget, Boolean));
-extern void	UnbusyCursor	_ARGUMENTS((Widget, Boolean));
+extern void	BusyCursor	_ARGUMENTS((Widget, /* Boolean */ int));
+extern void	UnbusyCursor	_ARGUMENTS((Widget, /* Boolean */ int));
 
 #endif /* _BUSYCURSOR_H_ */
