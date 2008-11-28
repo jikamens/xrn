@@ -1,0 +1,128 @@
+I would like to thank the following people, in no particular order,
+who have contributed to XRN in minor and major ways over the years.
+	
+		      *************************
+
+Rick Spickelmier and Ellen Santovich, the original authors and
+	maintainers of XRN
+Odd Einar Aurbakken <oea@ifi.uio.no>, who contributed numerous bug
+	reports and fixes, and who did the Good Net-Keeping Seal of
+	Approval review for XRN
+Nicolas Courtel <courtel@cenatls.cena.dgac.fr>, who contributed the
+	initial patches for French language support
+Jean-Marc.Lasgouttes@inria.fr
+Michel Eyckmans <mce@tornado.be>, who contributed numerous
+	suggestions, bug reports, fixes and enhancements, including
+	support for nested kill files
+Jens.Schleusener@dlr.de
+Adrian T. Filipi-Martin <atf3r@stretch.cs.virginia.edu>
+Albert Chin-A-Young <chinay@cig.mot.com>
+Zdenek Sekera <zdenek@patpsun1.epfl.ch>
+Taed Nelson <nelson@lan.nsc.com>
+Thorsten Frueauf <frueauf@ira.uka.de>
+Tim <tda10@cus.cam.ac.uk>
+Rob Leland <root@dial-in.nw.dc.us>
+Rein Tollevik <reint@a.sn.no>
+Steven Tepper <greep@datatools.com>
+John Robert LoVerso <loverso@osf.org>
+Reg Clemens <reg@dwf.com>
+Chris Lewis <clewis@bnr.ca>, who contributed various fixes and the
+	initial support for NNTP authentication
+Kay Marquardt <kay@zhv.basf-ag.de>, who contributed various bug
+	reports, fixes and enhancements, including the initial patches
+	for German language support and numerous updates to them
+Glen Reesor <glenr@cu74.crl.aecl.ca>
+Ralph R. Swick <swick@x.org>, who contributed various changes to make
+	XRN more "X compliant", including updates for new Xaw/Xt
+	versions and support for the X11R6 session manager
+Randy Coulman <coulman@skdad.usask.ca>
+Matt Bush <xomox@boris.eden.com>
+Vincent Archer <archer@cett.alcatel-alsthom.fr>
+Phil Gross <phigro@phigro.rnd.symix.com>
+Per Hedeland <per@erix.ericsson.se>, who contributed numerous bug
+	reports, fixes and enhancements
+Mike Yang <mikey@euky.engr.sgi.com>
+Lucas James  <jj@ldjpc.apana.org.au>
+mikes@bioch.ox.ac.uk
+carson@lehman.com
+David W. Schuler <dschuler@VNET.IBM.COM>
+Brian Rice <bri@whitestone.com>
+Jay Vassos-Libove <libove@libove.mindspring.com>
+Alan Rooks <vedge!alan@iros1.IRO.UMontreal.CA>
+Gerhard Niklasch <nikl@pchelwig1.mathematik.tu-muenchen.de>, who
+	contributed bug reports, fixes, and major revisions to the
+	German language support and a major clean-up to the English
+	language support as well
+Thomas.Foks@hub.de
+Daniel Kabs <kabs@physik.uni-kl.de>
+Paul Kirkaas <pki@malibu.cri.dk>
+Wayne D Richardson <wdr@VNET.IBM.COM>
+Philippe Brieu <philippe@pablo.physics.lsa.umich.edu>
+Gordon Berkley <gordonb@mcil.comm.mot.com>
+Richard Lloyd <R.K.Lloyd@csc.liv.ac.uk>
+Charles R. Dennett <dennett@image.Kodak.COM>
+Ivar Ruyter <ivarr@troll.hz.kfa-juelich.de>
+George Ross <gdmr@dcs.ed.ac.uk>
+Stan Smith <ssmith@gothamcity.jsc.nasa.gov>
+Brian V. Smith <envbvs@epb1.lbl.gov>
+Michael.Salmon@eos99.ericsson.se
+Davin Milun <milun@cs.Buffalo.EDU>
+Clemmitt Sigler <siglercm@alphamb.phys.vt.edu>
+Richard Dyson <dyson@sunfish.physics.uiowa.edu>
+Chris Sherman <sherman@unx.sas.com>
+Philippe Michel <michel@thomson-lcr.fr>
+sturle.sunde@usit.uio.no
+Gerry.Tomlinson@newcastle.ac.uk
+dbrooks@ics.com
+Kurt J. Lidl <lidl@va.pubnix.com>
+Brad_Appleton-GBDA001@email.mot.com
+Jim Berilla <jb@falstaff.MAE.cwru.edu>
+Alain Nissen <nissen@montefiore.ulg.ac.be>
+Harald Leinders <hl@arthur.ph2.Uni-Koeln.DE>
+Klaus Hartmuth <klaus@gauguin.legg.u-nancy.fr>
+Richard Allen <ra@os.is>
+David.Starks-Browning@EMBL-Heidelberg.de
+Axel Nennker <nennker@cs.tu-berlin.de>
+Paul Mauschbaugh <mush@sunota.cat.com>
+Marcin.Skubiszewski@inria.fr
+John DiMarco <jdd@cdf.toronto.edu>
+Masahiko Suenaga <f77266a@kyu-cc.cc.kyushu-u.ac.jp>
+Vyacheslav Shubinsky <slava@usgs.gov>
+Wolfgang Roeckelein <wolfgang@wi.WHU-Koblenz.de>
+Robert Broughton <bob@zadall.com>
+Daniel Israel <daniel@neptune.ame.arizona.edu>
+Mike O'Brien <obrien@leonardo.net>
+Hugues.Leroy@irisa.fr
+Michael Schmitz <schmitz@ph-cip.Uni-Koeln.DE>
+Konstantin Laufer <laufer@math.luc.edu>
+Paul Menage <pbm1001@hermes.cam.ac.uk>
+Joseph F. Backo <jback@tristan.corsair.com>
+Raphael.Quinet@eed.ericsson.se
+Ken Fox <kfox@ford.com>
+Volker Borchert <bt@teknon.de>
+Clarence W. Wilkerson <wilker@math.purdue.edu>
+Anton Ertl <anton@mips.complang.tuwien.ac.at>
+Mike Abbott <mja@trudge.engr.sgi.com>
+Franz.Mauch@uni-konstanz.de
+Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>
+Joe Konstan <konstan@cs.umn.edu>
+David A. Curry <davy@ecn.purdue.edu>
+Phil Garner <garner@signal.dra.hmg.gb>
+Richard Mitchell <mitchell@aol14.wff.nasa.gov>
+Chris Torek <torek@purr.bsdi.com>
+Alec Wolman <wolman@cs.washington.edu>
+Marc Pawliger <pawliger@mv.us.adobe.com>
+Gedaliah Friedenberg <gedaliah@panix.com>
+uri@watson.ibm.com
+Olivier David <olivier@lise.paris.sgi.com>
+Kevin Brannen <kevin@inetspace.com>
+Mark Hayter <hayter@pa.dec.com>
+Greg Ubben <gsu@romulus.ncsc.mil>
+Serge Noiraud <Serge.Noiraud@bull.net>
+
+		      *************************
+
+I am indebted to everyone who sends me feedback of any sort about
+XRN.  Please don't hesitate to contact me!
+
+  Jonathan Kamens

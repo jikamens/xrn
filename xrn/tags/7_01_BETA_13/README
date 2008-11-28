@@ -1,0 +1,192 @@
+			     What is XRN?
+
+  XRN is a Usenet News reader for the X window system.  It requires an
+NNTP server to talk to (i.e., it cannot read news from local disk
+files), and the NNTP server must support the XHDR command (most
+servers nowadays do; if yours doesn't, XRN will complain when you try
+to run it).
+
+  Versions of XRN prior to 7.00 were maintained by Ellen Santovich and
+Rick Spickelmier.  XRN is currently maintained by Jonathan Kamens.
+But reports or comments about it should be sent to bug-xrn@cam.ov.com.
+Please do *not* write to that address with basic questions about
+compiling the program; if you are unfamiliar with compiling X
+applications and the instructions below are not sufficient, you should
+seek help at your site.
+
+
+			   Where to get XRN
+
+  The most recent production release of XRN can always be retrieved
+from <ftp://ftp.cam.ov.com/pub/xrn/xrn.tgz>.  The most recent
+beta-test release of XRN (if there is a beta release more recent than
+the last production release) can always be retried from
+<ftp://ftp.cam.ov.com/pub/xrn/beta.tgz>.  These files are GNU tar
+archives compressed with GNU zip.
+
+  XRN 7.00 has also been submitted to comp.sources.x; check the index
+of any comp.sources.x archive to see where in the archive it resides.
+XRN is also available in the X Consortium's contributed software
+archive, in the directory <ftp://ftp.x.org/contrib/applications/xrn>.
+
+
+	      Interesting files in the XRN distribution
+
+  There are a number of files in the XRN distribution besides the
+actual source files for the program.  I maintain some of these files
+actively.  Others are left over from before I started maintaining XRN,
+and I have not reviewed them for correctness or updated them; use the
+information in them at your own risk.  In the following list,
+asterisks indicate files which I have tried to keep up-to-date (this
+more files may be updated in future releases, especially if people
+send me feedback about the out-of-date ones):
+
+COMMON-PROBLMS		A list of common problems and questions about
+			the program, with explanations and solutions.
+COPYRIGHT		Describes the copyright restrictions on XRN.
+			I have left the University of California
+			copyright intact, despite the fact that it's
+			not clear at this point how much of the code
+			was actually written by UC employees, because
+			that's the easiest thing to do and it doesn't
+			do any harm.
+* ChangeLog		A list of changes from previous releases of
+			XRN.  Note that because the last release of
+			XRN was so long ago, and because the new
+			release is so different from the previous
+			release, I have not included ChangeLog entries
+			from previous releases. I.e., the ChangeLog
+			starts with release 7.00-beta-1.
+
+			Starting with release 7.01-beta-3, significant
+			user-visible changes are marked with an
+			asterisk in the second column so that they can
+			be spotted easily.
+* README		This file.
+* TODO			A list of pending bug fixes and improvements
+			to XRN.  If you're interested in helping to
+			develop XRN, picking one of the items in this
+			list and digging around in the source code to
+			see what you can do about it is a good way to
+			start.
+
+			This file is sort of "half up-to-date,"
+			because I've been adding new items to the
+			beginning of it, but the items at the end of
+			it are left over from before I took over
+			maintenance of XRN, and some of them may be
+			inaccurate.
+Xresources.sam		A sample of how you might customize XRN in
+			your own X resources.
+contrib/*		Various scripts, hints, etc. contributed by
+			XRN users and not "officially" part of XRN.
+* doc/rfc977.txt	The Internet RFC governing NNTP, the Network
+			News Transport Protocol, which XRN users to
+			talk to the server.
+* doc/strtok.doc	Documentation of the strtok() implementation
+			included with XRN.
+* doc/vprintf.doc	Documentation for the vprintf() implementation
+			included with XRN.
+* doc/vprintf.port	The original vprintf() implementation from
+			which the one used in XRN is derived.
+still-to-do/*		Various bug fixes that have not yet been
+			examined or incorporated into the program.
+			Some of these are probably obsolete.  I
+			inherited them when I took over maintenance
+			of the program, and I haven't done anything
+			with them.
+
+
+		      Supported/Tested Platforms
+
+  XRN has been compiled and run on a large variety of platforms; it
+should compile pretty easily on most platforms.  The maintainer uses
+SunOS 4.1.3, gcc 2.4.5, and X11R5 libraries.  Other successful
+platforms reported by users include OSF/1, HP-UX, AIX, Solaris 2.x,
+BSD/386, Linux, and SGI.
+
+  Rick Murphy <murphy@ufp.dco.dec.com> has a version of XRN that runs
+on VMS, available as <ftp://gatekeeper.dec.com/pub/DEC/dxrn.tar.Z>.
+His version of XRN also will compile with a DECwindows interface on
+UNIX, as well as with a Motif interface with some "bells and whistles"
+that this version of XRN does not have.  Integrating DXRN into the
+code base of XRN (i.e., this package) is on my TODO list, but I doubt
+it'll get done in the short term.
+
+
+		     Compiling and installing XRN
+
+  The following steps are necessary in order to compile and install
+XRN.  The last few steps are the standard method for compiling and
+installing an X program; if you need more help with them, you should
+look for it at your site.
+
+1. Edit the Imakefile (after making it writeable with chmod) for your
+   local configuration.  The comments in the file explain what needs
+   to be edited.  Pay particular attention to "INN", which enables and
+   support for InterNetNews (INN).
+
+2. Edit config.h (after making it writeable with chmod) for your local
+   configuration.  The file is (sort of) arranged from most
+   significant to least significant parameters, so if you get part-way
+   through it and start to feel like you can just leave the rest
+   as-is, you probably can.
+
+   If you don't define a parameter that needs to be defined, you'll
+   get an error during compilation.
+
+   Make sure to delete the "#error" line near the top of config.h when
+   you're done editing it for your local configuration.  That line is
+   there to prevent you from trying to compile the program without
+   configuring it first.  Do NOT define OV_CAMBRIDGE when compiling
+   the program -- I use that symbol for my local configuration so that
+   I can ship the same config.h as the one I use, so if you define it,
+   you'll end up getting the configuration that I use locally (which
+   is certainly not what you want).
+
+   If you want to put all of your configuration paramaters in the
+   SITE_DEFINES variable in the Imakefile, you can do that instead of
+   editing config.h.  However, if you do that, make sure to put
+   "-DCONFIG_H_IS_OK" in SITE_DEFINES.
+
+3. Run "xmkmf" and then "make".
+
+   If you don't have xmkmf at your site, or if it doesn't work or
+   produces a Makefile that doesn't work, you can try configuring by
+   hand, by editing the Makefile included in the distribution (note
+   that if you ran xmkmf, it probably renamed the distributed Makefile
+   to Makefile.bak).  It's generated using xmkmf at my site, and
+   almost certainly will require editing to be correct for yours.  If
+   you have to do this and you have trouble, please get help from
+   someone at your site rather than contacting me about it; I don't
+   have time to support sites that don't have xmkmf installed
+   properly.
+
+   If you get an error about a missing header file "mesg_strings.h"
+   when you run "make", then run "make mesg_strings.h" and then run
+   "make" again.
+
+4. Run "make install" to install the program and its application
+   defaults file, and/or "make install.man" to install the man page.
+
+   Note that XRN will not run correctly without its application
+   defaults file installed.
+
+
+			 The XRN mailing list
+
+  If you would like to be informed of new releases of XRN and of any
+major bugs that are discovered in between releases, you can subscribe
+to the xrn-users@cam.ov.com mailing list.  It's an announcement list,
+not a discussion list, so the traffic on it is very low.  If you're
+interested, send mail to xrn-users-request@cam.ov.com and ask to be
+added to the list.
+
+
+
+I hope you find XRN useful!
+
+  Jonathan Kamens
+  jik@cam.ov.com
+
+# $Id: README,v 1.38 1995-01-25 03:17:52 jik Exp $

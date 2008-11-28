@@ -1,0 +1,129 @@
+Return-Path: sun!pulsar.fac.cs.cmu.edu!Dale_Moore
+Return-Path: <sun!pulsar.fac.cs.cmu.edu!Dale_Moore>
+Received: by objy27. (5.57/SMI-4.0)
+	id AA07838; Tue, 7 Jul 92 12:23:37 -0700
+Received: from sun.UUCP by objy.com (4.1/SMI-4.0)
+	id AA09862; Tue, 7 Jul 92 12:25:28 PDT
+Received: from Sun.COM (sun-barr) by sun.Eng.Sun.COM (4.1/SMI-4.1)
+	id AA11585; Tue, 7 Jul 92 11:41:45 PDT
+Received: from ic.Berkeley.EDU by Sun.COM (4.1/SMI-4.1)
+	id AA07133; Tue, 7 Jul 92 11:41:38 PDT
+Received: by ic.Berkeley.EDU (5.57/Ultrix3.0-C)
+	id AA02673; Tue, 7 Jul 92 11:41:30 -0700
+Received: by PULSAR.FAC.CS.CMU.EDU id aa11715; 7 Jul 92 14:40:37 EDT
+Received: from pulsar.fac.cs.cmu.edu by PULSAR.FAC.CS.CMU.EDU id aa10080;
+          7 Jul 92 13:00:32 EDT
+From: sun!cs.cmu.edu!help
+Reply-To: sun!cs.cmu.edu!help
+To: xrn@ic.berkeley.edu
+Cc: Dale.Moore@cs.cmu.edu, sgall@GS35.SP.CS.CMU.EDU
+Subject: Possible functionality change.
+Date: Tue, 07 Jul 92 12:58:29 -0400
+Message-Id: <10077.710528309@PULSAR.FAC.CS.CMU.EDU>
+Sender: sun!pulsar.fac.cs.cmu.edu!Dale_Moore
+
+
+
+Below is a message that we received about a change
+in functionality between xrn 6.15 and 6.17.
+
+The code changes from 6.15 to 6.17 in buttons.c that is suspect is
+in routine _artKillSession.
+
+*** 4722,4728 ****
+   * XXX get subject, kill using data structures, rebuild SubjectString
+   */
+  {
+!     XawTextPosition left, right;
+      char *subject;
+      char *cursubject;
+      char *filename, *question;
+--- 4827,4833 ----
+   * XXX get subject, kill using data structures, rebuild SubjectString
+   */
+  {
+!     XawTextPosition left, right, save;
+      char *subject;
+      char *cursubject;
+      char *filename, *question;
+***************
+*** 4736,4741 ****
+--- 4841,4847 ----
+        return;
+      }
+      ArtPosition = left;
++     save = ArtPosition;
+  #ifdef ellen
+      XawTextGetSelectionPos(Text, &left, &right);
+      XawTextUnsetSelection(Text);
+***************
+*** 4768,4774 ****
+        }
+      }
+      /* set the cursor back to the beginning of the subject screen */
+!     ArtPosition = 0;
+      FREE(subject);
+      infoNow("Subject has been killed, returning to first unread article");
+      if (getNearbyArticle(art_UNREAD, &filename, &question, &artNum)
+--- 4874,4880 ----
+        }
+      }
+      /* set the cursor back to the beginning of the subject screen */
+!     ArtPosition = save;
+      FREE(subject);
+      infoNow("Subject has been killed, returning to first unread article");
+      if (getNearbyArticle(art_UNREAD, &filename, &question, &artNum)
+***************
+
+If you could comment on why the change was made, or what problem
+the change solved, it would be appreciated.  Otherwise, we would
+like to see the line
+      infoNow("Subject has been killed, returning to first unread article");
+changed to
+      infoNow("Subject has been killed, returning to next unread article");
+
+Thanks much,
+
+	Dale Moore for Help@cs.cmu.edu
+
+
+------- Forwarded Message
+
+Return-Path: <sgall@gs35.sp.cs.cmu.edu>
+Received: from gs35.sp.cs.cmu.edu by VEGA.FAC.CS.CMU.EDU id aa07052;
+          6 Jul 92 15:23:42 EDT
+To: Help@CS.CMU.EDU
+Fcc: inbox
+Subject: GRIPE about XRN 6.17
+Date: Mon, 6 Jul 92 15:23:21 EDT
+From: sgall@GS35.SP.CS.CMU.EDU
+Sender: sgall@GS35.SP.CS.CMU.EDU
+
+X VERSION, RELEASE, and PATCH LEVEL MACHINE:
+    X Version 11, Release 4, Patch Level ?? 
+
+CLIENT MACHINE and OPERATING SYSTEM:
+    IBM RT under mach
+
+SYNOPSIS:
+    Session Kill malfunction
+
+DESCRIPTION:
+    Session Kill now moves you to the next unread article in the group. 
+    As far as I remember, it used to move you to the first unread article.
+    I suppose this is a bug rather than an intended change (as I see this as 
+    pretty inconvenient, and cannot think of any advantages of this).
+
+REPEAT BY:
+    Pick any group with more unread articles, move somwhere in the middle and
+    fire.
+
+SAMPLE FIX:
+    ??
+
+Thanks,
+
+- -- Jiri Sgall
+
+------- End of Forwarded Message
+

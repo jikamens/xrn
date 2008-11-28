@@ -1,0 +1,51 @@
+/*
+ * This is a special version of Motif.tmpl for use with xrn.  It is assumed
+ * that you have Motif installed; if you have a source tree, then that tree
+ * will contain Motif.tmpl and you should use that -- the best way to do
+ * this is to rename this file to something else.
+ *
+ * However, if you do have Motif source and want to use this file, define
+ * UseUninstalledMotif (this file reverses the normal default).
+ *
+ * David Brooks, OSF
+ */
+
+#if !defined(UseUninstalledMotif) && !defined(UseInstalledMotif)
+#define UseInstalledMotif
+#endif
+
+#ifndef _MUse
+#ifdef UseInstalledMotif
+#define _MUse(a,b) a
+#else
+#define _MUse(a,b) b
+#endif
+#endif
+
+#ifndef XmClientDepLibs
+#define XmClientDepLibs $(DEPXMLIB) $(DEPXTOOLLIB) $(DEPXLIB)
+#endif
+#ifndef XmClientLibs
+#define XmClientLibs $(XMLIB) $(XTOOLLIB) $(XLIB)
+#endif
+
+#ifndef UseInstalledMotif
+#ifdef MTop
+           MTOP = MTop
+#else
+           MTOP = $(TOP)
+#endif
+   TOP_INCLUDES = -I$(INCROOT) -I$(MTOP)/X11
+     MWIDGETSRC = $(MTOP)/lib/Xm
+#endif
+
+        SOXMREV = SharedXmRev
+
+#if SharedLibXm
+       DEPXMLIB = 
+          XMLIB = _MUse(-lXm,-L$(MWIDGETSRC) -lXm)
+#else
+       DEPXMLIB = _MUse($(USRLIBDIR),$(MWIDGETSRC))/libXm.a
+          XMLIB = LoaderLibPrefix _MUse(-lXm,$(MWIDGETSRC)/libXm.a)
+#endif
+

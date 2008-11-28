@@ -1,0 +1,300 @@
+Thu Oct 13 12:37:29 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 4.
+
+Thu Oct 13 12:35:01 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* dialogs.c:
+	Make an array static that doesn't really need to be static, because of
+	bugs in older C compilers (most notably, compilers based on pcc).
+	Problem pointed out by archer@cett.alcatel-alsthom.fr (Vincent
+	ARCHER).
+
+	* clientlib.c:
+	Make sure the server is in reader mode by sending a "MODE READER"
+	command to it after connecting (and ignoring the error if there is
+	one, since it probably just means that the server doesn't understand
+	the MODE command; if it really means that the user doesn't have
+	permission to go into READER mode, we'll notice the problem later
+	anyway).  Problem pointed out by archer@cett.alcatel-alsthom.fr
+	(Vincent ARCHER).
+
+Wed Oct 12 19:46:39 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* Imakefile:
+	Under BSD/386, need to link against -lcompat.  Reported by Matt Bush
+	<xomox@boris.eden.com>.
+
+Wed Oct 12 18:48:06 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* server.c:
+	Fixed a bug that was preventing ignoreNewsgroups from working under
+	SYSV_REGEX.  Fix submitted by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+Wed Oct 12 17:59:52 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* utils.c:
+	Use CONST instead of const so that non-__STDC__ systems can compile.
+	Pointed out by archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	* utils.h:
+	Define CONST to const or nothing depending on whether or not __STDC__
+	is defined.
+
+	Don't declare strtok unless NEED_STRTOK is defined.
+
+	* strstr.c, strtok.c:
+	Include utils.h to get the CONST definition, and to make sure that
+	the declarations in it don't conflict with the definitions here.
+
+	* buttons.c, compose.c, utils.h:
+	Delete the strstr() declaration from individual files and move it
+	into utils.h.  Also, don't declare it in utils.h unless
+	NEED_STRSTR is defined.
+
+	* avl.c, internals.c:
+	Missing _ARGUMENTS() around arguments that will only work if
+	__STDC__.  Pointed out by archer@cett.alcatel-alsthom.fr (Vincent
+	ARCHER).
+
+	* xawmotif.c, server.c, internals.c, clientlib.c, utils.h, avl.c:
+	Use XtMalloc, XtRealloc, XtCalloc, XtFree, instead of malloc, realloc,
+	calloc, free.
+
+	* config.h:
+	1000 is too high for MAX_SIGNATURE_SIZE.  It should be closer to 320,
+	which is 80*4 (i.e., allow a four-line signature).  Pointed out by
+	archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	* README:
+	Document that Imakefile and config.h need to be made writeable with
+	chmod before being edited.  Problem pointed out by
+	archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	* Imakefile: Use C comments instead of '#' comments.  Pointed out by
+	archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	Delete the text saying where to send suggestions, since it was missing
+	an address anyway, and since that information is already given in
+	README.
+
+Wed Oct 12 16:55:48 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* cursor.c, internals.c:
+	Free memory returned by regcmp() when it is no longer needed.  Leak
+	pointed out by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	* cursor.c:
+	In subjectSearch, assert that a search has been done before when the
+	regular expression passed in is null.  This is just to make sure that
+	none of the functions calling subjectSearch are misbehaving.
+
+	* cursor.c, server.c:
+	Delete some declarations that are unnecessary because they're in
+	utils.h.
+
+	* internals.c:
+	When creating a regular expression to add to a KILL file, protect the
+	')' and ']' characters in addition to '(' and '['.  Suggested by
+	Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	Add a comment indicating that I don't understand why special
+	characters are protected by replacing them with '.' instead of by
+	quoting them with backslash.
+
+Wed Oct 12 13:13:12 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for 7.00 beta 3.
+
+Wed Oct 12 13:05:34 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* utils.c:
+	Clean up the code for getting the time zone when
+	REALLY_USE_LOCALTIME is defined.  The SOLARIS part of the fix was
+	initially suggested by mitchell@aol14.wff.nasa.gov (Richard
+	Mitchell 1026).
+
+Wed Oct 12 02:10:16 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* xrn.man:
+	Update version number.  Problem pointed out by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+	* config.h:
+	Change the print command for UNIX to "lp -sc" (for SYSV) or "lpr" (for
+	non-SYSV).  It used to be "enscript -g", but far more sites have lpr
+	and lp than have enscript.  Suggested by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+Tue Oct 11 21:33:00 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* utils.h: Include <memory.h> under Solaris.  I'm not sure why this is
+	necessary, since <stdlib.h> should get included and should declare
+	malloc and realloc, but for some reason it didn't get declared,
+	according to a "make" log sent to me by phigro@phigro.rnd.symix.com
+	(Phil Gross).
+
+	* config.h:
+	Sun doesn't really need strcasecmp.  Pointed out in "make" output from
+	phigro@phigro.rnd.symix.com (Phil Gross).
+
+Tue Oct 11 21:20:27 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* Imakefile:
+	Define SOLARIS and link against -lgen under Solaris.  Suggested by
+	phigro@phigro.rnd.symix.com (Phil Gross).
+
+Tue Oct 11 21:12:45 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* utils.h, newsrcfile.c, clientlib.c, compose.c, internals.c, refile.c, resources.c, save.c, utils.c, server.c:
+	Move "#define index strchr" out of C files into utils.h.  Also, add
+	"#define rindex strrchr", and make sure this happens on VMS, SOLARIS
+	and SYSV.  phigro@phigro.rnd.symix.com (Phil Gross) pointed out the
+	need for this fix.
+
+	* clientlib.c:
+	Solaris no longer needs a different getservbyname declaration.  Fix
+	from phigro@phigro.rnd.symix.com (Phil Gross).
+
+Tue Oct 11 20:39:29 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* MotifXawHack.h:
+	Fix another function prototype vs. promoted argument problem that
+	didn't turn up before because it's in the Motif code.  Problem
+	reported by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	* mesg.c:
+	Need to include <Xm/Label.h> when doing Motif, because we're using
+	XmCreateLabel.  From Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	* internals.c:
+	Change the message in the info line when KILL file processing is done.
+	Suggested by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	Say in the info line message what newsgroup's KILL file is being
+	processed.
+
+	* Imakefile:
+	Add XRN_DEFINES for HPArchitecture.  From Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+	Indent the #ifdef's in the XRN_DEFINES block, to make the nesting
+	clearer.
+
+Tue Oct 11 20:14:04 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* Imakefile:
+	Don't assume that everyone is using GNU make -- don't use GNU make
+	"ifdef ... else ... endif" construct unless OV_CAMBRIDGE is defined.
+	Pointed out by per@erix.ericsson.se (Per Hedeland).
+
+Tue Oct 11 17:39:42 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* Imakefile, utils.h:
+	Use HasVoidSignalReturn in the Imakefile to determine whether signal
+	handlers should return void.  Simply the declaration of SIG_PF0 in
+	utils.h to use the VOID_SIGNAL symbol defined if necessary by the
+	Imakefile, and also to use _ARGUMENTS() for the arguments of the
+	SIG_PF0 typedef.  Suggested by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+Tue Oct 11 16:22:49 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* XRn.ad, XRnMotif.ad, xrn.h: Update version number for beta 2.
+
+Tue Oct 11 16:12:02 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* compose.c:
+	Can't take the address of an array in a call to buildSubject.
+	Instead, assign its address to a pointer and take the address of
+	that.  Reported by per@erix.ericsson.se (Per Hedeland).
+
+Tue Oct 11 15:50:31 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* resources.c:
+	Delete the separate command-line option list for VMS, and instead
+	convert the options in it to lower case under VMS before calling
+	XtInitialize.
+
+Tue Oct 11 15:33:15 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* compose.c:
+	Always include article text when calling an external editor command.
+	Fix from per@erix.ericsson.se (Per Hedeland).
+
+Tue Oct 11 15:21:06 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* config.h:
+	Add a comment (from per@erix.ericsson.se (Per Hedeland)) documenting
+	XRN_PREFETCH_UNREAD_ONLY.
+
+Tue Oct 11 15:18:35 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* README, config.h:
+	Add CONFIG_H_IS_OK symbol to config.h, which determines whether or
+	not to print the error about editing config.h, so that people can
+	configure the program by editing only the Imakefile.  Document
+	this change in README.  Change suggested by per@erix.ericsson.se
+	(Per Hedeland).
+
+Tue Oct 11 15:02:49 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* README:
+	Document what to do about OV_CAMBRIDGE and "#error" in the config.h
+	file.  The need for this was first pointed out by Jay Vassos-Libove
+	<libove@libove.mindspring.com>.
+
+Tue Oct 11 14:51:59 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* buttons.c:
+	TRANSLATIONS_NOT_FREED patch in setTranslations.  First pointed out by
+	mikey@euky.engr.sgi.com (Mike Yang).
+
+Tue Oct 11 14:40:34 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* MotifXawHack.h, dialogs.c, mesg.c, xawmotif.c, xrn.c:
+	Patches for Motif support from mikey@euky.engr.sgi.com (Mike Yang).
+
+Tue Oct 11 14:36:54 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* utils.h:
+	Correct malloc and realloc declarations for SGI.  First pointed out by
+	mikey@euky.engr.sgi.com (Mike Yang).
+
+Tue Oct 11 14:34:02 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* xrn.c:
+	Missing arguments for the NO_APP_DEFAULTS_MSG string in a call to
+	mesgPane.  First pointed out by mikey@euky.engr.sgi.com (Mike Yang).
+
+Tue Oct 11 14:31:04 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* utils.h, internals.c:
+	Delete regexp routine declarations from internals.c and add them to
+	utils.h (well, actually, most of them were already duplicated in
+	utils.h, but the declaration for regex() was missing).
+
+Tue Oct 11 14:23:39 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* compose.c:
+	Arguments to XtVaCreateManagedWidget should be cast to XtArgVal, not
+	XtPointer.  First pointed out by per@erix.ericsson.se (Per
+	Hedeland).
+
+	* buttons.c, cursor.h, error_hnds.h, internals.c, server.h:
+	Change some prototype arguments to "int" so that there aren't
+	conflicts with K&R function definitions that cause arguments to be
+	promoted to int.
+
+	* strstr.c:
+	Insert a couple of casts to get rid of warnings from the compiler.
+
+Tue Oct 11 09:50:52 1994  Jonathan I. Kamens  (jik@gza-client1.cam.ov.com)
+
+	* compose.c: strncmp should have been strcasecmp.  First pointed
+	out by mush@sunota.cat.com (Paul Mauschbaugh).
+
+# $Id: ChangeLog,v 1.5 1994-10-13 12:37:53 jik Exp $

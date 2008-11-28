@@ -1,0 +1,417 @@
+Fri Mar 10 21:08:11 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+	7.02-beta-1.
+
+Wed Mar  8 18:31:40 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* COMMON-PROBLMS: Mention the problem with the buttons
+	disappearing when the height of the XRN window is changed.
+
+	* compose.c: Fixed a minor memory leak when the user tries to open
+	a composition pane when one is already open.
+
+	Fixed this bug: If the user tries to open a composition pane or
+	cancel a message when a composition pane with a followup or reply
+	in it is open, XRN gets confused about the header fields of the
+	article currently being replied to in the composition pane.
+
+ *	* xrn-man.src: Document that artFedUp is one of the buttons that
+	can be confirmed.  Missing documentation pointed out by
+	philippe@umich.edu (Philippe Brieu).
+
+ *	* ngMode.c: The "ngListOld" action was incorrectly named
+	"ngToggleGroups".  It has been renamed "ngListOld".  Problem
+	pointed out by philippe@umich.edu
+	(Philippe Brieu).
+
+Fri Mar  3 15:08:37 1995  Jonathan Kamens  <jik@annex-1-slip-jik.cam.ov.com>
+
+	* Significant user-visible changes in XRN 7.01:
+
+	Clicking on "List Old" in article mode no longer results in a
+	large number of error messages about unavailable articles.  This
+	problem was originally reported by Konstantin Laufer
+	<laufer@math.luc.edu>.
+
+	The main window is now mapped before connecting to the NNTP
+	server, rather than afterwards.  This allows messages about
+	problems connecting to the server and about reading or writing to
+	the .newsrc file to be displayed in the Information window instead
+	of as text in the window from which XRN was started.  Furthermore,
+	this allows X-based interaction with the user, before the NNTP
+	connection has been established, if necessary.  Finally, this
+	allows messages about the status of the connection to the NNTP
+	server to be displayed in the top information line in the XRN
+	window.
+
+	Article "Lines:" fields which start with extra whitespace are now
+	parsed properly.  This problem was originally reported by
+	dstarks@rc.tudelft.nl (D. Starks-Browning).
+
+	The Information window has been cleaned up sigificantly: (1) Some
+	messages in the Information window which used to be displayed on
+	two lines are now displayed on a single line.  (2) Rather than
+	displaying the entire date before each message, display just the
+	current time.  The day of the week, current date and year are
+	useless and take up space.  (3) Rather than resetting the entire
+	contents of the window each time a new message is added, just
+	append the new message.  This is a significant improvement when
+	XRN is being run over a slow network (e.g., SLIP).  (4) Don't
+	limit the amount of text in the window.  (5) Add a "Clear" button
+	to erase the contents of the window without dismissing it.
+
+	An erroneous "Article not available" message when doing "Subject
+	search" in article mode has been fixed.
+
+	In article mode, the Subject index is now displayed and sorted
+	properly when the number of digits in the article numbers of
+	listed articles is not constant (e.g., when the displayed articles
+	range from 9990 to 10010).
+
+	The watchUnread command-line option/X resource now takes a list of
+	regular expressions rather than a list of newsgroup names.  The
+	list of regular expressions can be separated by spaces, tabs,
+	newlines and/or commas.
+
+	In article mode, the status message in the bottom information line
+	has been made more terse, so that information in it gets cut off
+	less frequently.
+
+	This bug is now fixed: "If I press the <Prev> button when I'm
+	reading the first article in a newsgroup, I have to press <Next>
+	twice before I get the next article.  Pressing <Prev> more than
+	once have exactly the same effect."  Problem reported by
+	sturle.sunde@usit.uio.no (Sturle Sunde)."
+
+	XRN is now mostly internationalized; the supported languages are
+	currently English and German.  Most of the internationalization
+	work was done by kay@zhv.basf-ag.de (Kay Marquardt).
+
+	The verboseKill command-line option/X resource is no longer a
+	boolean.  Instead, it is a string containing zero or more of 'j',
+	'm' and 's', to tell XRN which KILL messages the user wants to
+	see.  For more information, see the man page.
+
+	The NNTP AUTHINFO GENERIC protocol is now supported.  Changes from
+	"chris (c.r.) lewis" <clewis@bnr.ca>, with some cleanup by me.
+
+	The rescanOnEnter command-line option/X resource has been added.
+	When true, XRN checks for new articles whenever entering a
+	newsgroup, rather than only when rescanning all newsgroups.
+
+	A file descriptor leak which could make XRN eventually
+	unable to reconnect to the NNTP server if it ran for a long time
+	has been fixed.
+
+	When saving a message in an MX or RMAIL folder, an error is now
+	displayed if the save fails, rather than just saying "done".
+
+	In article mode, "Next group" now does the right thing even when
+	"List old" was previously selected in newsgroup mode.  Previously,
+	"Next group" would attempt to enter groups without unread articles
+	and display lots of messages.
+
+	In article mode, "Fed up" now finds the next group, rather than
+	exiting into newsgroup mode, when "List old" has been selected in
+	newsgroup mode.
+
+	When verifying a message before sending it, check if there are
+	duplicate fields that aren't allowed to be duplicated, and display
+	an error message and refuse to send the message if there are.
+
+	Don't truncate Subject lines unnecessarily when adding entries to
+	KILL files.
+
+	When adding an entry to a KILL file, quote special characters
+	instead of replacing them with '.'.  This produces more accurate
+	KILL file entries.
+
+	The method by which the current position in the newsgroup index is
+	stored in newsgroup mode has been completely reworked, to fix a
+	large number of bugs with cursor positioning in newsgroup mode.
+
+	Numerous changes related to prefetching: (1) The newsgroup index
+	is now redrawn when we're done prefetching a newsgroup, because
+	prefetching can change the index's contents.  (2) When XRN is
+	prefetching a gropu and it discovers that the group has no unread
+	articles in it, it immediately initiates a prefetch of the next
+	group.  This means that once prefetching starts, it will continue
+	until it finds a group with unread articles in it.  (3) XRN now
+	displays messages in the top information line about the progress
+	of prefetching and of processing KILL files.  (4) Previously, XRN
+	would not prefetch the next group when a group was entered with
+	"Goto group".  This restriction is now unnecessary and has been
+	removed.  (5) Prefetching and KILL-file processing has been broken
+	up into small chunks, the size of which are adjusted dynamically
+	to prevent significant delays during prefetching.  (6) Newsgroup
+	mode now prefetches the current group automatically whenever the
+	current group changes.  This means, among other things, that a
+	newsgroup will be prefetched immediately when XRN starts up and
+	when the user rescans.  (7) Because prefetching is now much more
+	efficient, prefetchMax has been set to 0 by default, i.e., by
+	default, there is no size limit on which newsgroups can be
+	prefetched.  (8) XRN now keeps track of whether it's talking to a
+	"fast" NNTP server, and only prefetches articles in article mode
+	if we are.
+
+	XRN now keeps track of which articles have been KILLed (in the
+	current XRN session only), so that the same article won't have
+	KILL files run on it twice in a single XRN session.  XRN still
+	doesn't update THRU in the KILL files, though. 
+
+	The handling of host names that appear in messages posted and
+	mailed by the user has been changed somewhat.  The most noticeable
+	effect of this change is that the real host from which the user is
+	posting is now more likely to appear in the header of a posted
+	message.
+
+	Automatic periodic rescanning is now disabled by default.  See the
+	documentation for the rescanTime option in the man page for
+	information on how to enable it.
+
+	Fixed a number of bugs in "List old" in article mode, including:
+	(1) If you've read articles first through n-1 and n+1 through last
+	in a newsgroup, and you entered the newsgroup so that you're
+	viewing only article n, and you click on "List old", it will list
+	only articles first through n, and not n+1 through list. (2) when
+	you click on "List old", the current article is changed to the
+	first article in the newsgroup.  That shouldn't happen.  It should
+	list old articles but leave you on the same article you were on
+	before.
+
+	When XRN can't connect to the NNTP server, instead of looping
+	forever as it used to, it displays a dialog and asks the user
+	whether or not it should continue trying or exit.
+
+	When an error is returned by the NNTP server in response to an
+	attempt by XRN to post a message, XRN now states explicitly that
+	it is an error from the NNTP server rather than a local error.
+	This is useful if, e.g., the NNTP server's disk is full and it
+	displays "No space left on device", which the user might wrongly
+	interpret as an error about a local disk being full.
+
+	Articles are now marked saved properly when they are saved in MH
+	or RMAIL folders, in addition to when they're saved in plain
+	files.
+
+	All temporary files created by XRN are now created with mode 600,
+	for privacy and security reasons.  Problem pointed out by Philippe
+	Michel <michel@thomson-lcr.fr>.
+
+	A KILL file entry containing "\\" at the end of its regular
+	expression will now work properly.
+
+	The newsgroup mode buttons are now removed when entering all mode,
+	to make more space for the all mode listing.  Furthermore, the
+	"All groups" newsgroup mode button now unhighlights properly after
+	it is selected.
+
+	The geometry of the Information window is no longer specified
+	explicitly in XRN's application defaults.  If a user wants the
+	window to appear in a specific location, its geometry can be set
+	in a personal .Xresources or .Xdefaults file.  It's not the place
+	of XRN to set the location of the window explicitly.
+
+	When the user clicks on "Exit" in article mode, the newsgroup's
+	status just before the user started reading articles in it is
+	restored.  Previously, all articles in the Subject index would be
+	marked unread when "Exit" was used, which meant (for example) that
+	if the user clicked on "List old" and then "Exit", all articles in
+	the newsgroup would be marked unread, which is obviously wrong.
+
+	The code which adjusts the displayed text in the newsgroup or
+	subject index to keep the number of lines above and below the
+	cursor within a certain range has been improved in a number of
+	ways, including: maxLines can now be negative in order to specify
+	a minimum number of lines below the cursor, rather than a maximum
+	number of lines above the cursor;, the index will never scroll
+	past the end of the available text, i.e., once the last line of
+	available index text is displayed in the last line of the index
+	widget, scrolling will stop, even if the minLines/maxLines
+	constraints aren't met.
+
+	When a newsgroup is entered from all mode, it is no longer
+	subscribed automatically.  The new behavior is what was in XRN
+	6.17, but it was changed in XRN 7.00 to subscribe automatically.
+	This is arguably wrong, because users often use all mode to
+	"browse", visiting newsgroups without subscribing to them.
+
+	Window redraws have been optimized in a number of places.
+
+	The NNTPSERVER environment variable now takes precedence over the
+	nntpServer X resource, but not over the nntpServer command-line
+	option.  Change suggested by Reg Clemens <reg@dwf.com>.
+
+	The amount of memory taken up by XRN while it is running has been
+	greatly reduced, especially for users who subscribe to many
+	newsgroups or who subscribe to newsgroups with many articles in
+	them.
+
+	When a newsgroup is subscribed in add mode, XRN now immediately
+	updates its idea of the first and last articles in the newsgroup,
+	so that it shows up in the newsgroup mode index immediately (as
+	opposed to after the next rescan) if it has unread articles in it.
+
+	The width of the lines in the newsgroup index in newsgroup mode,
+	the Subject index in article mode, and the newsgroup list in all
+	mode, is now adjusted dynamically based on the width of the XRN
+	window.  The indexLineLength command-line option/X resource has
+	therefore been removed.
+
+	When XRN creates a file name in which to store the .newsrc file
+	temporarily while updating it, it now puts ".temp-" at the
+	beginning of the last component of the temporary file name, rather
+	than appending "-temp" to the end of it.  This means that the
+	temporary file name will still be unique on systems which have
+	short file names.  Problem pointed out by kay@zhv.basf-ag.de (Kay
+	Marquardt).
+
+	Remove the hard-coded limit of 127 characters on newsgroup names.
+	There is no longer any limit (except for the amount of memory
+	available to XRN, of course :-) on newsgroup name lengths.
+
+	Aborted messages are now saved in the user's deadLetters file, so
+	that they aren't lost if the "Abort" button is clicked
+	accidentally.
+
+	The behavior of killing a subject in article mode is now exactly
+	the same as when it is killed from a KILL file.  I.e., when you
+	kill a subject in article mode, exactly the same articles will be
+	marked read as would be if you had selected "Local kill" on the
+	same subject in a previous invocation of XRN.  Previously,
+	interactive subject killing used a different algorithm from
+	KILL-file killing.
+
+	A new subjectScrollBack command-line option/X resource has been
+	added.  When it is true (which is the default, XRN will always
+	scroll back to the current article in the subject index after
+	doing operations on other articles.  When it is false, XRN will
+	attempt to maintain the position you scrolled to before performing
+	the operation.
+
+	If XRN encounters a system error while getting an article, it
+	displays a retry notifier instead of just claiming that the
+	article is unavailable.  This is important when, e.g., the
+	disk on which the temporary directory is located fills up.
+
+	Some buttons are now made insensitive when they can't currently be
+	used: allPost, artPost, artFollowup, artFollowupAndReply, and
+	ngPost when the news server doesn't allow the user to post;
+	allMove and ngMove when no groups are currently selected;
+	artHeader when stripHeaders and leaveHeaders aren't set; artLast,
+	ngPrevGroup when there isn't any previous article or group to go
+	to; artContinue when no previous search has been done; artListOld
+	when it has already been clicked on once; artCancel when the
+	current user isn't allowed to cancel the article.
+
+	The onlyShow X resource's behavior has been modified so that it
+	actually displays the number of articles specified, even if some
+	of the articles at the end of the newsgroup are unavailable or
+	have already been read.  Furthermore, although only the number of
+	articles requested with onlyShow are displayed, the other articles
+	are not marked read, so if you read the displayed articles and
+	then exit and reenter the newsgroup, they'll be available (or if
+	you click on "List old" in the newsgroup, or if you do a subject
+	search backwards).  If you want the earlier articles to be marked
+	read automatically, you now have to use the new `discardOld'
+	option.
+
+Tue Nov  8 18:30:03 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* Significant user-visible changes in XRN 7.00 (this list is
+	incomplete):
+
+	There are now key bindings for the arrow keys in newsgroup and
+	article modes.
+
+	Instead of always leaving five spaces for the article numbers in
+	the subject index and putting a tab after the number on each line,
+	figure out how many digits the last article number in the
+	newsgroup has, and use that many digits as the width of the column
+	for the article number, and put a space after it instead of a tab.
+	This allows more of the Subject to be displayed when the article
+	numbers have less than five digits, and prevents lots of
+	whitespace because of the tab when the article numbers have more
+	than five digits.  Problem pointed out by per@erix.ericsson.se
+	(Per Hedeland).
+
+	If the Subject or Newsgroups field is missing or empty when the
+	user attempts to send a message, display an error, and refuse to
+	send the message.
+
+	Fix the following bug: compose a posting to two newsgroups, the
+	first of which you don't get at your site and the second of which
+	you do.  When you click on "Send", instead of posting the message,
+	XRN will claim that you have no postable newsgroups on the
+	Newsgroups line, because it misses the last newsgroup on the line.
+
+	Add support for X-newsreader and X-mailer headers in outgoing
+	messages, but disable them by default.  Suggested by Michael
+	Salmon <Michael.Salmon@eos.ericsson.se>.
+
+	The Distribution: header included in a cancel message should be
+	identical to the Distribution: header in the article being
+	cancelled, or shouldn't be there at all if there is no
+	Distribution: header in the article being cancelled.  The default
+	distribution in app_resources.distribution shouldn't have anything
+	to do with what goes into a cancel message.  Pointed out by
+	archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	There is no longer a default distribution (unless the person
+	installing XRN expicitly compiles one into the program.
+
+	Related messages in the Information window are now appended to
+	each other correctly in more cases.
+
+	There are now buttons in newsgroup mode to scroll the newsgroup
+	list.  Patches from per@erix.ericsson.se (Per Hedeland).
+
+	Support to use application contexts and to support the X11R6
+	session manager has been added.  Patches from "Ralph R. Swick"
+	<swick@x.org>.
+
+	Files in the XRN source distribution which might cause problems on
+	systems with short file names have been renamed.
+
+	A "MODE READER" command is now sent to the NNTP server upon
+	startup, in case it's an INN-like server which needs to be told
+	explicitly to go into news-reader mode.  Problem pointed out by
+	archer@cett.alcatel-alsthom.fr
+	(Vincent ARCHER).
+
+	Fixed a bug that was preventing ignoreNewsgroups from working
+	under SYSV_REGEX.  Fix submitted by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+	MAX_SIGNATURE_SIZE has been changed so that it's closer to 320,
+	which is 80*4 (i.e., allow a four-line signature).  Pointed out by
+	archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	Free memory returned by regcmp() when it is no longer needed.
+	Leak pointed out by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	When creating a regular expression to add to a KILL file, protect
+	the ')' and ']' characters in addition to '(' and '['.  Suggested
+	by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	Clean up the code for getting the time zone when
+	REALLY_USE_LOCALTIME is defined.  The SOLARIS part of the fix was
+	initially suggested by mitchell@aol14.wff.nasa.gov (Richard
+	Mitchell 1026).
+
+	Change the print command for UNIX to "lp -sc" (for SYSV) or "lpr"
+	(for non-SYSV).  It used to be "enscript -g", but far more sites
+	have lpr and lp than have enscript.  Suggested by Michel Eyckmans
+	(MCE) <eyckmans@imec.be>.
+
+	Change the message in the info line when KILL file processing is
+	done.  Suggested by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	Say in the info line message what newsgroup's KILL file is being
+	processed.
+
+	Always include article text when calling an external editor
+	command.  Fix from per@erix.ericsson.se (Per Hedeland).
+
+# $Id: ChangeLog,v 1.47 1995-03-10 21:08:48 jik Exp $

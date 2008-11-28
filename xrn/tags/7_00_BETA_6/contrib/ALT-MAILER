@@ -1,0 +1,11 @@
+#! /bin/csh
+#
+# $Header: /d/src/cvsroot/xrn/contrib/ALT-MAILER,v 1.1 1994-10-10 08:38:36 jik Exp $
+#
+# From: tengi@Princeton.EDU
+#
+#  xrn.mailer:     /u/tengi/bin/xrn-mh-mailer
+#
+cat > /tmp/mail.${USER}.$$
+send /tmp/mail.${USER}.$$
+exit 0

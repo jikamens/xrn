@@ -1,0 +1,75 @@
+
+$Header: /d/src/cvsroot/xrn/TODO,v 1.9 1994-10-17 13:47:04 jik Exp $
+
+The Ever growing list of things that should be done and things that would 
+be nice if they were done.... (and even worse, it's not up to date)
+
+- Make DO_NOT_EAT_TYPE_AHEAD work.
+- Fix mesg.c so that instead of displaying the full output of ctime,
+  including the day, date and year, in the message pane, it displays
+  just the current time.  After all, the user is using the program
+  interactively and therefore doesn't need to be told what the current
+  day, date and year are, and the extra information is clutter that
+  should be gotten rid of.
+- Make matchTranslations support the bottom button box too.
+- Merge DXRN into this version of XRN.
+- Make the "Continue" button insensitive when there was no previous
+  Subject search in the current newsgroup, thus making the "No
+  previous regular expression" check (and message) unnecessary.
+- Figure out how to make the KILL file stuff support case-insensitive
+  searches.  The best way to do this is probably to add an option for
+  XRN to use the GNU regexp routines, which I believe take options to
+  tell them to do case-insensitive searches.  Need to investigate
+  further.
+- Turn info() and infoNow() into varargs functions like mesgPane(),
+  and fix all calls to them -- calls with strings with % in them need
+  to have the %'s escaped, and calls that use sprintf into a buffer
+  first can get rid of the buffer.
+- Add a "saveSentMessages" option and command line flag
+  ("-saveSentMessages" to disable, "+saveSentMessages" to enable,
+  disabled by default) to save all successfully sent messages
+  automatically in app_resources.savePostings.
+- getarticle return
+- read updated .newsrc file (XRN detects this, but should allow you to reread)
+- prefetch should occur at end of list, not largest number (sorted subject...)
+- spawn child for posting, sigchld in parent for confirmation...
+- clean up KILL file support
+   - handle '{' correctly
+        The regular expression \{<m>,<n>\} is supposed to match between
+        m and n occurences of the previous character. To kill an expression
+        of the form "{foo}", xrn requires the braces to be quoted. Rn, on
+        the other hand complains if the braces are quoted.  Rn, on
+        the other hand complains if the braces are quoted since the
+        expression is not valid.  Test: /{foo}/:j
+   - allow field names (Subject/From) in an entry
+   - prompt for KILL expression in article mode
+	local kill (current subject and typein)
+	global kill (current subject and typein)
+	local author kill (current subject and typein)
+	global author kill (current subject and typein)
+   - kill author globally...
+   - edit kill file
+   - closer to RN
+- look at input during prefetch to see if it should be cancelled (or handled).
+- remove tmp files as you go, not at the end of the group
+  (necessary for large groups with large postings)
+- replace popen of mailer with something better so status code can be checked
+- fixup postArticle to do Header fixup, not sendFunction...
+- check if follow-to is same as newsgroup, warn if not, option to turn this off.
+- warn if followup will go to more than one group.
+- option to capitalize, not-cap the group name when saving.
+- xrn.slowLink - don't refetch article for saving
+- thread support
+- break up buttons.c into multiple files
+	generic stuff, art buttons, all buttons, ng buttons, add buttons, ...
+- XHDR message on server timeout
+- handle =ng in active file
+- command to skip quoted/included sections
+- user selectable cursors
+- text and reference based searching
+- strip leading and trailing spaces from newsgroup name in the Newsgroups field
+- control C to disconnect/reconnect and return to top level...
+- allow partial selection on subject line - partial selection determines
+  what amount of the subject or author is to be killed....
+- local server (clientlib.c replaced with something that accesses local files)
+

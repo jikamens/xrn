@@ -1,0 +1,658 @@
+Mon Oct 31 16:22:01 1994  Jonathan I. Kamens  <jik@gza-client1.cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 14.
+
+Mon Oct 31 16:20:27 1994  Jonathan I. Kamens  <jik@gza-client1.cam.ov.com>
+
+	* compose.c: Make sure that From and (when specified by the user)
+	Reply-To lines are included in all outgoing messages.  Bug
+	reported by rcmodsb@mo6.rc.tudelft.nl (David Starks-Browning).
+	Also, some other minor code cleanup which shouldn't affect
+	functionality.
+
+Thu Oct 27 16:12:31 1994  Jonathan I. Kamens  <jik@gza-client1.cam.ov.com>
+
+	* buttons.c: Fixed a type in a function declaration that gets used
+	only under X11R4.  Fix by dbrooks@ics.com.
+
+Thu Oct 27 14:53:00 1994  Jonathan I. Kamens  <jik@gza-client1.cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 13.
+
+Thu Oct 27 14:51:13 1994  Jonathan I. Kamens  <jik@gza-client1.cam.ov.com>
+
+	* server.c (wrapText): Make a variable that is negated and used as
+	an array reference signed instead of unsigned, because apparently,
+	the expression "- x" takes on type unsigned if the variable x is
+	unsigned, and the resulting value used as the array reference is
+	huge and wrong.  Slightly different fix for this reported by Phil
+	Garner <garner@signal.dra.hmg.gb>.
+
+Wed Oct 26 20:50:31 1994  Jonathan I. Kamens  <jik@gza-client1.cam.ov.com>
+
+	* README: Be more specific about what to include when reporting a
+	working environment.
+
+	* README: Updated and reformatted section about supported
+	platforms.  Told people to provide details when sending me
+	information about working platforms.
+
+Wed Oct 26 18:14:02 1994  Jonathan I. Kamens  <jik@gza-client1.cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 12.
+
+Tue Oct 25 13:06:34 1994  Jonathan I. Kamens  <jik@gza-client1.cam.ov.com>
+
+	* compose.c: Only disallow ',' or expand '&' in Header.fullname
+	when it was extracted from the GECOS field of the user's passwd
+	file entry.  In other contexts, the ',' and '&' are not special.
+	Pointed out by Michael Salmon <Michael.Salmon@eos.ericsson.se>.
+
+	* Imakefile: Instead of having multiple definitions of
+	EXTRA_LOAD_FLAGS and DEFINES, define them once (in the section of
+	the Imakefile that people probably don't have to edit) and include
+	in them variables conditionally set elsewhere in the Imakefile.
+
+	Instead of including $(MOTIFDEFINES) in all of the OS_specific
+	settings of XRN_DEFINES, just include it in the one setting of
+	DEFINES.
+
+	* Imakefile, utils.h: Get rid of the special XRN_DEFINES for HP-UX
+	in Imakefile.  Instead, if hpux is defined in utils.h, define
+	_HPUX_SOURCE and include <sys/stdsyms.h> to get all the other
+	needed symbols.  Suggested by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+Mon Oct 24 20:21:20 1994  Jonathan I. Kamens  <jik@gza-client1.cam.ov.com>
+
+	* error_hnds.c: Use VOID_SIGNAL, which is defined by the
+	Imakefile, instead of a whole bunch of OS_specific symbols, to
+	decide whether signal() returns a void-returning function or an
+	int-returning function.
+
+	* newsrc.l: Don't need to declare yylineno if FLEX_LEX_COMPAT
+	(which will be supported in flex 2.5, according to the author) is
+	defined.
+
+Mon Oct 24 17:57:02 1994  Jonathan I. Kamens  <jik@gza-client1.cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 11.
+
+Mon Oct 24 17:54:41 1994  Jonathan I. Kamens  <jik@gza-client1.cam.ov.com>
+
+	* compose.c, save.c, server.c, utils.h: If we're declaring our own
+	popen and pclose functions, call them xrn_popen and xrn_pclose
+	instead of popen and pclose, so as not to conflict with
+	declarations in system header files and not to replace behavior
+	that library routines are expecting (e.g., if they're expecting to
+	use the system popen and pclose).  Call popen and pclose as
+	xrn_popen and xrn_pclose everywhere they're called, and if using
+	the system popen and pclose, define xrn_popen and xrn_pclose to
+	popen and pclose.  Fix the prototype of xrn_popen to agree with
+	the prototype in utils.h.  Declare pclose in utils.h even if we're
+	using the system one instead of ours, because unfortunately some
+	systems don't bother to declare it.  The problems with
+	popen/pclose were pointed out by Axel Nennker
+	<nennker@cs.tu-berlin.de>.
+
+	* internals.c: Because of a recent modification to server.c, a tab
+	is no longer used to separate article numbers from Subject lines
+	in the Subject array.  Instead, a space is used, so look for that.
+
+	* server.c: Instead of always leaving five spaces for the article
+	numbers in a newsgroup and putting a tab after the number on each
+	line, figure out how many digits the last article number in the
+	newsgroup has, and use that many digits as the width of the column
+	for the article number, and put a space after it instead of a tab.
+	This allows more of the Subject to be displayed when the article
+	numbers have less than five digits, and prevents lots of
+	whitespace because of the tab when the article numbers have more
+	than five digits.  Problem pointed out by per@erix.ericsson.se
+	(Per Hedeland).
+
+	* Imakefile: Move the OV_CAMBRIDGE configuration stuff into a
+	single block and out of the way, so that people will be less
+	likely to stumble over it when configuring for their own sites.
+
+	* config.h: Linux doesn't need tempnam.  Fix from
+	glenr@cu74.crl.aecl.ca (Glen Reesor).
+
+	* newsrc.l, Imakefile: Newer versions of flex support a "-l"
+	option which causes yylineno to be supported, but they don't
+	support any way of determining at compile-time whether or not it
+	was specified.  In other words, although the FLEX_SCANNER symbol
+	can be used to determine whether or not we *might* need to define
+	and maintain yylineno ourselves, it doesn't tell us anything
+	definite.  I've file a bug report about this with the maintainer
+	of the flex, but in the meantime, I've documented both in
+	Imakefile and newsrc.l that the "-l" option should not be
+	specified when building lex.yy.c from newsrc.l.  Problem pointed
+	out by glenr@cu74.crl.aecl.ca (Glen Reesor).
+
+Sun Oct 23 21:00:30 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 10.
+
+Sun Oct 23 20:58:46 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* mesg_strings.c: Add NO_NEWSGROUPS, DEFAULT_ADDED, EMPTY_ADDED
+	and FILL_IN_RESEND messages, to be used by compose.c.
+
+	* compose.c (Call_Editor): Instead of passing the template text
+	into Call_Editor, pass a boolean indicating whether it should
+	retrieve the template from the ComposeText widget and save it into
+	the editor file.  This allows callers to tell Call_Editor to
+	resave a modified template when in the middle of editing.  This is
+	an enhancement, not a bug fix, and is necessitated by some other
+	fixes.  Also update all invocations of Call_Editor for the new
+	syntax.
+
+	If the Subject field is missing, add an empty Subject field to the
+	message and tell the user to fill it in and resend.  Also, if calling
+	Call_Editor to re-edit the message, tell it to resave the message into
+	the editor file.
+
+	If the Subject field is empty, tell the user to fill it in and
+        resend.
+
+	If there is no Newsgroups field in the message, don't just put a
+	default Newsgroups field into the message and send it.  A program
+	should never post messages to newsgroups not explicitly requested
+	by the user.  Instead, add a default (or empty) Newsgroups field
+	to the message, and tell the user to edit it and then resend.
+
+	In composePane, free the header template as soon as it's no longer
+	needed -- a little earlier than it was being freed before, since
+	it's no longer being passed into Call_Editor.
+
+	* compose.c (compSendFunction): Don't assume that there's a space
+	after the colon on the Subject line -- the user could have removed
+	it.  This fixes a bug which could cause uninitialized memory to be
+	referenced when checking the posting before sending it when INN
+	was defined.
+
+	* compose.c (newsgroupsStatusUnion): Don't miss the last newsgroup
+	on the Newsgroups line if there are multiple groups there.  Here's
+	an example of where this bug was a problem: compose a posting to
+	two newsgroups, the first of which you don't get at your site and
+	the second of which you do.  When you click on "Send", instead of
+	posting the message, XRN will claim that you have no postable
+	newsgroups on the Newsgroups line, because it misses the last
+	newsgroup on the line.
+
+	* config.h: SunOS doesn't need our version of strtok or strstr.
+
+	* avl.h, clientlib.c, internals.c, save.c, utils.h: Use CONST
+	instead of const in more cases.  Reported by Odd Einar Aurbakken
+	<oea@ifi.uio.no>.
+
+	* strstr.c: Declare the two arguments to strstr separately, to
+	make sure that the CONST specifier is applied to both of them.
+	Problem reported by Odd Einar Aurbakken <oea@ifi.uio.no>.
+
+Fri Oct 21 20:01:44 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 9.
+
+Fri Oct 21 14:05:22 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* mesg.c, mesg.h, utils.h, vprintf.c: Be more paranoid about when
+	to use stdarg and when to use varargs.  Problem first reported by
+	jback@tristan.corsair.com (Joseph F.Backo).
+
+Thu Oct 20 17:15:00 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 8.
+
+Thu Oct 20 17:09:53 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* compose.c, config.h: Only include X-newsreader and X-mailer
+	lines in postings and mail messages if
+	IDENTIFY_VERSION_IN_MESSAGES is defined, and don't define it by
+	default.  First requested by archer@cett.alcatel-alsthom.fr
+	(Vincent ARCHER).
+
+	* compose.c: The Distribution: header included in a cancel message
+	should be identical to the Distribution: header in the article
+	being cancelled, or shouldn't be there at all if there is no
+	Distribution: header in the article being cancelled.  The default
+	distribution in app_resources.distribution shouldn't have anything
+	to do with what goes into a cancel message.  Pointed out by
+	archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+Thu Oct 20 15:22:45 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 7.
+
+Thu Oct 20 15:10:13 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* compose.c: Allow DISTRIBUTION to not be defined, in which case
+	an empty Distribution: header is included in postings if there's
+	no other source for the distribution to be used.
+
+	Don't include an empty Distribution: header in cancel messages.
+
+	* config.h: Don't use distribution "world" by default.  Problem
+	pointed out by Odd Einar Aurbakken <oea@ifi.uio.no>.
+
+	Add more documentation about exactly what DISTRIBUTION does and
+	how to use it.
+
+	* compose.c: Put an X-newsreader field in all postings (or
+	messages that are both followups and replies), and an X-mailer
+	field in all mail messages.  Fix from Michael Salmon
+	<Michael.Salmon@eos.ericsson.se>.
+
+Wed Oct 19 18:52:38 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* utils.h: Include prototypes only if _NO_PROTO isn't defined
+	*and* FUNCPROTO is defined.  Frankly, I'm not sure whether
+	_NO_PROTO really should be checked at all.  I can't find anything
+	in either the X Imake stuff or the X header files that defines it.
+	I guess there's no harm in excluding prototypes if it happens to
+	be defined, though.
+
+Mon Oct 17 19:23:50 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 6.
+
+Mon Oct 17 15:37:29 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* mesg.h, mesg.c:
+	Add mesgDisableAppend and mesgEnableAppend to allow mesgPane appending
+	(the XRN_APPEND option to mesgPane) to be enabled or disabled outside
+	of a call to mesgPane.  This is useful if a function A calls another
+	function B that generates calls to mesgPane, and A wants the messages
+	generated by B to appear in a single block.
+
+	* buttons.c:
+	In artListOldFunction, if the first article in the group is
+	unavailable, step forward until an available article is found, rather
+	than giving up.  Also, enable mesgPane appending after the first error
+	is displayed, so that all of the errors about unavailable articles
+	will appear in one message block.
+
+	* Imakefile: Generate mesg_strings.h automatically from mesg_strings.c.
+
+	* mesg_strings.c:
+	Delete a message string no longer used by artListOldFunction.
+
+	Add the string names from mesg_strings.h as comments in a specific
+	format in this file, so that mesg_strings.h can be generated
+	automatically from this file.
+
+	* config.h:
+	Comment out the DO_NOT_EAT_TYPE_AHEAD #define and add a comment
+	indicating that it doesn't work right now.  Problem pointed out by
+	Gordon Berkley <gordonb@mcil.comm.mot.com>.
+
+	* xrn.man:
+	Add documentation for buttons that weren't documented, and change a
+	couple instances of "backwards" to "backward" in the button
+	documentation.
+
+	* XRn.ad:
+	Get rid of the *ngQuit.info resource, set to "Quit XRN (app defaults
+	file)".  Not sure why it was there in the first place.
+
+	* XRn.ad, XRnMotif.ad, buttons.c:
+	Add buttons in newsgroup mode to scroll the newsgroup list.
+	Patches from per@erix.ericsson.se (Per Hedeland).
+
+	* xawmotif.c: Need to cast argument to XtFree to char *.  Fix from
+	mikey@euky.engr.sgi.com (Mike Yang).
+
+Sun Oct 16 21:12:17 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* internals.c:
+	Don't try to get articles in prefetchGetArticles if newsgroup->current
+	is 0, which means that setUpGroup() couldn't find any unread articles
+	in the group.  Before, a coredump could happen in this situation.
+
+	* buttons.c, config.h:
+	Force buttons in the top button box to have the same translations
+	as the rest of the xrn window, so that hitting space when the
+	mouse is on top of one of them won't activate it when using Motif.
+	Fix from mikey@euky.engr.sgi.com (Mike Yang), with minor
+	modifications by me.
+
+Sun Oct 16 17:43:35 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 5.
+
+Sun Oct 16 17:32:21 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* buttons.c, config.h:
+	Force buttons in the top button box to have the same translations
+	as the rest of the xrn window, so that hitting space when the
+	mouse is on top of one of them won't activate it when using Motif.
+	Fix from mikey@euky.engr.sgi.com (Mike Yang), with minor
+	modifications by me.
+
+	* XRn.ad, XRnMotif.ad:
+	Make the up and down arrows do the same thing as 'p' and 'n' when
+	viewing the list of newsgroups.  Suggested by Gordon Berkley
+	<gordonb@mcil.comm.mot.com>.
+
+	* README:
+	Mention more about dxrn, including that it can be compiled to provide
+	a DECwindows interface or spiffier Motif interface (MXRN) under UNIX.
+
+	* still-to-do/cancel: Deleted this file because I cannot duplicate
+	the bug described in it, and it was reported so long ago that it's
+	likely that it was fixed in some other way by now.
+
+	* error_hnds.c, error_hnds.h, resources.c, xrn.c:
+	Patches from "Ralph R. Swick" <swick@x.org> to support the X11R6
+	session manager.
+
+	* buttons.c, xthelper.c, xrn.c, error_hnds.c, dialogs.c:
+	Updated to use application contexts.  Patches submitted by "Ralph
+	R. Swick" <swick@x.org>.
+
+	* buttons.c:
+	Updated the code in setTranslations a little bit.  Patches submitted
+	by "Ralph R. Swick" <swick@x.org>.
+
+	* config.h:
+	HP-UX has its own strcasecmp(), and therefore doesn't need ours.
+	Pointed out by "Ralph R. Swick" <swick@x.org>.
+
+	* compose.c:
+	Add _ARGUMENTS((void)) to the prototype for signatureFile().
+
+	* butdefs.h: Wrap some long lines.
+
+	* Imakefile:
+	"Ralph R. Swick" <swick@x.org> says that Ultrix doesn't need to define
+	NOSTDHDRS.
+
+	I forgot to include $(MOTIFDEFINES) in XRN_DEFINES on Solaris.
+
+	* README, xrn.man:
+	Updated names of xmh-insrt-repl, COMMON-PROBLMS, Xresources.sam.
+
+	* Renamed files whose names were more than fourteen characters
+	long, so that they could be used on systems with a
+	fourteen-character file name limit.  File name changes:
+	  COMMON-PROBLEMS		->	COMMON-PROBLMS
+	  Xresources.sample		->	Xresources.sam
+	  contrib/XRn.bindings.emacs	->	contrib/XRn.bind.emacs
+	  contrib/xmh-insert-reply	->	contrib/xmh-insrt-repl
+	  contrib/VMS-CLIENTLIB.C	->	contrib/VMSCLIENTLIB.C
+	Problem pointed out by "Ralph R. Swick" <swick@x.org>.
+
+Thu Oct 13 23:32:36 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* Imakefile, compose.c, internals.c, utils.h:
+	Patches for OSF/1 2.0 support.  From Randy Coulman
+	<coulman@skdad.usask.ca>.
+
+Thu Oct 13 12:37:29 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 4.
+
+Thu Oct 13 12:35:01 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* dialogs.c:
+	Make an array static that doesn't really need to be static, because of
+	bugs in older C compilers (most notably, compilers based on pcc).
+	Problem pointed out by archer@cett.alcatel-alsthom.fr (Vincent
+	ARCHER).
+
+	* clientlib.c:
+	Make sure the server is in reader mode by sending a "MODE READER"
+	command to it after connecting (and ignoring the error if there is
+	one, since it probably just means that the server doesn't understand
+	the MODE command; if it really means that the user doesn't have
+	permission to go into READER mode, we'll notice the problem later
+	anyway).  Problem pointed out by archer@cett.alcatel-alsthom.fr
+	(Vincent ARCHER).
+
+Wed Oct 12 19:46:39 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* Imakefile:
+	Under BSD/386, need to link against -lcompat.  Reported by Matt Bush
+	<xomox@boris.eden.com>.
+
+	* server.c:
+	Fixed a bug that was preventing ignoreNewsgroups from working under
+	SYSV_REGEX.  Fix submitted by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+	* utils.c:
+	Use CONST instead of const so that non-__STDC__ systems can compile.
+	Pointed out by archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	* utils.h:
+	Define CONST to const or nothing depending on whether or not __STDC__
+	is defined.
+
+	Don't declare strtok unless NEED_STRTOK is defined.
+
+	* strstr.c, strtok.c:
+	Include utils.h to get the CONST definition, and to make sure that
+	the declarations in it don't conflict with the definitions here.
+
+	* buttons.c, compose.c, utils.h:
+	Delete the strstr() declaration from individual files and move it
+	into utils.h.  Also, don't declare it in utils.h unless
+	NEED_STRSTR is defined.
+
+	* avl.c, internals.c:
+	Missing _ARGUMENTS() around arguments that will only work if
+	__STDC__.  Pointed out by archer@cett.alcatel-alsthom.fr (Vincent
+	ARCHER).
+
+	* xawmotif.c, server.c, internals.c, clientlib.c, utils.h, avl.c:
+	Use XtMalloc, XtRealloc, XtCalloc, XtFree, instead of malloc, realloc,
+	calloc, free.
+
+	* config.h:
+	1000 is too high for MAX_SIGNATURE_SIZE.  It should be closer to 320,
+	which is 80*4 (i.e., allow a four-line signature).  Pointed out by
+	archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	* README:
+	Document that Imakefile and config.h need to be made writeable with
+	chmod before being edited.  Problem pointed out by
+	archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	* Imakefile: Use C comments instead of '#' comments.  Pointed out by
+	archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	Delete the text saying where to send suggestions, since it was missing
+	an address anyway, and since that information is already given in
+	README.
+
+	* cursor.c, internals.c:
+	Free memory returned by regcmp() when it is no longer needed.  Leak
+	pointed out by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	* cursor.c:
+	In subjectSearch, assert that a search has been done before when the
+	regular expression passed in is null.  This is just to make sure that
+	none of the functions calling subjectSearch are misbehaving.
+
+	* cursor.c, server.c:
+	Delete some declarations that are unnecessary because they're in
+	utils.h.
+
+	* internals.c:
+	When creating a regular expression to add to a KILL file, protect the
+	')' and ']' characters in addition to '(' and '['.  Suggested by
+	Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	Add a comment indicating that I don't understand why special
+	characters are protected by replacing them with '.' instead of by
+	quoting them with backslash.
+
+Wed Oct 12 13:13:12 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for 7.00 beta 3.
+
+Wed Oct 12 13:05:34 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* utils.c:
+	Clean up the code for getting the time zone when
+	REALLY_USE_LOCALTIME is defined.  The SOLARIS part of the fix was
+	initially suggested by mitchell@aol14.wff.nasa.gov (Richard
+	Mitchell 1026).
+
+	* xrn.man:
+	Update version number.  Problem pointed out by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+	* config.h:
+	Change the print command for UNIX to "lp -sc" (for SYSV) or "lpr" (for
+	non-SYSV).  It used to be "enscript -g", but far more sites have lpr
+	and lp than have enscript.  Suggested by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+Tue Oct 11 21:33:00 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* utils.h: Include <memory.h> under Solaris.  I'm not sure why this is
+	necessary, since <stdlib.h> should get included and should declare
+	malloc and realloc, but for some reason it didn't get declared,
+	according to a "make" log sent to me by phigro@phigro.rnd.symix.com
+	(Phil Gross).
+
+	* config.h:
+	Sun doesn't really need strcasecmp.  Pointed out in "make" output from
+	phigro@phigro.rnd.symix.com (Phil Gross).
+
+	* Imakefile:
+	Define SOLARIS and link against -lgen under Solaris.  Suggested by
+	phigro@phigro.rnd.symix.com (Phil Gross).
+
+	* utils.h, newsrcfile.c, clientlib.c, compose.c, internals.c, refile.c, resources.c, save.c, utils.c, server.c:
+	Move "#define index strchr" out of C files into utils.h.  Also, add
+	"#define rindex strrchr", and make sure this happens on VMS, SOLARIS
+	and SYSV.  phigro@phigro.rnd.symix.com (Phil Gross) pointed out the
+	need for this fix.
+
+	* clientlib.c:
+	Solaris no longer needs a different getservbyname declaration.  Fix
+	from phigro@phigro.rnd.symix.com (Phil Gross).
+
+	* MotifXawHack.h:
+	Fix another function prototype vs. promoted argument problem that
+	didn't turn up before because it's in the Motif code.  Problem
+	reported by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	* mesg.c:
+	Need to include <Xm/Label.h> when doing Motif, because we're using
+	XmCreateLabel.  From Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	* internals.c:
+	Change the message in the info line when KILL file processing is done.
+	Suggested by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	Say in the info line message what newsgroup's KILL file is being
+	processed.
+
+	* Imakefile:
+	Add XRN_DEFINES for HPArchitecture.  From Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+	Indent the #ifdef's in the XRN_DEFINES block, to make the nesting
+	clearer.
+
+	* Imakefile:
+	Don't assume that everyone is using GNU make -- don't use GNU make
+	"ifdef ... else ... endif" construct unless OV_CAMBRIDGE is defined.
+	Pointed out by per@erix.ericsson.se (Per Hedeland).
+
+	* Imakefile, utils.h:
+	Use HasVoidSignalReturn in the Imakefile to determine whether signal
+	handlers should return void.  Simply the declaration of SIG_PF0 in
+	utils.h to use the VOID_SIGNAL symbol defined if necessary by the
+	Imakefile, and also to use _ARGUMENTS() for the arguments of the
+	SIG_PF0 typedef.  Suggested by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+Tue Oct 11 16:22:49 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* XRn.ad, XRnMotif.ad, xrn.h: Update version number for beta 2.
+
+Tue Oct 11 16:12:02 1994  Jonathan I. Kamens  (jik@gza-client1)
+
+	* compose.c:
+	Can't take the address of an array in a call to buildSubject.
+	Instead, assign its address to a pointer and take the address of
+	that.  Reported by per@erix.ericsson.se (Per Hedeland).
+
+	* resources.c:
+	Delete the separate command-line option list for VMS, and instead
+	convert the options in it to lower case under VMS before calling
+	XtInitialize.
+
+	* compose.c:
+	Always include article text when calling an external editor command.
+	Fix from per@erix.ericsson.se (Per Hedeland).
+
+	* config.h:
+	Add a comment (from per@erix.ericsson.se (Per Hedeland)) documenting
+	XRN_PREFETCH_UNREAD_ONLY.
+
+	* README, config.h:
+	Add CONFIG_H_IS_OK symbol to config.h, which determines whether or
+	not to print the error about editing config.h, so that people can
+	configure the program by editing only the Imakefile.  Document
+	this change in README.  Change suggested by per@erix.ericsson.se
+	(Per Hedeland).
+
+	* README:
+	Document what to do about OV_CAMBRIDGE and "#error" in the config.h
+	file.  The need for this was first pointed out by Jay Vassos-Libove
+	<libove@libove.mindspring.com>.
+
+	* buttons.c:
+	TRANSLATIONS_NOT_FREED patch in setTranslations.  First pointed out by
+	mikey@euky.engr.sgi.com (Mike Yang).
+
+	* MotifXawHack.h, dialogs.c, mesg.c, xawmotif.c, xrn.c:
+	Patches for Motif support from mikey@euky.engr.sgi.com (Mike Yang).
+
+	* utils.h:
+	Correct malloc and realloc declarations for SGI.  First pointed out by
+	mikey@euky.engr.sgi.com (Mike Yang).
+
+	* xrn.c:
+	Missing arguments for the NO_APP_DEFAULTS_MSG string in a call to
+	mesgPane.  First pointed out by mikey@euky.engr.sgi.com (Mike Yang).
+
+	* utils.h, internals.c:
+	Delete regexp routine declarations from internals.c and add them to
+	utils.h (well, actually, most of them were already duplicated in
+	utils.h, but the declaration for regex() was missing).
+
+	* compose.c:
+	Arguments to XtVaCreateManagedWidget should be cast to XtArgVal, not
+	XtPointer.  First pointed out by per@erix.ericsson.se (Per
+	Hedeland).
+
+	* buttons.c, cursor.h, error_hnds.h, internals.c, server.h:
+	Change some prototype arguments to "int" so that there aren't
+	conflicts with K&R function definitions that cause arguments to be
+	promoted to int.
+
+	* strstr.c:
+	Insert a couple of casts to get rid of warnings from the compiler.
+
+	* compose.c: strncmp should have been strcasecmp.  First pointed
+	out by mush@sunota.cat.com (Paul Mauschbaugh).
+
+# $Id: ChangeLog,v 1.16 1994-10-31 16:22:21 jik Exp $

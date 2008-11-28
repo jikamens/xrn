@@ -1,0 +1,306 @@
+!
+! $Id: XRn.src,v 1.39 1994-12-09 19:41:13 jik Exp $
+!
+XRn.version:			7.01-beta-8
+*Geometry:			+0+0
+XRn.Geometry:			680x700
+*breakLength:			0
+*font:			8x13
+*Label.font:			8x13
+*Command.font:		9x15
+*Dialog.borderWidth:		1
+*Dialog.default.Accelerators: #override \n\
+	<Key>0xff0a: set() notify() unset() \n\
+	<Key>0xff0d: set() notify() unset()
+
+*lockFile:	~/.xrnlock
+
+*includeHeader:	off
+
+! Authentication:
+! You might want to uncomment this to get a default other than the
+! generic authenticator "conventional" default of "any <userid>".
+! NNTPAUTH environment variable overrides this if present.
+!*authenticator:			ypauth
+
+! Following command is some sort of "command environment" that allows you
+! to prompt the user for authentication information.  This is processed
+! by sprintf to insert the value of authenticator/NNTPAUTH.
+*authenticatorCommand:	     xterm -geometry 30x5+1+1 -T 'News Authentication' -e "%s"
+
+! Index asciiText window stuff
+*index.cursor:         left_ptr
+! Composition pane stuff
+*Composition.pane.text.scrollVertical:		always
+*Composition.pane.text.wrap:			never
+*Composition.pane.text.autoFill:		true
+
+! button keybindings
+
+*index.Translations:   #override \n\
+  <Btn2Down>:  select-start() extend-end() doTheRightThing(jump)
+
+*ngBindings: \
+  <Key>0x20:	doTheRightThing(goto)	\n\
+  <Key>y:	doTheRightThing(goto)	\n\
+  :<Key>u:	ngUnsub()	\n\
+  :<Key>c:	ngCatchUp()	\n\
+  <Key>n:	ngNext()	\n\
+  <Key>Down:	ngNext()	\n\
+  <Key>p:	ngPrev()	\n\
+  <Key>Up:	ngPrev()	\n\
+  <Key>-:	ngPrevGroup()	\n\
+  :<Key>g:	ngGoto()	\n\
+  :<Key>L:	ngAllGroups()	\n\
+  <Key>q:	ngQuit()
+*artBindings: \
+  <Key>b:	artScrollBack()		\n\
+  <Key>0x20:	doTheRightThing(goto)	\n\
+  ^<Key>N:	artSubNext()	\n\
+  :<Key>N:	artNext()	\n\
+  :<Key>Down:	artNext()	\n\
+  :<Key>n:	artNextUnread()	\n\
+  ^<Key>P:	artSubPrev()	\n\
+  <Key>P:	artPrev()	\n\
+  <Key>Up:	artPrev()	\n\
+  :<Key>-:	artLast()	\n\
+  :<Key>/:	artSubSearch()	\n\
+  <Key>f:	artFollowup()	\n\
+  <Key>r:	artReply()	\n\
+  <Key>s:	artSave()	\n\
+  <Key>w:	artSave()	\n\
+  <Key>|:	artSave()	\n\
+  <Key>%:	artSave("| uudecode")	\n\
+  :<Key>C:	artCancel()	\n\
+  :<Key>v:	artHeader()	\n\
+  ^<Key>X:	artRot13()	\n\
+  :<Key>X:	artRot13()	\n\
+  :<Key>c:	artCatchUp()	\n\
+  :<Key>j:	artMarkRead()	\n\
+  <Key>m:	artMarkUnread()	\n\
+  :<Key>k:	artKillSession()	\n\
+  :<Key>K:	artKillLocal()	\n\
+  :<Key>u:	artUnsub()	\n\
+  <Key>.:	artGotoArticle()	\n\
+  <Key>q:	artQuit()
+
+*allBindings: \
+  <Key>q:	allQuit()
+
+*addBindings: \
+  <Key>q:	addQuit()
+
+! scrollbars, resize, wrap
+*popup.dialog.value.scrollVertical: never
+*popup.dialog.value.scrollHorizontal: never
+*vpane.Text.scrollVertical: always
+*vpane.Text.resize: never
+*titlebar.resize: false
+*articleText.wrap: word
+*index.wrap: never
+
+! A few directions for vpane resizing...
+*vpane.Text.allowResize: False
+*vpane.Text.skipAdjust: False
+*vpane.Box.allowResize: True
+*vpane.Box.skipAdjust: True
+*vpane.Label.allowResize: True
+*vpane.Label.skipAdjust: False
+! grips
+*articleText.showGrip:	False
+*titlebar.showGrip:	False
+*indexinfo.showGrip:	False
+*indexbuttons.showGrip:	False
+*textinfo.showGrip:	False
+
+! button names
+LANG_english*addQuit.label:		Quit
+LANG_german*addQuit.label:		Gruppenauswahl
+LANG_english*addFirst.label:		Add first
+LANG_german*addFirst.label:		an Anfang
+LANG_english*addLast.label:		Add last
+LANG_german*addLast.label:		an Ende
+LANG_english*addAfter.label:		Add after group
+LANG_german*addAfter.label:		Platzieren
+LANG_english*addUnsub.label:		Add unsubscribed
+LANG_german*addUnsub.label:		Gruppe verwerfen
+
+LANG_english*ngQuit.label:		Quit
+LANG_german*ngQuit.label:		Beenden
+LANG_english*ngRead.label:		Read
+LANG_german*ngRead.label:		Gruppe lesen
+LANG_english*ngNext.label:		Next
+LANG_german*ngNext.label:		n\344chste Gruppe
+LANG_english*ngPrev.label:		Prev
+LANG_german*ngPrev.label:		vorherige Gruppe
+LANG_english*ngCatchUp.label:		Catch up
+LANG_german*ngCatchUp.label:		Gruppe gelesen
+LANG_english*ngSubscribe.label:		Subscribe
+LANG_german*ngSubscribe.label:		Gruppe abbonieren
+LANG_english*ngUnsub.label:		Unsubscribe
+LANG_german*ngUnsub.label:		Gruppe verwerfen
+LANG_english*ngGoto.label:		Goto group
+LANG_german*ngGoto.label:		gehe zu Gruppe
+LANG_english*ngListOld.label:		List old
+LANG_german*ngListOld.label:		abbonierte Gruppen
+LANG_english*ngAllGroups.label:		All groups
+LANG_german*ngAllGroups.label:		Gruppen\374bersicht
+LANG_english*ngRescan.label:		Rescan
+LANG_german*ngRescan.label:		Server abfragen
+LANG_english*ngPrevGroup.label:		Prev group
+LANG_german*ngPrevGroup.label:		vorherige Gruppe
+LANG_english*ngSelect.label:		Select groups
+LANG_german*ngSelect.label:		Merken
+LANG_english*ngMove.label:		Move
+LANG_german*ngMove.label:		Verschieben
+LANG_english*ngExit.label:		Exit
+LANG_german*ngExit.label:		Verlassen
+LANG_english*ngCheckPoint.label:	Checkpoint
+LANG_german*ngCheckPoint.label:		Aktualisieren
+LANG_english*ngPost.label:		Post
+LANG_german*ngPost.label:		Artikel verfassen
+LANG_english*ngGripe.label:		Gripe
+LANG_german*ngGripe.label:		Nachricht Systemoperator
+LANG_english*ngScroll.label:		Scroll forward
+LANG_german*ngScroll.label:		Seite nach unten
+LANG_english*ngScrollBack.label:	Scroll backward
+LANG_german*ngScrollBack.label:		Seite nach oben
+
+LANG_english*allQuit.label:		Quit
+LANG_german*allQuit.label:		Gruppenauswahl
+LANG_english*allSub.label:		Subscribe
+LANG_german*allSub.label:		Gruppe abbonieren
+LANG_english*allFirst.label:		Subscribe first
+LANG_german*allFirst.label:		an Anfang
+LANG_english*allLast.label:		Subscribe last
+LANG_german*allLast.label:		an Ende
+LANG_english*allAfter.label:		Subscribe after group
+LANG_german*allAfter.label:		Platzieren
+LANG_english*allUnsub.label:		Unsubscribe
+LANG_german*allUnsub.label:		Gruppe verwerfen
+LANG_english*allGoto.label:		Goto group
+LANG_german*allGoto.label:		gehe zu Gruppe
+LANG_english*allSelect.label:		Select groups
+LANG_german*allSelect.label:		Merken
+LANG_english*allMove.label:		Move
+LANG_german*allMove.label:		Verschieben
+LANG_english*allToggle.label:		Toggle order
+LANG_german*allToggle.label:		Anzeige umschalten
+LANG_english*allScroll.label:		Scroll forward
+LANG_german*allScroll.label:		Seite nach unten
+LANG_english*allScrollBack.label:	Scroll backward
+LANG_german*allScrollBack.label:	Seite nach oben
+
+LANG_english*artQuit.label:		Quit
+LANG_german*artQuit.label:		Gruppenauswahl
+LANG_english*artNext.label:		Next
+LANG_german*artNext.label:		Artikel weiter
+LANG_english*artScroll.label:		Scroll forward
+LANG_german*artScroll.label:		Seite nach unten
+LANG_english*artScrollBack.label:	Scroll backward
+LANG_german*artScrollBack.label:	Seite nach oben
+LANG_english*artScrollLine.label:	Scroll line forward
+LANG_german*artScrollLine.label:	Zeile nach unten
+LANG_english*artScrollBackLine.label:	Scroll line backward
+LANG_german*artScrollBackLine.label:	Zeile nach oben
+LANG_english*artScrollEnd.label:	Scroll to end
+LANG_german*artScrollEnd.label:		Zum Ende
+LANG_english*artScrollBeginning.label:	Scroll to beginning
+LANG_german*artScrollBeginning.label:	Zum Anfang
+LANG_english*artScrollIndex.label:	Scroll index
+LANG_german*artScrollIndex.label:	Index nach unten
+LANG_english*artScrollIndexBack.label:	Scroll index backward
+LANG_german*artScrollIndexBack.label:	Index nach oben
+LANG_english*artNextUnread.label:	Next unread
+LANG_german*artNextUnread.label:	n\344chster ungelesener Artikel
+LANG_english*artPrev.label:		Prev
+LANG_german*artPrev.label:		Gruppe zur\374ck
+LANG_english*artLast.label:		Last
+LANG_german*artLast.label:		Letzter
+LANG_english*artNextGroup.label:	Next group
+LANG_german*artNextGroup.label:		n\344chste Gruppe
+LANG_english*artGotoArticle.label:	Goto article
+LANG_german*artGotoArticle.label:	gehe zu Artikel
+LANG_english*artCatchUp.label:		Catch up
+LANG_german*artCatchUp.label:		bis Artikel gelesen
+LANG_english*artFedUp.label:		Fed up
+LANG_german*artFedUp.label:		Gruppe gelesen
+LANG_english*artMarkRead.label:		Mark read
+LANG_german*artMarkRead.label:		Artikel gelesen
+LANG_english*artMarkUnread.label:	Mark unread
+LANG_german*artMarkUnread.label:	Artikel nicht gelesen
+LANG_english*artUnsub.label:		Unsubscribe
+LANG_german*artUnsub.label:		Gruppe verwerfen
+LANG_english*artSubNext.label:		Subject next
+LANG_german*artSubNext.label:		Suche vorw\344rts
+LANG_english*artSubPrev.label:		Subject prev
+LANG_german*artSubPrev.label:		Suche zur\374ck
+LANG_english*artKillSession.label:	Session kill
+LANG_german*artKillSession.label:	f\374 Sitzung l\366schen
+LANG_english*artKillLocal.label:	Local kill
+LANG_german*artKillLocal.label:		f\374 Gruppe l\366schen
+LANG_english*artKillGlobal.label:	Global kill
+LANG_german*artKillGlobal.label:	f\374 immer l\366schen
+LANG_english*artKillAuthor.label:	Author kill
+LANG_german*artKillAuthor.label:	Verfasser l\366schen 
+LANG_english*artSubSearch.label:	Subject search
+LANG_german*artSubSearch.label:		Suchen Thema
+LANG_english*artContinue.label:		Continue
+LANG_german*artContinue.label:		Weitersuchen Thema
+LANG_english*artPost.label:		Post
+LANG_german*artPost.label:		Artikel verfassen
+LANG_english*artExit.label:		Exit
+LANG_german*artExit.label:		Verlassen
+LANG_english*artGripe.label:		Gripe
+LANG_german*artGripe.label:		Nachricht Systemoperator
+LANG_english*artListOld.label:		List old
+LANG_german*artListOld.label:		alle Artikel
+LANG_english*artCheckPoint.label:	Checkpoint
+LANG_german*artCheckPoint.label:	Aktualisieren
+
+LANG_english*artSave.label:		Save
+LANG_german*artSave.label:		Sichern
+LANG_english*artReply.label:		Reply
+LANG_german*artReply.label:		Nachricht
+LANG_english*artForward.label:		Forward
+LANG_german*artForward.label:		Weiterreichen
+LANG_english*artFollowup.label:		Followup
+LANG_german*artFollowup.label:		Bezug
+LANG_english*artFollowupAndReply.label:	Followup & Reply
+LANG_german*artFollowupAndReply.label:	Bezug und Nachricht
+LANG_english*artCancel.label:		Cancel
+LANG_german*artCancel.label:		Zur\374ckziehen
+LANG_english*artXlate.label:		Translate
+LANG_german*artXlate.label:		Anpassen
+LANG_english*artRot13.label:		Rot-13
+LANG_german*artRot13.label:		Rot-13
+LANG_english*artHeader.label:		Toggle header
+LANG_german*artHeader.label:		Artikelkopf
+LANG_english*artPrint.label:		Print
+LANG_german*artPrint.label:		Drucken
+
+LANG_english*compAbort.label:		abort
+LANG_german*compAbort.label:		Abbrechen
+LANG_english*compSend.label:		send
+LANG_german*compSend.label:		Verschicken
+LANG_english*compSave.label:		save
+LANG_german*compSave.label:		Sichern
+LANG_english*compIncludeArticle.label:	include article
+LANG_german*compIncludeArticle.label:	Artikel einf\374gen
+LANG_english*compIncludeFile.label:	include file
+LANG_german*compIncludeFile.label:	Datei einf\374gen
+
+LANG_english*Cancel*label:		Cancel Search
+LANG_german*Cancel*label:		Suche abbrechen
+
+*Information.pane.label.showGrip:	False
+LANG_english*Information.pane.label.label:	Information (can be left up or dismissed)
+LANG_german*Information.pane.label.label:	Informationen (Fenster kann ge\366ffnet bleiben)
+*Information.pane.text.showGrip:	False
+*Information.saveUnder:			False
+*Information.pane.height:		150
+*Information.pane.width:		600
+*Information.pane.text.displayCaret:	False
+*Information.pane.text*scrollVertical:	always
+*Information.pane.text*wrap:		word
+*Information.pane.box.skipAdjust:	True

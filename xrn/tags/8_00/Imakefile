@@ -1,0 +1,299 @@
+/*
+ * $Id: Imakefile,v 1.87 1995-10-28 18:56:04 jik Exp $
+ *
+ * xrn - an X-based NNTP news reader
+ *
+ * Copyright (c) 1988-1993, Ellen M. Sentovich and Rick L. Spickelmier.
+ *
+ * Permission to use, copy, modify, and distribute this software and its
+ * documentation for any purpose and without fee is hereby granted, provided
+ * that the above copyright notice appear in all copies and that both that
+ * copyright notice and this permission notice appear in supporting
+ * documentation, and that the name of the University of California not
+ * be used in advertising or publicity pertaining to distribution of 
+ * the software without specific, written prior permission.  The University
+ * of California makes no representations about the suitability of this
+ * software for any purpose.  It is provided "as is" without express or
+ * implied warranty.
+ *
+ * THE UNIVERSITY OF CALIFORNIA DISCLAIMS ALL WARRANTIES WITH REGARD TO 
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND 
+ * FITNESS, IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE FOR
+ * ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
+ * RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
+ * CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN 
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ */
+
+/*
+ * Imakefile - Imakefile for XRN
+ */
+
+/*
+ * If you want the program to be called something other than "xrn",
+ * change PROGRAMS.  If you want the app-defaults class to be something
+ * other than XRn, change APPDEFAULTS.
+ */
+
+PROGRAMS = xrn
+APPDEFAULTS = XRn
+
+/*
+ * What language do you want messages to be in?  Legal values are
+ * "english" and "german"; case is significant!
+ */
+LANGUAGE= english
+/* LANGUAGE= german */
+
+#ifdef BandAidCompiler
+#include BandAidCompiler
+#endif
+
+/*
+ * If you use InterNetNews, set this define to the location of your
+ * InterNetNews library.
+ */
+/* #define INN /usr/local/lib/libinn.a */
+
+#ifdef INN
+/*
+ * If you are using INN and the INN header files are not installed
+ * where the compiler will find them, add a "-Idir" flag here to specify
+ * where they are.
+ */
+INNINC= 
+#endif
+
+/*
+ * If you need to link against special libraries, put them in
+ * XRN_LOAD_FLAGS.  What's here may or may not be right for your
+ * system.  If in doubt, leave it alone and see what happens.
+ */
+
+#if defined(XmacIIServer) || defined(HPArchitecture) || defined(SGIArchitecture)
+XRN_LOAD_FLAGS = -lPW
+#endif
+
+#if defined(RsArchitecture)
+XRN_LOAD_FLAGS = -lPW -lbsd
+#endif
+
+#if defined(AMIX)
+XRN_LOAD_FLAGS = -lucb -lm -lgen
+#endif
+
+#if defined(SunArchitecture) && (OSMajorVersion > 4)
+#define SolarisArchitecture
+XRN_LOAD_FLAGS = -lgen
+#endif
+
+#ifdef BSD386Architecture
+XRN_LOAD_FLAGS = -lcompat
+#endif
+
+#ifdef SCO
+XRN_LOAD_FLAGS = -lintl
+#endif
+
+/*
+ * You probably won't need to change most of this.
+ */
+
+X_LIBRARIES = XawClientLibs
+DEPLIBS = XawClientDepLibs
+
+/*
+ * Special compiler flags for your platform.  If in doubt, just leave
+ * them alone and see what happens.
+ */
+
+#if defined(aiws)
+XRN_DEFINES = -a -Nn3000 -Nd4000
+#else
+# if defined(HCRevision)
+XRN_DEFINES = -DUNIXCPP -DNOSTDHDRS
+# else
+#  if defined(gould)
+XRN_DEFINES = -DNOVOID -DLONGINT -UINTSPRINTF
+#  else
+#   if defined(SolarisArchitecture)
+XRN_DEFINES = -DSOLARIS
+#   endif
+#  endif
+# endif
+#endif
+
+/*
+ * You probably don't need to change anything in this block.
+ */
+
+#ifdef OV_CAMBRIDGE
+SITE_DEFINES	+= -DOV_CAMBRIDGE
+IMAKE_DEFINES	+= -DOV_CAMBRIDGE
+#ifdef LinuxArchitecture
+#define INN	   /usr/build/inn-1.4sec/libinn.a
+INNINC		+= -I/usr/build/inn-1.4sec/include
+LEX		=  flex
+CDEBUGFLAGS	+= -g3
+#else
+# ifdef SolarisArchitecture
+CC		=  gcc -fpcc-struct-return
+CCOPTIONS	=
+OPENWINHOME	=  /usr/openwin
+CONFIGDIR	=  $(OPENWINHOME)/lib/config
+# else
+#define INN /afs/gza.com/development/news/build/inn/libinn.a
+INNINC		+= -I/afs/gza.com/development/news/build/inn/include
+# endif /* ! SolarisArchitecture */
+#endif /* LinuxArchitecture */
+CDEBUGFLAGS	= -g -Wall -DGCC_WALL -pedantic
+ifdef PURIFY
+CC		= purify -ignore-signals=SIGPIPE gcc -fpcc-struct-return
+endif
+#endif /* OV_CAMBRIDGE */
+
+#ifdef LINUX_DIST
+IMAKE_DEFINES	+= -DLINUX_DIST
+SITE_DEFINES	+= -I/usr/build/regex-0.12
+SITE_DEFINES	+= -DCONFIG_H_IS_OK
+LEX		=  flex
+CDEBUGFLAGS	+= -Wall -DGCC_WALL -g -pedantic
+REGEX_OBJS	= /usr/build/regex-0.12/regex.o
+#endif
+
+#if defined(INN)
+INN_LOAD_FLAGS = INN
+INN_DEFINES = -DINN $(INNINC)
+CLIENTSRC =
+CLIENTOBJ =
+#else
+CLIENTSRC = clientlib.c
+CLIENTOBJ = clientlib.o
+#endif
+
+/*
+ * You probably don't need to edit anything below this line.
+ */
+
+#if HasVoidSignalReturn
+SIGNAL_DEFINES = -DVOID_SIGNAL
+#endif
+
+LOCAL_LIBRARIES = $(X_LIBRARIES) $(XRN_LOAD_FLAGS) $(INN_LOAD_FLAGS)
+DEFINES = $(XRN_DEFINES) $(SIGNAL_DEFINES) $(INN_DEFINES) $(SITE_DEFINES) \
+	-DXRN_LANG_$(LANGUAGE) -DXRN_APP_CLASS=\"$(APPDEFAULTS)\" -DXRN
+
+HDRS = mesg_strings.h
+SRCS = avl.c buttons.c $(CLIENTSRC) compose.c cursor.c dialogs.c \
+       refile.c mesg.c error_hnds.c newsrcfile.c resources.c    \
+       internals.c save.c server.c utils.c xmisc.c xrn.c \
+       xthelper.c y.tab.c cancel.c vprintf.c tempnam.c strstr.c \
+       strtok.c mesg_strings.c Text.c ngMode.c artMode.c allMode.c \
+       addMode.c snapshot.c artstruct.c InfoLine.c ButtonBox.c \
+       busyCursor.c varfile.c activecache.c
+OBJS = avl.o buttons.o $(CLIENTOBJ) compose.o cursor.o dialogs.o \
+       refile.o mesg.o error_hnds.o newsrcfile.o resources.o    \
+       internals.o save.o server.o utils.o xmisc.o xrn.o \
+       xthelper.o y.tab.o cancel.o vprintf.o tempnam.o strstr.o \
+       strtok.o mesg_strings.o Text.o ngMode.o artMode.o allMode.o \
+       addMode.o snapshot.o artstruct.o InfoLine.o ButtonBox.o \
+       busyCursor.o varfile.o activecache.o $(REGEX_OBJS)
+
+all:: mesg_strings.h
+
+depend:: lex.yy.c y.tab.c mesg_strings.h
+
+ComplexProgramTarget($(PROGRAMS))
+InstallAppDefaults($(APPDEFAULTS))
+
+/*
+ * This line is in two places, above and here, because some versions
+ * of Make unfortunately have a bug which causes them to process
+ * dependencies in reverse of the order they appear in the Makefile.
+ * On those systems, if the "all:: mesg_strings.h" line below isn't
+ * present, typing "xmkmf" followed by "make" won't work, because the
+ * program will try to build the XRN object and $(PROGRAMS) before it
+ * tries to build mesg_strings.h.  Doing "make depend" solves this
+ * problem, but I don't want to require people to do "make depend" in
+ * order to build the program, so I'm adding a second dependency on
+ * mesg_strings.h, after the "all:: xrn" dependency generated by the
+ * ComplexProgramTarget invocation above.
+ */
+all:: mesg_strings.h
+
+#if HasSaberC == YES
+# saber_xrn:: lex.yy.c
+# osaber_xrn:: lex.yy.c
+#endif
+
+/*
+ * If you are using flex instead of lex (for example, Linux uses flex
+ * by default instead of lex), you should NOT be giving flex the "-l"
+ * argument.  If you see "flex -l newsrc.l" or "lex -l newsrc.l" when
+ * building, then you should probably add "LEX=flex" or "LEX=lex"
+ * below.
+ */
+lex.yy.c: newsrc.l
+	$(LEX) newsrc.l
+
+y.tab.c: newsrc.y
+	-rm -f y.tab.c newsrc.tab.c
+	$(YACC) newsrc.y
+	(test -f newsrc.tab.c && mv newsrc.tab.c y.tab.c) || true
+
+y.tab.o: lex.yy.c avl.h news.h newsrcfile.h utils.h
+
+mesg_strings.h: mesg_strings.c mesg_str.awk
+	-rm -f mesg_str.tmp
+	awk -f mesg_str.awk mesg_strings.c > mesg_str.tmp
+	-rm -f mesg_strings.h
+	mv mesg_str.tmp mesg_strings.h
+
+clean::
+	$(RM) y.tab.c lex.yy.c mesg_strings.h mesg_str.tmp
+
+xrn-man.c: xrn-man.sym config.h
+	$(RM) xrn-man.tmp xrn-man.c
+	awk 'BEGIN {printf("#include \"config.h\"\n");} \
+	     {printf("#ifdef %s\nx%sx value %s value\n#else\nx%sx\n#endif\n",$$0,$$0,$$0,$$0);}' \
+		xrn-man.sym > xrn-man.tmp
+	mv xrn-man.tmp xrn-man.c
+
+xrn-man.cpp: xrn-man.c
+	$(RM) -f xrn-man.tmp xrn-man.cpp
+	$(CC) -E $(CFLAGS) xrn-man.c > xrn-man.tmp
+	mv xrn-man.tmp xrn-man.cpp
+
+xrn-man.sed: xrn-man.cpp
+	$(RM) -f xrn-man.tmp xrn-man.sed
+	sed -e 's|^x\(.*\)x$$|/x\1_STARTx/,/x\1_ENDx/d|' \
+	    -e 's|^x\(.*\)x value [ 	]*"*\([^"].*[^ 	"]\)"*[ 	]* value.*|s,x\1x,\2,|' \
+	    -e 's|^x\(.*\)x.*||' \
+	    -e '/^#/d' \
+		xrn-man.cpp > xrn-man.tmp
+	echo '/^x.*_STARTx/d' >> xrn-man.tmp
+	echo '/^x.*_ENDx/d' >> xrn-man.tmp
+	mv xrn-man.tmp xrn-man.sed
+
+all:: $(PROGRAMS).man
+
+$(PROGRAMS).man: xrn-man.src xrn-man.sed
+	$(RM) xrn-man.tmp $(PROGRAMS).man
+	sed -f xrn-man.sed xrn-man.src > xrn-man.tmp
+	mv xrn-man.tmp $(PROGRAMS).man
+
+clean::
+	$(RM) xrn-man.tmp xrn-man.c xrn-man.cpp xrn-man.sed $(PROGRAMS).man
+
+$(APPDEFAULTS).ad: $(APPDEFAULTS).src
+	-rm -f $(APPDEFAULTS).tmp $(APPDEFAULTS).ad
+	sed -e 's/^LANG_$(LANGUAGE)//' -e '/^LANG_/d' \
+		-e 's/xAPP_CLASSx/$(APPDEFAULTS)/' \
+		$(APPDEFAULTS).src > $(APPDEFAULTS).tmp
+	mv $(APPDEFAULTS).tmp $(APPDEFAULTS).ad
+
+all:: $(APPDEFAULTS).ad
+
+clean::
+	$(RM) $(APPDEFAULTS).ad $(APPDEFAULTS).tmp

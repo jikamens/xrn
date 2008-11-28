@@ -1,0 +1,256 @@
+
+$Id: TODO,v 1.69 1994-12-05 18:44:20 jik Exp $
+
+The Ever growing list of things that should be done and things that would 
+be nice if they were done.... (and even worse, it's not up to date)
+
+- In general, the code for keeping the insertion point in the right
+  place when going from article mode to newsgroup mode is broken.  The
+  whole mechanism probably needs to be reworked, instead of putting in
+  kludge after kludge to fix specific bugs.  Here are some of the bugs
+  I've encountered with the current code:
+  - Subscribe to a newsgroup and click "First".  Note how the cursor
+    is now on the new, subscribed newsgroup.  Unsubscribe from the
+    newsgroup.  Note how the cursor is now on the second newsgroup in
+    the list instead of on the first.  It should be on the first.
+  - It appears that if a user enters a newsgroup with spacebar, and
+    the next newsgroup in the list is prefetched and all the articles
+    in it are KILLED, the cursor ends up in the wrong place when the
+    user exits article mode.  There may be other conditions that are
+    necessary for this to occur, but it *is* occuring sometimes, I
+    think.
+  - When the last newsgroup in the newsgroup list is read and exited
+    from, make sure that the cursor doesn't end up floating in space
+    past the end of the newsgroup list in the index window.  Reported
+    by philippe@pablo.physics.lsa.umich.edu (Philippe Brieu).
+- When done prefetching a newsgroup and still in newsgroup mode, the
+  newsgroup list should be updated.  However, doing so may cause
+  problems, so need to make sure it's OK before doing it.
+- Fix this bug (reported by Reg Clemens <reg@dwf.com>):
+  First bring up XRN, and select a group.
+  I see 7 lines of buttons in the middle of the screen, ranging from
+  Quit -> List_old.
+
+  Now reach up to the upper Right Hand corner of the border and make
+  the Widget TALLER or SHORTER.  *DO NOT* change its width.
+
+  The 7 lines of buttons will collapse to 3 lines from Quit->Goto_Article.
+
+  If you then quit the group and (re)open it or another group you get
+  back to the 7line display of buttons.
+
+  Strange.
+
+  Now go back to the corner and make the widget WIDER or Narrower,
+  then change the height again, the above behaviour no longer occurs.
+
+  Weird.
+- Add X resource to optionally process Xref headers in articles being
+  caught up in a newsgroup.
+- Go into a newsgroup, most of whose articles you've read.  Click on
+  "List Old".  Highlight all the articles in the newsgroup and then
+  hit 'm' to mark them unread.  Exit the newsgroup.  Note that the
+  number of unread articles in the newsgroup listing hasn't been
+  updated.  Reenter the newsgroup.  Note how you see just the articles
+  that were originally unread, rather than all the ones you marked
+  unread.  Click on "List Old".  Note how now, all the articles are
+  showing up as unread again.  This may have something to do with the
+  fact that there was a large gap in the articles in the newsgroup,
+  between the first article and subsequent articles, when this
+  happened to me.
+- When the server connection is lost and we're trying to reconnect,
+  there should be a way to abort, optionally save the .newsrc and
+  exit, instead of hanging waiting for the reconnection.
+- Make the "All Groups" button unhighlight properly when switching to
+  "All groups" mode.
+- I connected to an INN server that I wasn't allowed to use.  Instead
+  of getting a useful message from XRN, I got "Unexpected EOF on NNTP
+  server socket -- server is probably malfunctioning".
+- Go through all of the X resources that are hard-coded as
+  widget-creation arguments in the program and move as many of them as
+  possible to the app-defaults file.
+- Go through all the uses of XtSetValues and XtGetValues and convert
+  them to use XtVaSetValues and XtVaGetValues whereever possible, to
+  eliminate unnecessary argument arrays.  Same thing for the
+  Create*Widget functions.
+- Fix the way buttons are laid out in the Information window and the
+  dialog windows in the Motif interface.  The problem is that
+  designating one button as the default in the Information window
+  causes its active area to shrink while the other button stays the
+  same size, rather than causing its active area to grow.  The
+  resulting active area of the default is too small.  Let me take this
+  opportunity to say that the Motif API is brain-damaged, stupid,
+  completely non-intuitive, and never does what you want it to do.
+  What kind of widget library, when you tell it to highlight a button
+  as the default, does so by shrinking the drawing area for the button
+  so that its text no longer fits in it properly, instead of by
+  growing the button to make room for the default shadow?  Xaw may be
+  ugly, but at least it's straightforward and does what you expect it
+  to and what you tell it to.
+
+  I've spent literally hours trying to figure out the correct way to
+  make it grow the button instead of shrinking it, but I can't figure
+  it out.  The Motif manual is no help.  Ugh.
+- Make sure all temporary files are being deleted properly (I think
+  there may be a temporary file leak somewhere).
+- Allow the number of articles to be retrieved to be specified upon
+  entering the newsgroup, if the number of unread articles in the
+  group exceeds a certain threshold, rather than making it only
+  configurable via showOnly.  Also, there should be a way to view the
+  last n articles in the newsgroup without marking the earlier unread
+  articles read, which is what showOnly does.
+- Facility for unpacking and decoding multi-part articles.
+- Fix stuff that uses MAXPATHLEN to use the correct POSIX call instead
+  on POSIX systems.
+- PGP support?
+- Add a mode in which only the header of an article is fetched, unless
+  the user tries to scroll down, in which case the rest of the article
+  is fetched.
+- Make the program multithreaded, or use a subprocess for
+  communication for the server, or something so that the UI and NNTP
+  stuff can work independently of each other (the WorkProc stuff used
+  now to do prefetching is a hack that approximates this, but it
+  really isn't good enough splitting the NNTP stuff into a separate
+  thread or process is the right way to do this, but it's a lot of
+  work).
+- Add X resources (and command line options) corresponding to the
+  USER, HIDDENHOST, HIDDENPATH and FULLNAME environment variables.
+- Fix up the action of "Followup & Reply" so it only includes mail
+  headers in the mail message and news headers in the posting, and
+  comments out other headers with "X-" or something.
+- Add something to the buttonList X resource syntax to allow someone
+  to say, "Put all buttons not listed explicitly here."  It should
+  obviously only be specifiable once in any particular button list.
+  This will allow people to move specific buttons to the beginning or
+  end of the list in the order they want, without having to update
+  their resources for new buttons after every release.  Suggested by
+  phigro@phigro.rnd.symix.com (Phil Gross).
+- Should XRN try to connect to a news server with host name "news" by
+  default if NNTPSERVER isn't set and SERVER_FILE doesn't exist (and
+  the server name can't be determined from the INN configuration
+  file)?
+- Update the XtInitialize call to an XtAppInitialize call, and modify
+  all the places that determine the application context themselves to
+  use a global application context variable instead (maybe; it might
+  actually not be best to use a global variable, in case XRN wants to
+  use multiple application contexts at some point in the future.  need
+  to think about it).
+- The Xaw code uses a text widget for the list of newsgroups or list
+  of articles in the top window.  It displays a cursor to show the
+  current article, and highlighting to show when an article has been
+  selected.
+
+  The Motif code, however, uses a list widget instead of a text widget
+  for the top window.  As a result, it can't display a cursor, so it
+  uses highlighting for everything.
+
+  There is therefore some ambiguity.  XRN uses selecting an article in
+  the index to mean a specific thing -- e.g., if "Catchup" is pressed
+  when an article is selected, only articles up to that one are marked
+  read.  It's easy to tell when an article is selected when using the
+  Xaw interface, but it's not possible to tell when using the Motif
+  interface, because the current article looks the same as a selected
+  article.
+
+  Either the XRN documentation needs to be updated to indicate this
+  ambiguity, or (better) the Motif code needs to be fixed somehow
+  (perhaps by switching it back to using a Text widget, or by finding
+  out if the Motif widget supports multiple kinds of highlighting in
+  the same widget) so that it's possible to distinguish between the
+  current position and a selected item in the top window.
+- Merge the functionality of the post, followup and gripe functions
+  into the followup_or_reply function, so that all of the
+  header-adding code only needs to happen in one place.
+- Add a 'Post & E-mail' button to go along with the 'Followup & Reply'
+  button.
+- When someone clicks on "Followup" for an article marked
+  "Followup-To: poster", the dialog that pops up should offer three
+  options -- followup, reply, and followup & reply, not just the
+  followup and reply options.
+- I clicked on "Followup & Reply" for a posting in news.groups that
+  had "Followup-To: sender" in its header.  Ignoring for a moment the
+  fact that "sender" is an invalid thing to put there, the compose
+  pane that I got said "X-Newsgroups: sender" in it.  It should have
+  said "X-Newsgroups: news.groups", since the X-Newsgroups header
+  should list the newsgroups that the original article was posted in,
+  not the newsgroup that the followup is being posted in.
+- Say the newsgroup under your cursor has unread articles in it but
+  that all of them will be KILLed when you enter the newsgroup.  Say,
+  too, that the next newsgroup is in the same situation.  When you hit
+  the space bar to enter the group, it will try to enter the group,
+  realize that it's empty, and stay in newsgroup mode; however, it
+  will also start a prefetch for the second group.  When you hit space
+  to enter the *second* group after the prefetch is finished, it'll
+  again try to enter the group, realize that it's empty, and stay in
+  newsgroup mode, but this time it won't start to prefetch the next
+  group (i.e., the third group from where your cursor originally was).
+  At least, I *think* this is what's happening.  Need to investigate
+  to confirm that it's really happening, and if so, figure out how to
+  make the prefetch keep going until it finds a group with unread
+  articles in it.
+- Make DO_NOT_EAT_TYPE_AHEAD work.
+- Make matchTranslations support the bottom button box too.
+- Merge DXRN into this version of XRN.
+- Make the "Continue" button insensitive when there was no previous
+  Subject search in the current newsgroup, thus making the "No
+  previous regular expression" check (and message) unnecessary.
+- Figure out how to make the KILL file stuff support case-insensitive
+  searches.  The best way to do this is probably to add an option for
+  XRN to use the GNU regexp routines, which I believe take options to
+  tell them to do case-insensitive searches.  Need to investigate
+  further.
+- Turn info() and infoNow() into varargs functions like mesgPane(),
+  and fix all calls to them -- calls with strings with % in them need
+  to have the %'s escaped, and calls that use sprintf into a buffer
+  first can get rid of the buffer.
+- Add a "saveSentMessages" option and command line flag
+  ("-saveSentMessages" to disable, "+saveSentMessages" to enable,
+  disabled by default) to save all successfully sent messages
+  automatically in app_resources.savePostings.
+- getarticle return
+- read updated .newsrc file (XRN detects this, but should allow you to reread)
+- prefetch should occur at end of list, not largest number (sorted subject...)
+- spawn child for posting, sigchld in parent for confirmation...
+- clean up KILL file support
+   - why are the entries added to the KILL file so short?
+   - handle '{' correctly
+        The regular expression \{<m>,<n>\} is supposed to match between
+        m and n occurences of the previous character. To kill an expression
+        of the form "{foo}", xrn requires the braces to be quoted. Rn, on
+        the other hand complains if the braces are quoted.  Rn, on
+        the other hand complains if the braces are quoted since the
+        expression is not valid.  Test: /{foo}/:j
+   - allow field names (Subject/From) in an entry
+   - prompt for KILL expression in article mode
+	local kill (current subject and typein)
+	global kill (current subject and typein)
+	local author kill (current subject and typein)
+	global author kill (current subject and typein)
+   - kill author globally...
+   - edit kill file
+   - closer to RN
+   - Support KILLLOCAL and KILLGLOBAL environment variables a la trn.
+- look at input during prefetch to see if it should be cancelled (or handled).
+- remove tmp files as you go, not at the end of the group
+  (necessary for large groups with large postings)
+- replace popen of mailer with something better so status code can be checked
+- fixup postArticle to do Header fixup, not sendFunction...
+- check if follow-to is same as newsgroup, warn if not, option to turn this off.
+- warn if followup will go to more than one group.
+- option to capitalize, not-cap the group name when saving.
+- don't refetch article for saving
+- thread support
+- break up buttons.c into multiple files
+	generic stuff, art buttons, all buttons, ng buttons, add buttons, ...
+- XHDR message on server timeout
+- handle =ng in active file
+- command to skip quoted/included sections
+- user selectable cursors
+- text and reference based searching
+- strip leading and trailing spaces from newsgroup name in the Newsgroups field
+- control C to disconnect/reconnect and return to top level...
+- allow partial selection on subject line - partial selection determines
+  what amount of the subject or author is to be killed....
+- local server (clientlib.c replaced with something that accesses local files)
+- reading an MH folder as a newsgroup (suggested by Luigi Semenzato
+  <luigi@CS.Berkeley.EDU>).

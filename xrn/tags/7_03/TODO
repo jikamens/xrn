@@ -1,0 +1,296 @@
+
+$Id: TODO,v 1.112 1995-04-06 23:31:31 jik Exp $
+
+The Ever growing list of things that should be done and things that would 
+be nice if they were done.... (and even worse, it's not up to date)
+
+- Make the functions that scroll the newsgroup index update
+  CurrentIndexGroup.
+- Good Net-Keeping Seal of Approval evaluation for XRN.
+- Support for NNTP "newgroups" command, so that the .newsrc file
+  doesn't have to list every single newsgroup in it.
+- French support.
+- MH folderDir support.
+- MIME support.
+- When dialogs are popped up, make the default button centered under
+  the cursor, instead of centering the entire dialog under the cursor.
+- Xaw3d support.
+- Allow different organizations for different newsgroups, just like
+  there are different signatures for different newsgroups.
+- Make it possible to configure the composition pane buttons with a
+  buttonlist resource.
+- Add allScrollBeginning, allScrollEnd, allScrollLine,
+  allScrollLineBack, allPrev, allNext buttons, actions, bindings.
+- Add a resource to specify the KILL-file directory, so that the user
+  can store KILL files and save files in separate directories if he
+  chooses to do so.
+- It's stupid to include the article number in the Subject line of a
+  forwarded message, since it's only useful for the particular news
+  server it was read from.  Get rid of it.
+- Make more of the stuff in the man page configurable based on what's
+  in config.h.
+- Send a bug report to the X Consortium about TopPosition changes
+  while redisplay is disabled not working.  (i.e., disable redisplay,
+  change insertion point to somewhere off screen, and the widget
+  doesn't realize immediately that its top position has changed.)
+- Make ^S in newsgroup and all modes search through the newsgroup
+  index and then move to the beginning of the line on which the match
+  was found.
+- Send in bug report about how the Text widget drops a character when
+  wrapping a word longer than the line length.
+- Break up internals.c into smaller files.
+- When I "Local Kill" a series of articles in succession when running
+  XRN over a slow network (SLIP), when it's done KILLing and puts the
+  cursor on the next unread article, the cursor flashes several times.
+  I'm not sure, but it may flash as many times as articles I killed.
+  I need to investigate this one further.  I think this only happens
+  when the article list scrolls while doing the killing.  This is
+  probably related to an Xaw Text widget bug that I can't fix (I've
+  already sent in a bug report about it to the X Consortium).
+- Modularize all the other Xaw usages in the code into simplified
+  interfaces.
+- Put back Motif support.
+- Notice when the XRN window changes size, and call
+  adjustMinMaxLines() to make the cursor visible again.  Also, redraw
+  the index window, and the all mode list if in all mode, based on the
+  new window width.
+- Investigate bug reported by uri@watson.ibm.com, that article mode
+  exits to newsgroup mode if it encounters an unavailable article.
+- Send in a bug report about the fact that XawTextEnableRedisplay
+  always redisplays the whole window, even if nothing has changed (I
+  *think* -- need to confirm this).
+- Send in a bug report about the fact that XawTextSetInsertionPoint
+  causes a full redisplay instead of just the cursor being erased and
+  being redrawn (this may only happen when it is called when redisplay
+  is disabled -- need to investigate more).
+- Optimize article mode so that it only redraws the upper text widget
+  when it has to.
+- Send in a bug report and patch about the fact that the AsciiSrc
+  widget doesn't always ignore XtNlength when useStringInPlace is
+  false, even though it's supposed to.
+- Optimize all mode so that it only redraws the lower text widget when
+  it has to.
+- Optimize add mode so that it only redraws the upper text widget when
+  it has to.
+- The code in signatureFile() is unnecessarily obtuse and complex.
+  For example, the "sigfile" variable doesn't need to be dynamically
+  allocated *or* static.
+
+  Clean this code up.
+- "When leaving article mode to return to all mode, the cursor should
+  either remain on the previously read group (my favorite) or go to
+  the next one.  Instead, it always jumps to the very first
+  group."  Suggested by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+  More generally, keep track of where we are in the "all" list just
+  like we keep track of where we are in the newsgroup index, using a
+  global variable containing the group we're currently on, and finding
+  it in the list whenever updating all mode.
+- Support WM_DELETE_WINDOW.  Suggested by nissen@montefiore.ulg.ac.be
+  (Alain Nissen).
+- Append the NNTP server name to saveNewsrcFile and to lockFile just
+  as it's appended to newsrcFile, so that when using multiple news
+  servers, just specifying a different nntpServer is enough for
+  everything to work.
+
+  Note that we should only append the NNTP server name to
+  saveNewsrcFile and lockFile if we found a newsrcfile with the NNTP
+  server name appended to it.  That way, multiple XRN processes will
+  not try to write to a non-extended newsrcFile at the same time.
+
+  Suggested by nissen@montefiore.ulg.ac.be (Alain Nissen).
+- Display newsgroup descriptions somehow in all mode and/or newsgroup
+  mode. and/or add mode.
+- Allow subject index and article text fonts to be specified on a
+  per-newsgroup basis in X resources.  Suggested by uri@watson.ibm.com.
+- if you type a character in the save dialog while the save is
+  happening (i.e., after you already typed the file name and hit
+  return), the character makes it into the dialog before it gets
+  popped down, and shows up the next time you go to save (if you save
+  again while reading the group).  Possibly true of all dialogs.
+- should be possible to highlight and kill a range of articles.
+- subscribeHandler doesn't display an error if "Last group" is
+  selected and there is no last group.
+- subscribeHandler should put a message in the info line indicating
+  what it did.
+- Fix this bug (reported by Reg Clemens <reg@dwf.com>):
+  First bring up XRN, and select a group.
+  I see 7 lines of buttons in the middle of the screen, ranging from
+  Quit -> List_old.
+
+  Now reach up to the upper Right Hand corner of the border and make
+  the Widget TALLER or SHORTER.  *DO NOT* change its width.
+
+  The 7 lines of buttons will collapse to 3 lines from Quit->Goto_Article.
+
+  If you then quit the group and (re)open it or another group you get
+  back to the 7line display of buttons.
+
+  Strange.
+
+  Now go back to the corner and make the widget WIDER or Narrower,
+  then change the height again, the above behaviour no longer occurs.
+
+  Weird.
+- Add X resource to optionally process Xref headers in articles being
+  caught up in a newsgroup.
+- I connected to an INN server that I wasn't allowed to use.  Instead
+  of getting a useful message from XRN, I got "Unexpected EOF on NNTP
+  server socket -- server is probably malfunctioning".
+- Go through all of the X resources that are hard-coded as
+  widget-creation arguments in the program and move as many of them as
+  possible to the app-defaults file.
+- Go through all the uses of XtSetValues and XtGetValues and convert
+  them to use XtVaSetValues and XtVaGetValues whereever possible, to
+  eliminate unnecessary argument arrays.  Same thing for the
+  Create*Widget functions.
+- Fix the way buttons are laid out in the Information window and the
+  dialog windows in the Motif interface.  The problem is that
+  designating one button as the default in the Information window
+  causes its active area to shrink while the other button stays the
+  same size, rather than causing its active area to grow.  The
+  resulting active area of the default is too small.  Let me take this
+  opportunity to say that the Motif API is brain-damaged, stupid,
+  completely non-intuitive, and never does what you want it to do.
+  What kind of widget library, when you tell it to highlight a button
+  as the default, does so by shrinking the drawing area for the button
+  so that its text no longer fits in it properly, instead of by
+  growing the button to make room for the default shadow?  Xaw may be
+  ugly, but at least it's straightforward and does what you expect it
+  to and what you tell it to.
+
+  I've spent literally hours trying to figure out the correct way to
+  make it grow the button instead of shrinking it, but I can't figure
+  it out.  The Motif manual is no help.  Ugh.
+- Make sure all temporary files are being deleted properly (I think
+  there may be a temporary file leak somewhere).
+- Allow the number of articles to be retrieved to be specified upon
+  entering the newsgroup, if the number of unread articles in the
+  group exceeds a certain threshold, rather than making it only
+  configurable via showOnly.
+- Facility for unpacking and decoding multi-part articles.
+- Fix stuff that uses MAXPATHLEN to use the correct POSIX call instead
+  on POSIX systems.
+- PGP support?
+- Add a mode in which only the header of an article is fetched, unless
+  the user tries to scroll down, in which case the rest of the article
+  is fetched.
+- Make the program multithreaded, or use a subprocess for
+  communication for the server, or something so that the UI and NNTP
+  stuff can work independently of each other (the WorkProc stuff used
+  now to do prefetching is a hack that approximates this, but it
+  really isn't good enough splitting the NNTP stuff into a separate
+  thread or process is the right way to do this, but it's a lot of
+  work).
+
+  Another option is to make all of the NNTP code event-driven, and to
+  use XtAppAddInput to add the NNTP socket as an input source, so that
+  input from the NNTP server gets processed whenever there are no
+  other X events to be handled.
+- Add X resources (and command line options) corresponding to the
+  USER, HIDDENHOST, HIDDENPATH and FULLNAME environment variables.
+- Fix up the action of "Followup & Reply" so it only includes mail
+  headers in the mail message and news headers in the posting, and
+  comments out other headers with "X-" or something.
+- Add something to the buttonList X resource syntax to allow someone
+  to say, "Put all buttons not listed explicitly here."  It should
+  obviously only be specifiable once in any particular button list.
+  This will allow people to move specific buttons to the beginning or
+  end of the list in the order they want, without having to update
+  their resources for new buttons after every release.  Suggested by
+  phigro@phigro.rnd.symix.com (Phil Gross).
+- Should XRN try to connect to a news server with host name "news" by
+  default if NNTPSERVER isn't set and SERVER_FILE doesn't exist (and
+  the server name can't be determined from the INN configuration
+  file)?
+- Merge the functionality of the post, followup and gripe functions
+  into the followup_or_reply function, so that all of the
+  header-adding code only needs to happen in one place.
+- Add a 'Post & E-mail' button to go along with the 'Followup & Reply'
+  button.
+- When someone clicks on "Followup" for an article marked
+  "Followup-To: poster", the dialog that pops up should offer three
+  options -- followup, reply, and followup & reply, not just the
+  followup and reply options.
+- I clicked on "Followup & Reply" for a posting in news.groups that
+  had "Followup-To: sender" in its header.  Ignoring for a moment the
+  fact that "sender" is an invalid thing to put there, the compose
+  pane that I got said "X-Newsgroups: sender" in it.  It should have
+  said "X-Newsgroups: news.groups", since the X-Newsgroups header
+  should list the newsgroups that the original article was posted in,
+  not the newsgroup that the followup is being posted in.
+- Make DO_NOT_EAT_TYPE_AHEAD work.
+- Make matchTranslations support the bottom button box too.
+- Merge DXRN into this version of XRN.
+- Make the "Continue" button insensitive when there was no previous
+  Subject search in the current newsgroup, thus making the "No
+  previous regular expression" check (and message) unnecessary.
+- Figure out how to make the KILL file stuff support case-insensitive
+  searches.  The best way to do this is probably to add an option for
+  XRN to use the GNU regexp routines, which I believe take options to
+  tell them to do case-insensitive searches.  Need to investigate
+  further.
+- Turn info() and infoNow() into varargs functions like mesgPane(),
+  and fix all calls to them -- calls with strings with % in them need
+  to have the %'s escaped, and calls that use sprintf into a buffer
+  first can get rid of the buffer.
+- Add a "saveSentMessages" option and command line flag
+  ("-saveSentMessages" to disable, "+saveSentMessages" to enable,
+  disabled by default) to save all successfully sent messages
+  automatically in app_resources.savePostings, or in some other file
+  specified for an X resource.
+
+- Make the format in which files are saved in savePostings, in the
+  current code and in any new code, dependent on saveMode.  Also, make
+  it possible to cause a different format to be used by specifying the
+  same characters allowed in the "Save article" dialog at the
+  beginning of file names.
+- Add a character prefix to the "Save article" code to allow a message
+  to be saved in UNIX Mailbox format even when that's not the default
+  save mode (or vice versa).
+- Wherever articles are saved to files named in X resources or in
+  dialogs, allow all the prefix characters to be used to specify what
+  format to save in.
+- getarticle return
+- read updated .newsrc file (XRN detects this, but should allow you to reread)
+- prefetch should occur at end of list, not largest number (sorted subject...)
+- clean up KILL file support
+   - handle '{' correctly
+        The regular expression \{<m>,<n>\} is supposed to match between
+        m and n occurences of the previous character. To kill an expression
+        of the form "{foo}", xrn requires the braces to be quoted. Rn, on
+        the other hand complains if the braces are quoted.  Rn, on
+        the other hand complains if the braces are quoted since the
+        expression is not valid.  Test: /{foo}/:j
+   - allow field names (Subject/From) in an entry
+   - prompt for KILL expression in article mode
+	local kill (current subject and typein)
+	global kill (current subject and typein)
+	local author kill (current subject and typein)
+	global author kill (current subject and typein)
+   - kill author globally...
+   - edit kill file
+   - closer to RN
+   - Support KILLLOCAL and KILLGLOBAL environment variables a la trn.
+   - "Author search".
+- remove tmp files as you go, not at the end of the group
+  (necessary for large groups with large postings)
+- replace popen of mailer with something better so status code can be checked
+- fixup postArticle to do Header fixup, not sendFunction...
+- check if follow-to is same as newsgroup, warn if not, option to turn this off.
+- warn if followup will go to more than one group.
+- option to capitalize, not-cap the group name when saving.
+- don't refetch article for saving
+- thread support
+- XHDR message on server timeout
+- handle =ng in active file
+- command to skip quoted/included sections
+- user selectable cursors
+- text and reference based searching
+- strip leading and trailing spaces from newsgroup name in the Newsgroups field
+- control C to disconnect/reconnect and return to top level...
+- allow partial selection on subject line - partial selection determines
+  what amount of the subject or author is to be killed....
+- local server (clientlib.c replaced with something that accesses local files)
+- reading an MH folder as a newsgroup (suggested by Luigi Semenzato
+  <luigi@CS.Berkeley.EDU>).

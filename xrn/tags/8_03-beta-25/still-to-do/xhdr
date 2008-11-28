@@ -1,0 +1,283 @@
+Return-Path: sun!cli52na.edf.fr!zi
+Return-Path: <sun!cli52na.edf.fr!zi>
+Received: by objy27. (5.57/SMI-4.0)
+	id AA21817; Mon, 20 Jan 92 06:25:54 -0800
+Received: from sun.UUCP by objy.com (4.1/SMI-4.0)
+	id AA16253; Mon, 20 Jan 92 06:22:48 PST
+Received: from Sun.COM (sun-barr) by sun.Eng.Sun.COM (4.1/SMI-4.1)
+	id AA03371; Mon, 20 Jan 92 05:15:10 PST
+Received: from corton.inria.fr by Sun.COM (4.1/SMI-4.1)
+	id AA17085; Mon, 20 Jan 92 05:15:07 PST
+Received: from edfder1.UUCP by corton.inria.fr (5.65c8d/91.12.15)
+	via Fnet-EUnet id AA22078; Mon, 20 Jan 1992 11:49:31 +0100 (MET)
+Received: from cli52na.noname by edfder1.edf.fr, Mon, 20 Jan 92 11:31:13 +0100
+Received: by cli52na.noname (4.1/SMI-4.1)
+	id AA14037; Mon, 20 Jan 92 11:29:20 +0100
+Date: Mon, 20 Jan 92 11:29:20 +0100
+From: sun!cli52na.edf.fr!zi (Zixiong WANG)
+Message-Id: <9201201029.AA14037@cli52na.noname>
+To: sun!objy!objy27!ricks
+Subject: Re: XRN Bugs report
+
+Rick,
+	I send you my XHDR patche to apply to server.c file.
+
+	I send you also a pathe of buttons.c file. This concerns the bug of "All Groups List" that I'v reported.
+Only the ChooseText() function is modified.
+
+	The pache files are created by "diff my_version original".
+
+patche of server.c:
+
+668,669d667
+< #ifdef DONT_USE_XHDR
+< 
+686,909d683
+<     char buffer[MESSAGE_SIZE];
+<     char *subjectline;
+<     long i;
+< 
+<     for(i=first; i<=last; i++) {
+< 
+<   xhdr(i, "subject", &subjectline);
+< 
+<   if (subjectline == NIL(char)) break;
+<   
+<   (void) sprintf(buffer, "  %5ld\t%s", i, subjectline);
+<   FREE(subjectline);
+< 
+<   newsgroup->articles[INDEX(i)].subject = XtNewString(buffer);
+<     }
+<     return;
+< }
+< 
+< 
+< void
+< getauthorlist(newsgroup, first, last)
+< struct newsgroup *newsgroup;
+< art_num first;
+< art_num last;
+< /*
+<  * get a list of author lines for the current group in the range
+<  *  'first' to 'last'
+<  *
+<  *   returns: void
+<  *
+<  * Note that XHDR is not part of the rfc977 standard, but is implemented
+<  * by the Berkeley NNTP server
+<  *
+<  */
+< {
+<     char *author, *end, *brackbeg, *brackend, *string;
+<     long number, i;
+< 
+<     for(i=first; i<=last; i++) {
+< 
+<   xhdr(i, "from", &string);
+< 
+<   if (string == NIL(char)) break;
+< 
+<   /*
+<    * message is of the form:
+<    *
+<    *    Number Author
+<    *
+<    *    ricks@shambhala (Rick L. Spickelmier)
+<    *    Jens Thommasen <jens@ifi.uio.no>
+<    *    <oea@ifi.uio.no>
+<    *    "Rein Tollevik" <rein@ifi.uio.no>
+<    *
+<    * must get the number since not all authors will be returned
+<    */
+< 
+<   number = i;
+<       if (app_resources.authorFullName) {
+<   /* Can be made fancyer at the expence of extra cpu time */
+<   author = string;
+<   assert(author != NIL(char));
+< 
+<   /* First check for case 1, user@domain ("name") -> name */
+< 
+<   brackbeg = index(string, '(');
+<   brackend = index(string, '\0') - sizeof(char);
+<   /* brackend now points at the last ')' if this is case 1 */
+<   if (brackbeg != NIL(char) && (brackend > brackbeg) &&
+<       (*brackend == ')')) {
+<       author = brackbeg + sizeof(char);
+< 
+<       /* Remove surrounding quotes ? */
+<       if ((*author == '"') && (*(brackend - sizeof(char)) == '"')) {
+<         author++;
+<         brackend--;
+<       }
+< 
+<       /* Rather strip trailing spaces here */
+< 
+<       *brackend = '\0';
+<   } else {
+<       /* Check for case 2, "name" <user@domain> -> name */
+<       brackbeg = index(string, '<');
+<       if (brackbeg != NIL(char) && (index(brackbeg, '>') != NIL(char))
+<       && (brackbeg > string)) {
+<       while (*--brackbeg == ' ')
+<         ;
+< 
+<       /* Remove surrounding quotes ? */
+<       if ((*brackbeg == '"') && (*author ==  '"')) {
+<           *brackbeg = '\0';
+<           author++;
+< 
+<           /* Rather strip trailing spaces here */
+< 
+<       } else {
+<           *++brackbeg = '\0';
+<       }
+<       } else {
+< 
+<       /* 
+<        * Check for case 3, <user@domain> -> usr@domain
+<            *
+<        * Don't need to do this again:
+<            * brackbeg = index(string, '<');
+<                  */
+< 
+<       brackend = index(string, '>');
+<       if ((author == brackbeg) && (brackend != NIL(char))) {
+<           author++;
+<           *brackend = '\0';
+<       } else {
+<           if ((end = index(author, ' ')) != NIL(char)) {
+<           *end = '\0';
+<           }
+<       }
+<       }
+<   }
+<       } else {
+<   if ((author = index(string, '<')) == NIL(char)) {
+<       /* first form */
+<       author = string;
+<       if ((end = index(author, ' ')) != NIL(char)) {
+<       *end = '\0';
+<       }
+<   } else {
+<       /* second form */
+<       author++;
+<       if ((end = index(author, '>')) != NIL(char)) {
+<       *end = '\0';
+<       }
+<   }
+<       }
+<       /*
+<        * do a final trimming - just in case the authors name ends
+<        * in spaces or tabs - it does happen
+<        */
+<       end = author + strlen(author) - 1;
+<       while ((end > author) && ((*end == ' ') || (*end == '\t'))) {
+<   *end = '\0';
+<   end--;
+<       }
+<       newsgroup->articles[INDEX(number)].author = XtNewString(author);
+<     }
+<   FREE(string);
+<     return;
+< }
+< 
+< void
+< getlineslist(newsgroup, first, last)
+< struct newsgroup *newsgroup;
+< art_num first;
+< art_num last;
+< /*
+<  * get a list of number of lines per message for the current group in the
+<  *  range 'first' to 'last'
+<  *
+<  *   returns: void
+<  *
+<  * Note that XHDR is not part of the rfc977 standard, but is implemented
+<  * by the Berkeley NNTP server
+<  *
+<  */
+< {
+<     char *string;
+<     char *numoflines, *end;
+<     long number, i;
+<     int lcv;
+<  
+<     if (!app_resources.displayLineCount) {
+<   return;
+<     }
+< 
+<     for(i=first; i<=last; i++) {
+< 
+<       xhdr(i, "lines", &string);
+< 
+<       if (string == NIL(char)) break;
+< 
+<         number = i;
+<         numoflines = string;
+<   if ((end = index(numoflines, ' ')) != NIL(char)) {
+<       *end = '\0';
+<   }
+<   if (numoflines[0] != '(') {
+<       numoflines[strlen(numoflines)+1] = '\0';
+<       numoflines[strlen(numoflines)] = ']';
+<       for (lcv=strlen(numoflines) ; lcv >= 0 ; lcv--) {
+<       numoflines[lcv+1] = numoflines[lcv];
+<       }
+<       numoflines[0] = '[';
+<   } else {
+<       numoflines[0] = '[';
+<       numoflines[strlen(numoflines)-1] = ']';
+<   }
+<   if (strcmp(numoflines, "[none]") == 0) {
+<       (void) strcpy(numoflines, "[?]");
+<   }
+<         newsgroup->articles[INDEX(number)].lines = XtNewString(numoflines);
+<     }
+<   FREE(string);
+<     return;
+< }
+< 
+< #else
+< 
+< 
+< void
+< getsubjectlist(newsgroup, first, last)
+< struct newsgroup *newsgroup;
+< art_num first;
+< art_num last;
+< /*
+<  * get a list of subject lines for the current group in the range
+<  *  'first' to 'last'
+<  *
+<  *   returns: void
+<  *
+<  * Note that XHDR is not part of the rfc977 standard, but is implemented
+<  * by the Berkeley NNTP server
+<  *
+<  */
+< {
+1196d969
+< #endif
+
+===========================================================================
+patche of buttons.c
+
+39d38
+< #include <string.h>
+140c139
+<       parent = XtParent(ArticleTextText);
+---
+>       parent = ArticleTextText;
+145c144
+<       other = XtParent(ArticleTextText);
+---
+>       other = ArticleTextText;
+147c146
+< 	XtSetArg(args[0], XmNrefigureMode, False);
+---
+>     XtSetArg(args[0], XmNrefigureMode, False);
+162,164d160
+<     /* another motif bug */
+<     XtUnmanageChild(parent);
+<     XtManageChild(parent);

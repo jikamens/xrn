@@ -1,0 +1,98 @@
+!
+! $Id: Xresources.sam,v 1.2 1994-11-23 01:42:47 jik Exp $
+!
+xrn.newsrcFile:		~/.newsrc
+xrn.nntpServer:		news-server-machine
+xrn.editorCommand:	xterm -e vi %s
+xrn.iconGeometry:	+64+521
+xrn.leaveHeaders:	subject,from,organization
+xrn.Gripe.geometry:	+50+50
+!
+xrn.ngButtonList: ngQuit,ngRead,ngCatchUp,ngGoto,ngRescan,\
+			ngSubscribe,ngPost,ngGripe,ngAllGroups
+xrn.artButtonList: artQuit,artNextUnread,artNext,artPrev,artCatchUp,\
+			artPost,artGripe,artNextGroup
+!
+xrn*index.accelerators: #override \n\
+		<Key>Down:	next-line() \n\
+ 		<Key>Up:	previous-line()
+!
+xrn.ngBindings: \
+   <Key>Q:		ngQuit()	\n\
+   <Key>N:		ngRead()	\n\
+   <Key>P:		ngPrev()
+xrn.artBindings: \
+   <Key>Q:		artQuit()	\n\
+   <Key>N:		artNextUnread()	\n\
+   <Key>P:		artPrev()
+!
+xrn*background:		plum
+xrn*foreground:		red
+xrn*font:		9x15
+xrn*border:		LightGray
+!
+xrn.Information.geometry: +400+400
+!
+xrn*breakLength:		0
+xrn*Composition*Text*wrap:	never
+xrn*Composition*Text*autoFill:	true
+xrn*Composition.geometry:	660+0+0
+!
+xrn*Text*background:	DarkSlateGray
+xrn*Text*foreground:	yellow
+xrn*Text*Background:	DarkSlateGray
+xrn*Text*Foreground:	yellow
+!
+xrn.vpane.index.thickness: 22
+xrn.vpane.articleText.thickness: 10
+!
+xrn*Label.background:		cyan
+xrn*Label.foreground:		blue
+xrn*Label.font:			-adobe-times-bold-r-normal--14-140-75-75-p-77-iso8859-1
+
+xrn*Command.foreground:		White
+xrn*Command.background:		coral
+xrn*Command.font:		-adobe-itc avant garde gothic-book-r-normal--12-120-75-75-p-70-iso8859-1
+!
+xrn*Box.ngQuit.foreground:	Black
+xrn*Box.ngQuit.background:	red
+xrn*Box.ngExit.foreground:	yellow
+xrn*Box.ngExit.background:	orange
+xrn*Box.ngRescan.foreground:	cyan
+xrn*Box.ngRescan.background:	violet
+xrn*Box.ngUnsub.foreground: green
+xrn*Box.ngUnsub.background: blue
+xrn*Box.ngSubscribe.foreground: blue
+xrn*Box.ngSubscribe.background:	green
+xrn*Box.artQuit.foreground:	Black
+xrn*Box.artQuit.background:	red
+xrn*Box.artSave.foreground:	NavyBlue
+xrn*Box.artSave.background:	LimeGreen
+xrn*Box.artNextUnread.font:	9x15
+xrn*Box.addQuit.foreground:	Black
+xrn*Box.addQuit.background:	red
+!
+xrn*dialog*font:		-adobe-helvetica-bold-r-normal--12-120-75-75-p-70-iso8859-1
+xrn*dialog*background:		LimeGreen
+xrn*dialog*foreground:		CornflowerBlue
+xrn*dialog*Label.foreground:	NavyBlue
+xrn*dialog*Command.foreground:	Black
+xrn*dialog*Command.background:	yellow
+xrn*dialog*Text*background:	white
+xrn*dialog*Text*foreground:	black
+xrn*dialog*borderWidth:		2
+!
+xrn.confirm:			ngCatchUp,artCatchUp
+xrn.signatureFile:		~/.signature
+xrn.geometry:			=760x770+25+25
+xrn.deadLetters:		~/dead.letters
+xrn.savePostings:		~/Articles
+xrn.topLines:			9
+xrn.saveMode:			mailbox,headers
+xrn.minLines:			3
+xrn.maxLines:			6
+xrn.tmpDir:			/tmp
+xrn.mailer:			/usr/lib/sendmail -oi -t
+!xrn.organization:		your organization name here
+!xrn.replyTo:			somebody@somehost.edu
+!

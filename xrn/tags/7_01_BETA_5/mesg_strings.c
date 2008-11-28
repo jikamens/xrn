@@ -1,0 +1,689 @@
+#if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
+static char XRNrcsid[] = "$Id: mesg_strings.c,v 1.13 1994-11-29 14:23:38 jik Exp $";
+#endif
+
+/*
+ * xrn - an X-based NNTP news reader
+ *
+ * Copyright (c) 1988-1993, Ellen M. Sentovich and Rick L. Spickelmier.
+ *
+ * Permission to use, copy, modify, and distribute this software and its
+ * documentation for any purpose and without fee is hereby granted, provided
+ * that the above copyright notice appear in all copies and that both that
+ * copyright notice and this permission notice appear in supporting
+ * documentation, and that the name of the University of California not
+ * be used in advertising or publicity pertaining to distribution of 
+ * the software without specific, written prior permission.  The University
+ * of California makes no representations about the suitability of this
+ * software for any purpose.  It is provided "as is" without express or
+ * implied warranty.
+ *
+ * THE UNIVERSITY OF CALIFORNIA DISCLAIMS ALL WARRANTIES WITH REGARD TO 
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND 
+ * FITNESS, IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE FOR
+ * ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
+ * RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
+ * CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN 
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/*
+ * mesg_strings.c: global message string array
+ *
+ * This file must be in a specific format so that it can be converted
+ * correctly into mesg_strings.h.  For details about the format, see
+ * mesg_str.awk.
+ */
+
+
+/* Default to English. */
+
+#ifndef XRN_LANG_english
+#ifndef XRN_LANG_german
+#define XRN_LANG_english
+#endif
+#endif
+
+/*
+ * Global messsages and strings like "yes", "no", "OK?", etc.  These
+ * are #define's instead of strings in the mesg_strings array because
+ * they are used in static arrays that can't contain references to
+ * other arrays.
+ */
+
+#ifdef XRN_LANG_english
+
+#define YES_STRING   "yes"
+#define NO_STRING    "no"
+#define ABORT_STRING "abort"
+#define DOIT_STRING  "doit"
+#define SAVE_STRING  "save"
+
+#define ADD_STRING        "add"
+#define FORWARD_STRING    "forward"
+#define BACK_STRING       "back"
+#define LAST_GROUP_STRING "last group"
+#define FIRST_STRING      "first"
+#define LAST_STRING       "last"
+#define CURSOR_POS_STRING "cursor position"
+#define SUB_STRING        "subscribe"
+#define GOTO_NG_STRING    "go to newsgroup"
+
+#endif /* XRN_LANG_english */
+
+
+#ifdef XRN_LANG_german
+
+#define YES_STRING   "Ja"
+#define NO_STRING    "Nein"
+#define ABORT_STRING "Abbrechen"
+#define DOIT_STRING  "Ausf\374hren"
+#define SAVE_STRING  "Sichern"
+
+#define ADD_STRING        "hinzuf\374gen"
+#define FORWARD_STRING    "nach unten"
+#define BACK_STRING       "nach oben"
+#define LAST_GROUP_STRING "letzte Gruppe"
+#define FIRST_STRING      "Anfang"
+#define LAST_STRING       "Ende"
+#define CURSOR_POS_STRING "Aktuelle Position"
+#define SUB_STRING        "Abbonieren"
+#define GOTO_NG_STRING    "Gehe zu Gruppe"
+
+#endif /* XNR_LANG_german */
+
+/*
+ * Messages for use in mesgPane calls below.  Many of these messages
+ * are used multiple times, which is why they are all here are
+ * constants.  Also, putting them all here makes it easy to make sure
+ * they're all consistent.  Finally, putting them here saves space in
+ * the executable since there's only one copy of each string.
+ */
+
+#ifdef XRN_LANG_english
+
+char *message_strings[] = {
+/* < BAD_BUTTON_NAME > */
+    "XRN error: bad button name `%s'.", /* button name */
+/* < NO_SUCH_NG_DELETED > */
+    "Newsgroup `%s' does not exist.  It may have been deleted.  ", /* newsgroup name */
+/* < UNKNOWN_ENTER_NG_RESPONSE > */
+    "Internal XRN error: unknown response %d from enterNewsgroup in %s.", /* return value, function name */
+/* < DISPLAYING_LAST_UNREAD > */
+    "No unread articles in `%s'.  Displaying last available article.", /* newsgroup name */
+/* < PROBABLY_KILLED > */
+    "No unread articles in `%s'.  They were probably killed.  ", /* newsgroup name */
+/* < NO_ARTICLES > */
+    "No articles in `%s'.", /* newsgroup name */
+/* < PROBABLY_EXPIRED > */
+    "No articles in `%s'.  They were probably expired or cancelled.  ", /* newsgroup name */
+/* < NO_NG_SPECIFIED > */
+    "No newsgroup name specified.",
+/* < NO_SUCH_NG > */
+    "Newsgroup `%s' does not exist.", /* newsgroup name */
+/* < NO_PREV_NG > */
+    "No previous newsgroup.",
+/* < NO_GROUPS_SELECTED > */
+    "No newsgroups were selected.",
+/* < NG_NOT_MOVED > */
+    "New position for newsgroups can't be in block of selected newsgroups.  Newsgroups have not been moved.",
+/* < SKIPPING_TO_NEXT_NG > */
+    "Skipping to next newsgroup.",
+/* < BAD_ART_NUM > */
+    "Invalid article number `%s'.", /* article number string */
+/* < NO_ART_NUM > */
+    "No article number specified.",
+/* < ART_NOT_AVAIL > */
+    "Article number %d not available.", /* article number */
+/* < ARTS_NOT_AVAIL > */
+    "Article numbers %d-%d not available.", /* first, last article number */
+/* < NO_PREV_REGEXP > */
+    "No previous regular expression.",
+/* < NO_PREV_ART > */
+    "No previous article.",
+/* < MSG_ABORTED > */
+    "Aborted %s.", /* "article" or "message" */
+/* < NO_FILE_NOT_SAVED > */
+    "Cannot determine save file name.  Article/message not saved.",
+/* < NO_SUBJECT > */
+    "The Subject field is missing in your message!  ",
+/* < EMPTY_SUBJECT > */
+    "The Subject field in your message is empty!  ",
+/* < NO_NEWSGROUPS > */
+    "The Newsgroups field is missing in your message!  ",
+/* < DEFAULT_ADDED > */
+    "A default value has been added.  Please edit it as necessary and resend.",
+/* < EMPTY_ADDED > */
+    "An empty one has been added.  ",
+/* < FILL_IN_RESEND > */
+    "Please fill it in and resend.",
+/* < NO_POSTABLE_NG > */
+    "No postable newsgroups in `Newsgroups' line.  Please fix and resend or save and abort.",
+/* < SAVING_DEAD > */
+    "Saving in `%s'.", /* file name */
+/* < COULDNT_POST > */
+    "Could not post article.  ",
+/* < POST_NOTALLOWED > */
+    "Posting not allowed from this machine.  ",
+/* < COULDNT_SEND > */
+    "Could not send mail message.  ",
+/* < MAILED_TO_MODERATOR > */
+    "One or more moderated newsgroups in `Newsgroups' line of message.  Article will be mailed to moderator by server.",
+/* < ARTICLE_POSTED > */
+    "Article posted.",
+/* < MAIL_MESSAGE_SENT > */
+    "Mail message sent.",
+/* < CANT_INCLUDE_CMD > */
+    "Cannot execute includeCommand (`popen' failed).",
+/* < CANT_OPEN_ART > */
+    "Cannot open article file `%s': %s.", /* file name, error string */
+/* < CANT_OPEN_FILE > */
+    "Cannot open file `%s': %s.", /* error string */
+/* < NO_FILE_SPECIFIED > */
+    "No file specified.",
+/* < CANT_OPEN_TEMP > */
+    "Cannot open temporary file `%s': %s.", /* file name, error string */
+/* < CANT_STAT_TEMP > */
+    "Cannot stat temporary file `%s': %s.", /* file name, error string */
+/* < NO_CHANGE > */
+    "No change in temporary file `%s'.", /* file name */
+/* < ZERO_SIZE > */
+    "Temporary file `%s' has zero size.", /* file name */
+/* < NO_MSG_TEMPLATE > */
+    "Internal XRN error: no message template in call to Call_Editor.",
+/* < CANT_EDITOR_CMD > */
+    "Cannot execute editor command `%s': %s.", /* command, error string */
+/* < ONE_COMPOSITION_ONLY > */
+    "Only one composition allowed at a time.",
+/* < EXECUTING_SIGNATURE > */
+    "Executing signature command `%s'.", /* command */
+/* < CANT_EXECUTE_SIGNATURE > */
+    "Cannot execute signature file `%s'.  Reading instead.", /* signature file name */
+/* < READING_SIGNATURE > */
+    "Reading signature file `%s'.", /* signature file name */
+/* < CANT_READ_SIGNATURE > */
+    "Cannot read signature file `%s': %s.", /* signature file name, error string */
+/* < CANCEL_ABORTED > */
+    "Article not cancelled.",
+/* < CANCELLED_ART > */
+    "Article has been cancelled.",
+/* < UNKNOWN_REGEXP_ERROR > */
+    "Unknown error in regular expression `%s'.", /* regexp string */
+/* < KNOWN_REGEXP_ERROR > */
+    "Error in regular expression `%s': %s.", /* regexp, error string */
+/* < ART_NUMBERING_PROBLEM > */
+    "Article numbering problem.  Marking all articles in newsgroup `%s' unread.", /* newsgroup name */
+/* < CANT_OPEN_KILL > */
+    "Cannot open %s kill file (`%s') for newsgroup `%s': %s.", /* "local" or "global", file name, newsgroup name, error string */
+/* < MALFORMED_KILL_ENTRY > */
+    "Error in KILL file entry `%s' in newsgroup `%s': %s.", /* entry, newsgroup name, reason for error */
+/* < UNKNOWN_KILL_REGEXP_ERROR > */
+    "Unknown regular expression error in KILL file entry `%s'.", /* entry */
+/* < KNOWN_KILL_REGEXP_ERROR > */
+    "Regular expression error in KILL file entry `%s': %s.", /* entry, error string */
+/* < NOT_IN_NEWSRC > */
+    "Newsgroup `%s' is not in your .newsrc file.", /* newsgroup name */
+/* < UNKNOWN_FIND_UNRD_RESPONSE > */
+    "Internal XRN error: unknown response %d from findUnreadArticle in %s.", /* return value, function name */
+/* < BOGUS_NG_REMOVING > */
+    "Newsgroup `%s' does not exist.  Removing it from your .newsrc file.", /* newsgroup name */
+/* < DUP_NEWSRC_ENTRY > */
+    "Duplicate .newsrc entry for newsgroup `%s'.  Using the first one.", /* newsgroup name */
+/* < BAD_NEWSRC_LINE > */
+    "Unable to parse line %d in .newsrc file.  Ignoring it.", /* line number */
+/* < CANT_OPEN_NEWSRC_COPYING > */
+    "Cannot open .newsrc file `%s' for copying: %s.", /* file name, error string */
+/* < CANT_EXPAND_NEWSRC_SAVE > */
+    "Cannot expand .newsrc save file name `%s'.", /* file name */
+/* < EMPTY_NEWSRC_SAVE_NAME > */
+    ".newsrc save file name is the empty string.",
+/* < CANT_OPEN_NEWSRC_SAVE > */
+    "Cannot open .newsrc save file `%s' for writing: %s.", /* file name, error string */
+/* < NEWSRC_SAVE_FILE_WRITE_ERR > */
+    "Error writing to .newsrc save file `%s': %s.", /* file name, error string */
+/* < CANT_EXPAND_NEWSRC > */
+    "Cannot expand .newsrc file name `%s'.", /* file name */
+/* < CANT_READ_NEWSRC > */
+    "Cannot read .newsrc file `%s': %s.", /* file name, error string */
+/* < CREATING_NEWSRC > */
+    "Creating .newsrc file `%s' for you.", /* file name */
+/* < CANT_CREATE_NEWSRC > */
+    "Cannot create .newsrc file `%s': %s.", /* file name, error string */
+/* < CANT_STAT_NEWSRC > */
+    "Cannot stat .newsrc file `%s': %s.", /* file name, error string */
+/* < ZERO_LENGTH_NEWSRC > */
+    ".newsrc file `%s' is empty.  Aborting.", /* file name */
+/* < CANT_OPEN_NEWSRC > */
+    "Cannot open .newsrc file `%s' for reading: %s.", /* file name, error string */
+/* < CANT_PARSE_NEWSRC > */
+    "Cannot parse .newsrc file `%s' -- error on line %d.", /* file name, error line */
+/* < CANT_OPEN_NEWSRC_TEMP > */
+    "Cannot open .newsrc temporary file `%s' for writing: %s.", /* file name, error string */
+/* < CANT_OPEN_NEWSRC_WRITING > */
+    "Cannot open .newsrc file `%s' for writing: %s.", /* file name, error string */
+/* < ERROR_UNLINKING_NEWSRC > */
+    "Error unlinking .newsrc file `%s': %s.", /* file name, error string */
+/* < ERROR_RENAMING_NEWSRC > */
+    "Error renaming temporary .newsrc file `%s' to .newsrc file `%s': %s.", /* temporary file name, file name, error string */
+/* < NO_MAIL_DIR > */
+    "No Mail directory `%s'.", /* directory name */
+/* < CANT_STAT_MAIL_DIR > */
+    "Cannot stat directory `%s': %s.", /* directory name, error string */
+/* < MAIL_DIR_NOT_DIR > */
+    "Cannot create folder -- mail path `%s' is not a directory.", /* directory name */
+/* < FOLDER_NOT_DIR > */
+    "Path `%s' is not a folder.", /* folder name */
+/* < CANT_OPEN_RMAIL > */
+    "Cannot open RMAIL file `%s' for writing: %s.", /* file name, error string */
+/* < CANT_WRITE_RMAIL > */
+    "Cannot write to RMAIL file `%s': %s.", /* file name, error string */
+/* < UNKNOWN_CONFIRM_BUTTON > */
+    "XRN error: unknown confirm button `%s'.", /* button name */
+/* < CANT_EXECUTE_CMD_POPEN > */
+    "Cannot execute command `%s' (`popen' failed).", /* command string */
+/* < CANT_EXPAND_SAVE_DIR > */
+    "Cannot expand save directory `%s'.", /* directory name */
+/* < CANT_CREATE_SAVE_DIR > */
+    "Cannot create save directory `%s': %s.", /* drectory name, error string */
+/* < CANT_FIGURE_FILE_NAME > */
+    "Cannot figure out file name `%s'.", /* file name */
+/* < CANT_CREAT_APPEND_SAVE_FILE > */
+    "Cannot %s file `%s': %s.", /* "create" or "append to", file name, error string */
+/* < ERROR_WRITING_FILE > */
+/* < ERROR_WRITING_SAVE_FILE > */
+    "Error writing to file `%s': %s.", /* file name, error string */
+/* < LOST_CONNECT_ATTEMPT_RE > */
+    "Lost connection to the NNTP server.  Attempting to reconnect.",
+/* < RECONNECTED > */
+    "Reconnected to the NNTP server.",
+/* < CANT_TEMP_NAME > */
+    "Cannot create temporary file name for article.",
+/* < CANT_CREATE_TEMP > */
+    "Cannot open temporary file `%s' for writing: %s.", /* file name, error string */
+/* < BOGUS_ACTIVE_ENTRY > */
+    "Skipping bogus active file entry `%s'.", /* entry */
+/* < FAILED_RECONNECT > */
+    "Failed to reconnect to the NNTP server (%s).  Sleeping...", /* stage */
+/* < XHDR_ERROR > */
+    "XHDR command to the NNTP server failed.  Either the NNTP server does not\n\tsupport XHDR (in which case XRN will not work), or an internal\n\tXRN error occurred.",
+/* < NNTP_ERROR > */
+    "NNTP serious error: `%s'.", /* error string */
+/* < MALFORMED_XHDR_RESPONSE > */
+    "NNTP server sent malformed XHDR response.  XHDR command was `%s', response was `%s'.", /* command, response */
+/* < NO_APP_DEFAULTS > */
+    "Current XRN Application Defaults file is not installed.\n\tAs a result, some XRN functionality may be missing.  Normally\n\tthe XRN application defaults file should be installed as\n\t/usr/lib/X11/app-defaults/%s (or as\n\t$OPENWINHOME/lib/app-defaults/%s for OpenWindows)", /* program class name (twice) */
+/* < VERSIONS > */
+    "Application defaults version is `%s'.  XRN executable version is `%s'.", /* app-defaults version, executable version */
+/* < NO_DOMAIN > */
+    "Could not determine your host's domain.\nRerun XRN with the DOMAIN environment variable or the domainName X resource set\nin order to post or send mail.",
+/* < NO_SERVER > */
+    "Could not determine the news server.\nRerun XRN with the NNTPSERVER environment variable, the nntpServer X resource or\nthe -nntpServer command line argument.",
+/* < UNKNOWN_LIST_REGEXP_ERROR > */
+    "Unknown regular expression error in %s list entry `%s'; entry ignored.", /* list name, entry */
+/* < KNOWN_LIST_REGEXP_ERROR > */
+    "Regular expression error in %s list entry `%s': %s; entry ignored.", /* list name, entry, error string */
+/* < OPEARATION_APPLY_CURSOR > */
+   "Operations apply to current selection or cursor position",
+/* < NO_MORE_UNREAD_ART > */
+   "No more unread articles in the subscribed to newsgroups",
+/* < SEL_GROUPS_ADDSUB > */
+   "Select groups to `add', `quit' unsubscribes remaining groups",
+/* < ARE_YOU_SHURE > */
+   "Are you sure?",
+/* SUB and UNSUB string must have the same len */
+/* < SUBED >  */ 
+   "subscribed  ",
+/* < UNSUBED > */
+   "unsubscribed",
+/* < OK_CATCHUP > */
+   "OK to Catchup?",
+/* < OK_CATCHUP_CUR > */ 
+   "OK to catch up to current position?",
+/* < OK_TO_UNSUB > */
+   "OK to unsubscribe?",
+/* < OK_TO_SUB > */
+   "OK to subscribe?",
+/* < SEARCH_ABORTED > */
+   "search has been aborted",
+/* < ERROR_SUBJ_SEARCH > */ 
+   "Subject search: %s", /* regular expression */
+/* < ERROR_SUBJ_EXH > */ 
+   "Subject has been exhausted",
+/* < ERROR_SUBJ_ABORT > */
+   "search aborted",
+/* < ERROR_SUB_KILL > */
+   "Subject has been killed, returning to first unread article",
+/* < ERROR_AUTHOR_KILL > */
+   "Author has been killed, returning to first unread article",
+/* < ERROR_CANT_UPDATE_NEWSRC > */
+   "Cannot update the newsrc file",
+/* < ARTICLE_NUMBER > */ 
+   "Article Number:",
+/* < ERROR_SUBJ_EXPR > */
+   "Search for expression %s: no match was found", /* regular expression */
+/* < ERROR_SEARCH > */ 
+   "Search for expression %s", /* regular expression */
+/* < REGULAR_EXPR > */
+   "Regular Expression:",
+/* < BEHIND_WHAT_GROUP > */
+   "After which newsgroup?",
+/* < ARTICLE_QUEUED > */
+   "Article sucessfully queued",
+/* < GROUP_SUB_TO > */
+   "Group to subscribe to:",
+/* < GROUP_TO_GO > */ 
+   "Group to go to:",
+/* < VIEW_ALLNG_SUB > */
+   "View all available groups, with option to subscribe",
+/* < BAD_TIMEOUT >  */ 
+   "bad time out, id is %d, expected %d\n", /* time out real, expect */
+/* < AUTOMATIC_RESCAN > */
+   "automatic rescan in progress...",
+/* < ERROR_UNSUP_TRANS > */
+   "unsupported transition: %d to %d\n", /* transition from, to */
+};
+
+#endif /* XRN_LANG_english */
+
+#ifdef XRN_LANG_german
+
+/*
+ * mesg_strings.c: global message string array
+ *
+ * --------------
+ * section GERMAN
+ * --------------
+ * The GERMAN section was created and translated by
+ *            K.Marquardt (K.Marquardt@zhv.basf-ag.de)  Nov/23/94
+ * 
+ * german version (iso8859-1), use #define LANG GERMAN in config.h
+ *
+ * values of the iso8859-1 characters:
+ *
+ * "a = \344, "o = \366, "u = \374
+ * "A = \304, "O = \326, "U = \334
+ * sz = \337
+ */
+
+char *message_strings[] = {
+/* < BAD_BUTTON_NAME > */
+    "XRN Fehler: Falscher Button Name `%s'.", /* button Name */
+/* < NO_SUCH_NG_DELETED > */
+    "Newsgruppe `%s' existiert nicht, moeglicherweise wurde sie gel\366scht.", /* Newsgruppe Name */
+/* < UNKNOWN_ENTER_NG_RESPONSE > */
+    "Interner XRN Fehler: unbekannte R\374ckmeldung%d von enterNewsgroup in %s.", /* return value, function Name */
+/* < DISPLAYING_LAST_UNREAD > */
+    "Keine ungelesenen Artikel in `%s'. Zeige letzten vorhandenen Artikel an.", /* Newsgruppe Name */
+/* < PROBABLY_KILLED > */
+    "Keine ungelesenen Artikel in `%s', m\366glicherweise wurden sie gel\366scht.", /* Newsgruppe Name */
+/* < NO_ARTICLES > */
+    "Keine Artikel in `%s'.", /* Newsgruppe Name */
+/* < PROBABLY_EXPIRED > */
+    "Keine Artikel in `%s', m\366glicherweise wurden sie zur\374ckgezogen.", /* Newsgruppe Name */
+/* < NO_NG_SPECIFIED > */
+    "Keine Newsgruppe angegeben.",
+/* < NO_SUCH_NG > */
+    "Newsgruppe `%s' existiert nicht.", /* Newsgruppe Name */
+/* < NO_PREV_NG > */
+    "Keine vorhergehende Newsgruppe.",
+/* < NO_GROUPS_SELECTED > */
+    "Keine Newsgruppes ausgew\344hlt.",
+/* < NG_NOT_MOVED > */
+    "Die neue Position kann nicht innerhalb der angew\344hlten Newsgruppen liegen.  Es wurden keine Newsgruppen verschoben.",
+/* < SKIPPING_TO_NEXT_NG > */
+    "Verzweige zur n\344chsten Newsgruppe.",
+/* < BAD_ART_NUM > */
+    "Falsche Artikelnummer `%s'.", /* Artikel.number string */
+/* < NO_ART_NUM > */
+    "Keine Artikelnummer angegeben.",
+/* < ART_NOT_AVAIL > */
+    "Artikelnummer %d nicht vorhanden.", /* Artikel.number */
+/* < ARTS_NOT_AVAIL > */
+    "Die Artikel %d-%d sind nicht verf\374gbar.", /* first, last article number */
+/* < NO_PREV_REGEXP > */
+    "Kein vorheriges Suchmuster.",
+/* < NO_PREV_ART > */
+    "Kein vorheriger Artikel.",
+/* < MSG_ABORTED > */
+    "Abbruch: %s.", /* "article" or "message" */
+/* < NO_FILE_NOT_SAVED > */
+    "Kann den Dateinamen nicht ermitteln, Artikel/Nachricht nicht gespeichert.",
+/* < NO_SUBJECT > */
+    "Ihre Nachricht enth\344lt kein Subjekt!",
+/* < EMPTY_SUBJECT > */
+    "Die `Subject` Zeile Ihrer Nachricht ist leer!",
+/* < NO_NEWSGROUPS > */
+    "Ihre Nachricht enth\344lt keine `Newsgroups` Zeile!",
+/* < DEFAULT_ADDED > */
+    "Es wurde ein Standardwert eingef\374gt, bitte passen Sie ihn entsprechend an.",
+/* < EMPTY_ADDED > */
+    "Es wurde ein leeres Feld eingef\374gt.",
+/* < FILL_IN_RESEND > */
+    "Bitte Ausf\374llen und erneut abschicken.",
+/* < NO_POSTABLE_NG > */
+    "Sie k\366nnen in keine der angegebenen Newsgruppen schreiben.  Bitte `Newsgroups` Zeile ab\344ndern und erneut abschicken.",
+/* < SAVING_DEAD > */
+    "Speichere in `%s'.", /* file Name */
+/* < COULDNT_POST > */
+    "Kann Artikel nicht ver\366ffentlichen.",
+/* < POST_NOTALLOWED > */
+    "Von diesem Rechner k\366nnen keine Artikel ver\366ffentlichent werden.",
+/* < COULDNT_SEND > */
+    "Konnte Nachricht nicht senden.",
+/* < MAILED_TO_MODERATOR > */
+    "Es wurden eine oder mehrere moderierte Newsgruppen angegeben.  Der Artikel wird vom Server zum Moderator geschickt.",
+/* < ARTICLE_POSTED > */
+    "Artikel ver\366fentlicht.",
+/* < MAIL_MESSAGE_SENT > */
+    "Nachricht verschickt.",
+/* < CANT_INCLUDE_CMD > */
+    "Kann includeCommand nicht ausf\374hren, `popen' fehlgeschlagen.",
+/* < CANT_OPEN_ART > */
+    "Kann Artikeldatei `%s' nicht \366ffnen: %s.", /* file name, Fehler string */
+/* < CANT_OPEN_FILE > */
+    "Kann Datei `%s' nicht \366ffnen: %s.", /* Fehler string */
+/* < NO_FILE_SPECIFIED > */
+    "Keine Datei Angegeben.",
+/* < CANT_OPEN_TEMP > */
+    "Kann Datei `%s' nicht \366ffnen: %s.", /* file name, Fehler string */
+/* < CANT_STAT_TEMP > */
+    "Kann den Status der Datei `%s' nicht ermittlen: %s.", /* file name, Fehler string */
+/* < NO_CHANGE > */
+    "Keine Ver\344nderung der Datei `%s'.", /* file Name */
+/* < ZERO_SIZE > */
+    "Datei `%s' ist leer.", /* file Name */
+/* < NO_MSG_TEMPLATE > */
+    "Interner XRN Fehler: no message template in call to Call_Editor.",
+/* < CANT_EDITOR_CMD > */
+    "Kann Editorbefehl `%s'nicht ausf\374hren: %s.", /* command, Fehler string */
+/* < ONE_COMPOSITION_ONLY > */
+    "Nur ein Composition Panel m\366glich.",
+/* < EXECUTING_SIGNATURE > */
+    "F\374hre Signaturbefehl `%s' aus.", /* command */
+/* < CANT_EXECUTE_SIGNATURE > */
+    "Kann Signaturedatei `%s' nicht ausf\374hren, lese sie ein.", /* signature file Name */
+/* < READING_SIGNATURE > */
+    "Lese Signaturdatei `%s' ein.", /* signature file Name */
+/* < CANT_READ_SIGNATURE > */
+    "Kann Signaturdatei nicht `%s' lesen: %s.", /* signature file name, Fehler string */
+/* < CANCEL_ABORTED > */
+    "Artikel nicht zur\374ckgezogen.",
+/* < CANCELLED_ART > */
+    "Artikel zur\374ckgezogen.",
+/* < UNKNOWN_REGEXP_ERROR > */
+    "Unbekannter Fehler im Suchmuster `%s'.", /* regexp string */
+/* < KNOWN_REGEXP_ERROR > */
+    "Fehler im Suchmuster `%s': %s.", /* regexp, Fehler string */
+/* < ART_NUMBERING_PROBLEM > */
+    "Probleme mit den Artikelnummern,  markiere alle Artikel in `%s' als nicht gelesen.", /* Newsgruppe Name */
+/* < CANT_OPEN_KILL > */
+    "Kann  %s Killfile (`%s') f\374r Newsgruppe `%s' nicht \366ffnen: %s.", /* "local" or "global", file name, Newsgruppe name, Fehler string */
+/* < MALFORMED_KILL_ENTRY > */
+    "Fehler im Killfileeintrag `%s' f\374r Newsgruppe `%s': %s.", /* entry, Newsgruppe name, reason for Fehler */
+/* < UNKNOWN_KILL_REGEXP_ERROR > */
+    "Unbekannter Suchmusterfehler im Killfileeintrag `%s'.", /* entry */
+/* < KNOWN_KILL_REGEXP_ERROR > */
+    "Suchmusterfehler im Killfileeintrag `%s': %s.", /* entry, Fehler string */
+/* < NOT_IN_NEWSRC > */
+    "Newsgruppe `%s'  in der .newsrc Datei.", /* Newsgruppe Name */
+/* < UNKNOWN_FIND_UNRD_RESPONSE > */
+    "Interner XRN Fehler: unbekannte R\374ckmeldung %d von findUnreadArticle in %s.", /* return value, function Name */
+/* < BOGUS_NG_REMOVING > */
+    "Newsgruppe `%s' existiert nicht, entferne sie aus der .newsrc Datei.", /* Newsgruppe Name */
+/* < DUP_NEWSRC_ENTRY > */
+    "Doppelter Eintrag in der .newsrc Datei f\374r `%s', verwende den ersten.", /* newsgroup name */
+/* < BAD_NEWSRC_LINE > */
+    "Kann Zeile %d in der .newsrc Datei nicht interpretieren, \374bergehen sie.", /* line number */
+/* < CANT_OPEN_NEWSRC_COPYING > */
+    "Kann .newsrc Datei `%s' nicht kopieren: %s.", /* file name, Fehler string */
+/* < CANT_EXPAND_NEWSRC_SAVE > */
+    "Kann Dateinamen zum Abspeichern der .newsrc Datei `%s' nicht erweitern.", /* file Name */
+/* < EMPTY_NEWSRC_SAVE_NAME > */
+    "Dateiname zum Abspeichern der .newsrc Datei ist leer.",
+/* < CANT_OPEN_NEWSRC_SAVE > */
+    "Kann .newsrc Datei `%s' nicht schreiben: %s.", /* file name, Fehler string */
+/* < NEWSRC_SAVE_FILE_WRITE_ERR > */
+    "Fehler beim Schreiben in .newsrc Datei `%s': %s.", /* file name, Fehler string */
+/* < CANT_EXPAND_NEWSRC > */
+    "Kann Dateinamen der .newsrc Datei `%s' nicht erweitern.", /* file Name */
+/* < CANT_READ_NEWSRC > */
+    "Kann .newsrc Datei `%s' nicht lesen: %s.", /* file Name, error string */
+/* < CREATING_NEWSRC > */
+    "Creating .newsrc file `%s' for you.", /* file Name */
+/* < CANT_CREATE_NEWSRC > */
+    "Kann .newsrc Datei `%s' nicht erstellen: %s.", /* file name, Fehler string */
+/* < CANT_STAT_NEWSRC > */
+    "Kann Status der .newsrc Datei `%s' nicht ermitteln: %s.", /* file name, Fehler string */
+/* < ZERO_LENGTH_NEWSRC > */
+    ".newsrc Datei `%s' ist leer, gebe auf.", /* file Name */
+/* < CANT_OPEN_NEWSRC > */
+    "Kann .newsrc Datei `%s' nicht lesen: %s.", /* file name, Fehler string */
+/* < CANT_PARSE_NEWSRC > */
+    "Kann .newsr Datei `%s' nicht interpretieren -- Fehler in Zeile %d.", /* file name, error line */
+/* < CANT_OPEN_NEWSRC_TEMP > */
+    "Kann .newsrc Datei `%s' nicht schreiben: %s.", /* file name, Fehler string */
+/* < CANT_OPEN_NEWSRC_WRITING > */
+    "Kann .newsrc Datei `%s' nicht schreiben: %s.", /* file name, Fehler string */ 
+/* < ERROR_UNLINKING_NEWSRC > */
+    "Fehler beim Entfernen des Links der .newsrc Datei `%s': %s.", /* file name, Fehler string */
+/* < ERROR_RENAMING_NEWSRC > */
+    "Fehler beim Umbenennen der .newsrc Datei `%s' in `%s': %s.", /* temporary file name, file name, Fehler string */
+/* < NO_MAIL_DIR > */
+    "Kein Postverzeichnis `%s'.", /* directory Name */
+/* < CANT_STAT_MAIL_DIR > */
+    "Kann Status der Verzeichnisses `%s' nicht ermitteln: %s.", /* directory name, error string */
+/* < MAIL_DIR_NOT_DIR > */
+    "Kann Verzeichnis nicht anlegen -- Postpfad `%s' ist kein Verzeichnis.", /* directory Name */
+/* < FOLDER_NOT_DIR > */
+    "Pfad `%s' ist kein Verzeichnis.", /* folder Name */
+/* < CANT_OPEN_RMAIL > */
+    "Kann RMAIL Datei `%s' nicht schreiben: %s.", /* file name, Fehler string */
+/* < CANT_WRITE_RMAIL > */
+    "Kann nicht in RMAIL Datei `%s' schreiben: %s.", /* file name, Fehler string */
+/* < UNKNOWN_CONFIRM_BUTTON > */
+    "XRN Fehler: unbekannter Best\344tigungsbutton `%s'.", /* button Name */
+/* < CANT_EXECUTE_CMD_POPEN > */
+    "Konnte Befehl `%s' nicht ausfuehren, `popen' fehlgeschlagen.", /* command string */
+/* < CANT_EXPAND_SAVE_DIR > */
+    "Kann Verzeichnis `%s' nicht erweitern.", /* directory Name */
+/* < CANT_CREATE_SAVE_DIR > */
+    "Kann Verzeichnis `%s' nicht anlegen: %s.", /* drectory name, Fehler string */
+/* < CANT_FIGURE_FILE_NAME > */
+    "Kann Dateinamen `%s' nicht ermitteln.", /* file name */  
+/* < CANT_CREAT_APPEND_SAVE_FILE > */
+    "Kann  %s Datei `%s' nicht ausf\374hren: %s.", /* "create" or "append to", file name, Fehler string */
+/* < ERROR_WRITING_FILE > */
+/* < ERROR_WRITING_SAVE_FILE > */
+    "Fehler beim Schreiben in Datei `%s': %s.", /* file name, Fehler string */
+/* < LOST_CONNECT_ATTEMPT_RE > */
+    "Verbindung zum NNTP Server abgebrochen, versuche neuen Verbindungsaufbau.",
+/* < RECONNECTED > */
+    "Verbindung zum NNTP Server wieder hergestellt.",
+/* < CANT_TEMP_NAME > */
+    "Kann keinen tempor\344ren Dateinamen f\374r Artikel erzeugen.",
+/* < CANT_CREATE_TEMP > */
+    "Kann kann tempor\344re Datei `%s' nicht schreiben: %s.", /* file name, Fehler string */
+/* < BOGUS_ACTIVE_ENTRY > */
+    "\334bergehe fehlerhaften Eintrag `%s' der active Datei.", /* entry */
+/* < FAILED_RECONNECT > */
+    "Verbindungsaufbau zum NNTP server (%s) fehlgeschlagen, warte ...", /* stage */
+/* < XHDR_ERROR > */
+    "XHDR Befehl beim NNTP Server fehlgeschlagen.  Entweder unterst\374tzt der NNTP Server den XHDR Befehl nicht oder es ist ein interner Fehler in XRN aufgetreten.",
+/* < NNTP_ERROR > */
+    "NNTP Fehler: `%s'.", /* Fehler string */
+/* < MALFORMED_XHDR_RESPONSE > */
+    "NNTP Server sendete nicht erwartete XHDR Antwort.  XHDR Befehl: `%s', Antwort `%s'.", /* command, response */
+/* < NO_APP_DEFAULTS > */
+    "Die  XRN Application Defaults Datei ist nicht vorhanden. M\366glicherweise gehen einige XRN Funktionen nicht. Normalerweise sollte die XRN Application Defaults Datei als `/usr/lib/X11/app-defaults/%s' oder als `$OPENWINHOME/lib/app-defaults/%s'  f\374r OpenWindows vorhanden sein", /* program class Name (twice) */
+/* < VERSIONS > */
+    "Application Defaults Version ist `%s',  XRN Version ist `%s'.", /* app-defaults version, executable version */
+/* < NO_DOMAIN > */
+    "Kann die Domain des Rechners nicht ermitteln, verwende die Environmentvariable DOMAIN oder die Resource domainName zum Versenden von Artikeln und Post.",
+/* < NO_SERVER > */
+    "Kann den NNTP Server nicht ermitteln, verwende die Environmentvariable NNTPSERVER, die Resource nntpServer oder die Option -nntpServer.",
+/* < UNKNOWN_LIST_REGEXP_ERROR > */
+    "Unbekannter Suchmusterfehler in %s im Listeneintrag `%s'; ignoriere Eintrag.", /* list name, entry */
+/* < KNOWN_LIST_REGEXP_ERROR > */
+    "Suchmusterfehler in %s im Listeneintrag `%s': %s; ignoriere Eintrag.", /* list name, entry, error string */
+/* < OPEARATION_APPLY_CURSOR > */
+   "Operationen sind abh\344nging von der aktuellen Auswahl und der Position des Zeigers",
+/* < NO_MORE_UNREAD_ART > */
+   "Keine weiteren ungelesenen Artikel in den abbonierten Newsgruppen.",
+/* < SEL_GROUPS_ADDSUB > */
+   "Zum abbonieren Newsgruppen ausw\344hlen, verbleibende werden als `nicht abboniert' gekennzeichnet.",
+/* < ARE_YOU_SHURE > */
+   "Sind Sie sicher?",
+/* SUB and UNSUB string must have the same len */
+/* < SUBED >  */ 
+   "abboniert      ",
+/* < UNSUBED > */
+   "nicht abboniert",
+/* < OK_CATCHUP > */
+   "Als gelesen markieren?",
+/* < OK_CATCHUP_CUR > */ 
+   "Bis zur aktuellen Position als gelesen markieren?",
+/* < OK_TO_UNSUB > */
+   "Abbonenent aufheben?",
+/* < OK_TO_SUB > */
+   "Abbonieren?",
+/* < SEARCH_ABORTED > */
+   "Suche wurde abgebrochen.",
+/* < ERROR_SUBJ_SEARCH > */ 
+   "Thema suchen: %s", /* regular expression */
+/* < ERROR_SUBJ_EXH > */ 
+   "Thema nicht vorhanden.",
+/* < ERROR_SUBJ_ABORT > */
+   "Suche abgebrochen.",
+/* < ERROR_SUB_KILL > */
+   "Thema wurde gel\366scht, gehe zum ersten ungelesenen Artikel.",
+/* < ERROR_AUTHOR_KILL > */
+   "Autor wurde gel\366scht, gehe zum ersten ungelesenen Artikel.",
+/* < ERROR_CANT_UPDATE_NEWSRC > */
+   "Kann die Datei .newsrc nicht aktualisieren.",
+/* < ARTICLE_NUMBER > */ 
+   "Artikel Nummer:",
+/* < ERROR_SUBJ_EXPR > */
+   "Suche nach %s: Keine Eintrag gefunden.", /* regular expression */
+/* < ERROR_SEARCH > */ 
+   "Suche nach %s", /* regular expression */
+/* < REGULAR_EXPR > */
+   "Suchmuster:",
+/* < BEHIND_WHAT_GROUP > */
+   "Nach welcher Newsgrupppe?",
+/* < ARTICLE_QUEUED > */
+   "Artikel nacheinander versendet.",
+/* < GROUP_SUB_TO > */
+   "Zu abbonierende Gruppe:",
+/* < GROUP_TO_GO > */ 
+   "Gehen zur Gruppe:",
+/* < VIEW_ALLNG_SUB > */
+   "Anzeigen aller Gruppen mit der M\366glichkeit zum abbonieren.",
+/* < BAD_TIMEOUT >  */ 
+   "Falsches Timeout, id %d, erwartet %d.\n", /* time out real, expect */
+/* < AUTOMATIC_RESCAN > */
+   "Automatische Abfrage des Servers wird ausgef\344hrt ... ",
+/* < ERROR_UNSUP_TRANS > */
+   "Nicht unterst\344tzte \334berstzung: %d nach %d\n", /* transition from, to */
+};
+
+#endif /* XRN_LANG_german */

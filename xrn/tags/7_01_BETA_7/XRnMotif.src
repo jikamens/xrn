@@ -1,0 +1,339 @@
+!
+! $Id: XRnMotif.src,v 1.37 1994-12-07 13:58:55 jik Exp $
+!
+XRnMotif.version:		7.01-beta-7 (Motif)
+*Geometry:			+0+0
+XRnMotif.Geometry:		680x800
+*fontList:			8x13
+*XmLabel.fontList:		8x13
+*XmPushButton.fontList:		9x15
+*XmPushButton*highlightOnEnter: true
+*Dialog.borderWidth:		1
+*PrefetchMax:		        50
+*keyboardFocusPolicy:		pointer
+*vpane.separatorOn:		False
+*breakLength:			84
+*lineLength:			80
+
+! Authentication:
+! You might want to uncomment this to get a default other than the
+! generic authenticator "conventional" default of "any <userid>".
+! NNTPAUTH environment variable overrides this if present.
+!*authenticator:			ypauth
+
+! Following command is some sort of "command environment" that allows you
+! to prompt the user for authentication information.  This is processed
+! by sprintf to insert the value of authenticator/NNTPAUTH.
+*authenticatorCommand:	     xterm -geometry 30x5+1+1 -T 'News Authentication' -e "%s"
+
+XRnMotif.includeHeader:	off
+XRnMotif.lockFile:	~/.xrnlock
+
+XRnMotif*XmText.translations: #override\n\
+		!Ctrl <Key>a:           beginning-of-line()\n\
+		!Ctrl <Key>b:           backward-character()\n\
+		!Ctrl <Key>d:           kill-next-character()\n\
+		!Ctrl <Key>e:           end-of-line()\n\
+		!Ctrl <Key>f:           forward-character()\n\
+		!Ctrl Alt <Key>f:       forward-word()\n\
+		!Ctrl <Key>k:           kill-to-end-of-line()\n\
+		!<Key>osfDelete:        delete-previous-character()
+
+! button keybindings
+
+*vpane*index.Translations:   #override \n\
+  <Btn2Down>:  ListBeginSelect() ListEndSelect() doTheRightThing(jump)
+
+XRnMotif.ngBindings: \
+  <Key>0x20:	doTheRightThing(goto)	\n\
+  <Key>y:	doTheRightThing(goto)	\n\
+  :<Key>u:	ngUnsub()	\n\
+  :<Key>c:	ngCatchUp()	\n\
+  <Key>n:	ngNext()	\n\
+  <Key>Down:	ngNext()	\n\
+  <Key>p:	ngPrev()	\n\
+  <Key>Up:	ngPrev()	\n\
+  <Key>-:	ngPrevGroup()	\n\
+  :<Key>g:	ngGoto()	\n\
+  :<Key>L:	ngAllGroups()	\n\
+  <Key>q:	ngQuit()
+XRnMotif.artBindings: \
+  <Key>b:	artScrollBack()		\n\
+  <Key>0x20:	doTheRightThing(goto)	\n\
+  ^<Key>N:	artSubNext()	\n\
+  :<Key>N:	artNext()	\n\
+  :<Key>n:	artNextUnread()	\n\
+  ^<Key>P:	artSubPrev()	\n\
+  <Key>P:	artPrev()	\n\
+  :<Key>-:	artLast()	\n\
+  :<Key>/:	artSubSearch()	\n\
+  <Key>f:	artFollowup()	\n\
+  <Key>r:	artReply()	\n\
+  <Key>s:	artSave()	\n\
+  <Key>w:	artSave()	\n\
+  <Key>|:	artSave()	\n\
+  <Key>%:	artSave("| uudecode")	\n\
+  :<Key>C:	artCancel()	\n\
+  :<Key>v:	artHeader()	\n\
+  ^<Key>X:	artRot13()	\n\
+  :<Key>X:	artRot13()	\n\
+  :<Key>c:	artCatchUp()	\n\
+  :<Key>j:	artMarkRead()	\n\
+  <Key>m:	artMarkUnread()	\n\
+  :<Key>k:	artKillSession()	\n\
+  :<Key>K:	artKillLocal()	\n\
+  :<Key>u:	artUnsub()	\n\
+  <Key>.:	artGotoArticle()	\n\
+  <Key>q:	artQuit()
+
+! button names
+LANG_english*addQuit.labelString:		Quit
+LANG_german*addQuit.labelString:		Gruppenauswahl
+LANG_english*addFirst.labelString:		Add first
+LANG_german*addFirst.labelString:		an Anfang
+LANG_english*addLast.labelString:		Add last
+LANG_german*addLast.labelString:		an Ende
+LANG_english*addAfter.labelString:		Add after group
+LANG_german*addAfter.labelString:		Platzieren
+LANG_english*addUnsub.labelString:		Add unsubscribed
+LANG_german*addUnsub.labelString:		Gruppe verwerfen
+
+LANG_english*ngQuit.labelString:		Quit
+LANG_german*ngQuit.labelString:			Beenden
+LANG_english*ngRead.labelString:		Read
+LANG_german*ngRead.labelString:			Gruppe lesen
+LANG_english*ngNext.labelString:		Next
+LANG_german*ngNext.labelString:			n\344chste Gruppe
+LANG_english*ngPrev.labelString:		Prev
+LANG_german*ngPrev.labelString:			vorherige Gruppe
+LANG_english*ngCatchUp.labelString:		Catch up
+LANG_german*ngCatchUp.labelString:		Gruppe gelesen
+LANG_english*ngSubscribe.labelString:		Subscribe
+LANG_german*ngSubscribe.labelString:		Gruppe abbonieren
+LANG_english*ngUnsub.labelString:		Unsubscribe
+LANG_german*ngUnsub.labelString:		Gruppe verwerfen
+LANG_english*ngGoto.labelString:		Goto group
+LANG_german*ngGoto.labelString:			gehe zu Gruppe
+LANG_english*ngListOld.labelString:		List old
+LANG_german*ngListOld.labelString:		abbonierte Gruppen
+LANG_english*ngAllGroups.labelString:		All groups
+LANG_german*ngAllGroups.labelString:		Gruppen\374bersicht
+LANG_english*ngRescan.labelString:		Rescan
+LANG_german*ngRescan.labelString:		Server abfragen
+LANG_english*ngPrevGroup.labelString:		Prev group
+LANG_german*ngPrevGroup.labelString:		vorherige Gruppe
+LANG_english*ngSelect.labelString:		Select groups
+LANG_german*ngSelect.labelString:		Merken
+LANG_english*ngMove.labelString:		Move
+LANG_german*ngMove.labelString:			Verschieben
+LANG_english*ngExit.labelString:		Exit
+LANG_german*ngExit.labelString:			Verlassen
+LANG_english*ngCheckPoint.labelString:		Checkpoint
+LANG_german*ngCheckPoint.labelString:		Aktualisieren
+LANG_english*ngPost.labelString:		Post
+LANG_german*ngPost.labelString:			Artikel verfassen
+LANG_english*ngGripe.labelString:		Gripe
+LANG_german*ngGripe.labelString:		Nachricht Systemoperator
+LANG_english*ngScroll.labelString:		Scroll forward
+LANG_german*ngScroll.labelString:		Seite nach unten
+LANG_english*ngScrollBack.labelString:		Scroll backward
+LANG_german*ngScrollBack.labelString:		Seite nach oben
+
+LANG_english*allQuit.labelString:		Quit
+LANG_german*allQuit.labelString:		Gruppenauswahl
+LANG_english*allSub.labelString:		Subscribe
+LANG_german*allSub.labelString:			Gruppe abbonieren
+LANG_english*allFirst.labelString:		Subscribe first
+LANG_german*allFirst.labelString:		an Anfang
+LANG_english*allLast.labelString:		Subscribe last
+LANG_german*allLast.labelString:		an Ende
+LANG_english*allAfter.labelString:		Subscribe after group
+LANG_german*allAfter.labelString:		Platzieren
+LANG_english*allUnsub.labelString:		Unsubscribe
+LANG_german*allUnsub.labelString:		Gruppe verwerfen
+LANG_english*allGoto.labelString:		Goto group
+LANG_german*allGoto.labelString:		gehe zu Gruppe
+LANG_english*allSelect.labelString:		Select groups
+LANG_german*allSelect.labelString:		Merken
+LANG_english*allMove.labelString:		Move
+LANG_german*allMove.labelString:		Verschieben
+LANG_english*allToggle.labelString:		Toggle order
+LANG_german*allToggle.labelString:		Anzeige umschalten
+LANG_english*allScroll.labelString:		Scroll forward
+LANG_german*allScroll.labelString:		Seite nach unten
+LANG_english*allScrollBack.labelString:		Scroll backward
+LANG_german*allScrollBack.labelString:		Seite nach oben
+
+LANG_english*artQuit.labelString:		Quit
+LANG_german*artQuit.labelString:		Gruppenauswahl
+LANG_english*artNext.labelString:		Next
+LANG_german*artNext.labelString:		Artikel weiter
+LANG_english*artScroll.labelString:		Scroll forward
+LANG_german*artScroll.labelString:		Seite nach unten
+LANG_english*artScrollBack.labelString:		Scroll backward
+LANG_german*artScrollBack.labelString:		Seite nach oben
+LANG_english*artScrollLine.labelString:		Scroll line forward
+LANG_german*artScrollLine.labelString:		Zeile nach unten
+LANG_english*artScrollBackLine.labelString:	Scroll line backward
+LANG_german*artScrollBackLine.labelString:	Zeile nach oben
+LANG_english*artScrollEnd.labelString:		Scroll to end
+LANG_german*artScrollEnd.labelString:		Zum Ende
+LANG_english*artScrollBeginning.labelString:	Scroll to beginning
+LANG_german*artScrollBeginning.labelString:	Zum Anfang
+LANG_english*artScrollIndex.labelString:	Scroll index
+LANG_german*artScrollIndex.labelString:		Index nach unten
+LANG_english*artScrollIndexBack.labelString:	Scroll index backward
+LANG_german*artScrollIndexBack.labelString:	Index nach oben
+LANG_english*artNextUnread.labelString:		Next unread
+LANG_german*artNextUnread.labelString:		n\344chster ungelesener Artikel
+LANG_english*artPrev.labelString:		Prev
+LANG_german*artPrev.labelString:		Gruppe zur\374ck
+LANG_english*artLast.labelString:		Last
+LANG_german*artLast.labelString:		Letzter
+LANG_english*artNextGroup.labelString:		Next group
+LANG_german*artNextGroup.labelString:		n\344chste Gruppe
+LANG_english*artGotoArticle.labelString:	Goto article
+LANG_german*artGotoArticle.labelString:		gehe zu Artikel
+LANG_english*artCatchUp.labelString:		Catch up
+LANG_german*artCatchUp.labelString:		bis Artikel gelesen
+LANG_english*artFedUp.labelString:		Fed up
+LANG_german*artFedUp.labelString:		Gruppe gelesen
+LANG_english*artMarkRead.labelString:		Mark read
+LANG_german*artMarkRead.labelString:		Artikel gelesen
+LANG_english*artMarkUnread.labelString:		Mark unread
+LANG_german*artMarkUnread.labelString:		Artikel nicht gelesen
+LANG_english*artUnsub.labelString:		Unsubscribe
+LANG_german*artUnsub.labelString:		Gruppe verwerfen
+LANG_english*artSubNext.labelString:		Subject next
+LANG_german*artSubNext.labelString:		Suche vorw\344rts
+LANG_english*artSubPrev.labelString:		Subject prev
+LANG_german*artSubPrev.labelString:		Suche zur\374ck
+LANG_english*artKillSession.labelString:	Session kill
+LANG_german*artKillSession.labelString:		f\374 Sitzung l\366schen
+LANG_english*artKillLocal.labelString:		Local kill
+LANG_german*artKillLocal.labelString:		f\374 Gruppe l\366schen
+LANG_english*artKillGlobal.labelString:		Global kill
+LANG_german*artKillGlobal.labelString:		f\374 immer l\366schen
+LANG_english*artKillAuthor.labelString:		Author kill
+LANG_german*artKillAuthor.labelString:		Verfasser l\366schen 
+LANG_english*artSubSearch.labelString:		Subject search
+LANG_german*artSubSearch.labelString:		Suchen Thema
+LANG_english*artContinue.labelString:		Continue
+LANG_german*artContinue.labelString:		Weitersuchen Thema
+LANG_english*artPost.labelString:		Post
+LANG_german*artPost.labelString:		Artikel verfassen
+LANG_english*artExit.labelString:		Exit
+LANG_german*artExit.labelString:		Verlassen
+LANG_english*artGripe.labelString:		Gripe
+LANG_german*artGripe.labelString:		Nachricht Systemoperator
+LANG_english*artListOld.labelString:		List old
+LANG_german*artListOld.labelString:		alle Artikel
+LANG_english*artCheckPoint.labelString:		Checkpoint
+LANG_german*artCheckPoint.labelString:		Aktualisieren
+
+LANG_english*artSave.labelString:		Save
+LANG_german*artSave.labelString:		Sichern
+LANG_english*artReply.labelString:		Reply
+LANG_german*artReply.labelString:		Nachricht
+LANG_english*artForward.labelString:		Forward
+LANG_german*artForward.labelString:		Weiterreichen
+LANG_english*artFollowup.labelString:		Followup
+LANG_german*artFollowup.labelString:		Bezug
+LANG_english*artFollowupAndReply.labelString:	Followup & Reply
+LANG_german*artFollowupAndReply.labelString:	Bezug und Nachricht
+LANG_english*artCancel.labelString:		Cancel
+LANG_german*artCancel.labelString:		Zur\374ckziehen
+LANG_english*artXlate.labelString:		Translate
+LANG_german*artXlate.labelString:		Anpassen
+LANG_english*artRot13.labelString:		Rot-13
+LANG_german*artRot13.labelString:		Rot-13
+LANG_english*artHeader.labelString:		Toggle header
+LANG_german*artHeader.labelString:		Artikelkopf
+LANG_english*artPrint.labelString:		Print
+LANG_german*artPrint.labelString:		Drucken
+
+LANG_english*compAbort.labelString:		abort
+LANG_german*compAbort.labelString:		Abbrechen
+LANG_english*compSend.labelString:		send
+LANG_german*compSend.labelString:		Verschicken
+LANG_english*compSave.labelString:		save
+LANG_german*compSave.labelString:		Sichern
+LANG_english*compIncludeArticle.labelString:	include article
+LANG_german*compIncludeArticle.labelString:	Artikel einf\374gen
+LANG_english*compIncludeFile.labelString:	include file
+LANG_german*compIncludeFile.labelString:	Datei einf\374gen
+
+LANG_english*Cancel*labelString:		Cancel Search
+LANG_german*Cancel*labelString:			Suche abbrechen
+
+!! Information window
+
+*Information*saveUnder:				False
+*Information*pane*sashWidth:			1
+*Information*pane*sashHeight:			1
+LANG_english*Information*pane*label.labelString: Information (can be left up or dismissed)
+LANG_german*Information*pane*label.labelString: Informationen (Fenster kann ge\366ffnet bleiben)
+*Information*pane*box.skipAdjust:		True
+*Information*pane*box.orientation:		XmHORIZONTAL
+*Information*pane*text*rows:			5
+*Information*pane*text*columns:			60
+*Information*pane*text*cursorPositionVisible:	False
+*Information*pane*text*scrollHorizontal:	False
+*Information*pane*text*wordWrap:		True
+*Information*pane*text*editable:		False
+*Information*pane*text*editMode:		XmMULTI_LINE_EDIT
+
+!! Dialog windows
+
+*dialog*buttons*orientation:			XmHorizontal
+
+!! Composition window
+
+*Composition*pane*sashWidth:			1
+*Composition*pane*sashHeight:			1
+*Composition*pane*text*rows:			24
+*Composition*pane*text*columns:			80
+*Composition*pane*text*wordWrap:		True
+*Composition*pane*text*editMode:		XmMULTI_LINE_EDIT
+*Composition*pane*text*scrollHorizontal:	False
+*Composition*pane*box*orientation:		XmHORIZONTAL
+*Composition*pane*box*packing:			XmPACK_TIGHT
+*Composition*pane*box*adjustLast:		False
+*Composition*pane*box*marginHeight:		1
+
+!! Main window
+
+*vpane.spacing:					2
+!! newsgroup list was not getting redrawn properly on return from
+!! article selection mode
+!! *vpane*index*listSizePolicy:			XmVARIABLE
+!! *vpane*index*scrollBarDisplayPolicy:		XmSTATIC
+*vpane*index*listMarginHeight:			2
+*vpane*index*listMarginWidth:			2
+*vpane*index*highlightThickness:		0
+*vpane*index*listSpacing:			1
+*vpane*indexbuttons*orientation:		XmHORIZONTAL
+*vpane*indexbuttons*packing:			XmPACK_TIGHT
+*vpane*indexbuttons*adjustLast:			False
+*vpane*indexbuttons*marginHeight:		1
+*vpane*articleTextText*wordWrap:		True
+*vpane*articleTextText*cursorPositionVisible:	False
+*vpane*articleTextText*editable:		False
+*vpane*articleTextText*editMode:		XmMULTI_LINE_EDIT
+*vpane*articleTextText*scrollHorizontal:	False
+!!  If I do this, there's always a vertical scrollbar but then the
+!!  visible item count isn't updated when the list is first sized...
+!*vpane*articleTextList*listSizePolicy:		XmVARIABLE
+!*vpane*articleTextList*scrollBarDisplayPolicy:	XmSTATIC
+*vpane*articleTextList*highlightThickness:	0
+*vpane*articleTextList*listSpacing:		1
+*vpane*textbuttons*orientation:			XmHORIZONTAL
+*vpane*textbuttons*packing:			XmPACK_TIGHT
+*vpane*textbuttons*adjustLast:			False
+*vpane*textbuttons*marginHeight:		1
+*vpane*separator*paneMinimum:			5
+*vpane*separator*paneMaximum:			5
+
+!! This is because Motif 1.1 has a bug -- the bottom info line isn't initially
+!! sized correctly so it gets clipped at the bottom.
+*textinfo.marginBottom: 5

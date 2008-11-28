@@ -1,0 +1,147 @@
+
+$Id: COMMON-PROBLMS,v 1.4 1995-01-25 03:17:52 jik Exp $
+
+List of Common Problems:
+
+0.  XRN does not link on a SUN under Open Windows:
+
+    SunOS 4.1.2 includes patch number 100170-06 (ld). It then discloses other
+    bugs in OW3.0 libraries Xmu and Xt. You can order patch number
+    100512-02 and 100573-03.
+
+    If you use X11R5, check your configuration file (mit/config/sun.cf) and be
+    sure you defined SunPost411FCSLd to YES.
+
+1.  You get the following message:
+
+	XRN: serious error, your NNTP server does not have XHDR support.
+	Either you are running a pre-1.5 NNTP server or XHDR has
+	not been defined in 'nntp/common/conf.h'
+	XRN requires XHDR support to run.
+
+    Do what it says.  Actually, there is some sort of timeout bug in 
+    XRN that will sometimes excite this message... if you know your
+    NNTP server has XHDR support, ignore the message.
+
+2.  You get the following message:
+
+	Current XRN Application Defaults file is not installed.
+	Some XRN functionality may be missing.
+
+		or
+
+	Current XRN Application Defaults file is not installed.
+	Some XRN functionality may be missing.
+	Application defaults version: xx, XRN version: yy
+
+    You have not installed the correct application defaults file for
+    XRN.  Copy the file XRn.ad to /usr/lib/X11/app-defaults/XRn.
+    /usr/lib/X11/app-defaults may be in a different location on your
+    machine, if after you copy the defaults files, you still get the
+    above message, contact your system administrator to find out where
+    the defaults files should be installed.
+
+    OpenWindows requires that the application defaults be in the directory:
+
+		$OPENWINHOME/lib/app-defaults
+
+3.  The scroll bars do not appear.
+
+    You have not installed the correct application defaults file for XRN.
+    Copy the file XRn.ad to /usr/lib/X11/app-defaults/XRn.
+
+4.  That Stupid Information Box - how do I get rid of it.
+
+	xrn.info: off
+
+	or 
+
+	xrn -info
+
+5.  There are too many buttons.
+
+	Check out the *ButtonList Xresources in the XRN man page.
+
+6.  Infinite Loop
+
+	You've found a bug, try to get XRN to dump core and then
+	send us the backtrace (see the xrn.dumpCore option).
+
+7.  You get the message:
+
+	"Caught signal (XX), cleaned up .newsrc and removed temp files"
+
+	You've found a bug, try to get XRN to dump core and then
+	send use the backtrace.
+
+8.  Your spawned editor does not seem to be using any of your initialization
+    environment variables (for example, EXINIT and vi).
+
+	Make sure you are setting EXINIT in your .cshrc file, not your
+	.login file.
+
+9.  Your spawned editor does not appear on your screen.
+
+	If you are running XRN remotely, the editor is probably trying 
+	to display on the remote machine.  Use the %D setting in the 
+	editorCommand resource.
+
+10. X related Questions:
+
+    a. Changing the font size
+
+	    XRn*font: 	new-font
+
+11. News System related Questions:
+
+    XRN is a news reader and poster - there are many errors or weird
+    situations that you may encounter that are do to the news system
+    itself, not XRN.  If possible, please make sure that the problem
+    you are reporting is due to XRN and not a news system problem.
+
+    If you want to create a group, find out why a group has been deleted, 
+    find out how to subscribe to a group that your system doesn't receive,
+    etc. talk to your site news administrator (in many cases, you site 
+    administrator is on the 'usenet' mail alias on your news server machine).
+
+12. You posting does not have a 'Lines' field in the header.
+    XRN does not generate the 'Lines' field in the header.  This is 
+    the responsibility of INEWS.
+
+13. XRN immediately core dumps on OpenWindows systems.
+
+    Make sure your DISPLAY environment variable is set correctly.  We have
+    had reports that XRN will core dump on OpenWindows systems if the
+    DISPLAY environment variable is not set.
+
+14. XRN does not use my .mailrc file.
+
+    By default, XRN uses sendmail for postings mail messages.  Sendmail
+    does not use mail front end alias files (such as .mailrc).  To use
+    those files, change the default mailer that XRN uses - either by
+    changing SENDMAIL in config.h or by using the -mailer option
+    (or .mailer resource) at runtime.  See the files contrib/ALT-MAILER*
+    for examples of alternate mailers.
+
+15. XRN sucks up lots of memory.
+
+    XRN builds up an array for all articles in a group based upon what
+    the NNTP server returns about the group size in response to the
+    NNTP "LIST" command.  If the server says that a group has a first
+    article at 1 and the last at 78000, XRN will allocate a
+    78000-entry array.  If a lot of groups are like this XRN will grow
+    very large.  This problem is normally the result of a
+    misconfigured NNTP server which is not configured to renumber its
+    active file after expiring old articles.  Talk to your news
+    administrator and see if you can get him/her to update the
+    configuration of the NNTP server so that the active file is
+    renumbered after old articles are expired.  Otherwise, recompile
+    XRN after removing the FIXED_C_NEWS_ACTIVE_FILE definition in
+    config.h.  This will cause XRN to go a little bit more slowly than
+    otherwise, but it will take up a lot less memory (because it uses
+    the NNTP "GROUP" comand, which is more accurate than the "LIST"
+    command, to check each group before allocating space for it).
+
+    If your NNTP server is configured correctly and intentionally
+    keeps many thousands of messages if newsgroups that you read,
+    there's no way around it -- XRN will be a memory pig.

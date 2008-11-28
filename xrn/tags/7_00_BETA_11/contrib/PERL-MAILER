@@ -1,0 +1,68 @@
+#!/usr/local/bin/perl 
+#
+# $Header: /d/src/cvsroot/xrn/contrib/PERL-MAILER,v 1.1 1994-10-10 08:38:36 jik Exp $
+#
+# Prepare a mail message from xrn for piping through a mailer, notably one
+# that handles aliases, unlike the raw sendmail default.
+# The script gets the text of the message as stdin, with the format
+#	To: addresses 
+# 	Subject: some text strings
+# on the top. It's dumb about assuming that it's given this format. 
+# These lines are stripped off to be passed to /usr/ucb/Mail or a derivative of
+# your choice. 
+# Currently works only for single-line To: and Subject:
+#
+# Note: my first perl script; sorry for the ugliness. 
+#
+# David B. Lewis  			Lewis, Trachtenberg & Associates (LTA)
+# Note new address!:  david@lta.com	+1 617 225 0366
+#
+# Could pass mailer in as argument.
+die "Usage: no arguments; just the script's name, please\n" if $#ARGV != -1;
+
+$to='';
+$subject='';
+
+# Abort when we finally hit a nothing line.
+# Assume no initial whitespace for now.
+while (<STDIN>) {
+  local ($head);
+  $line = $_;
+  chop;
+  last if /^[ \t]*$/;			
+  $line =~ /^([^:]+):\s*(.+)$/;
+  $head = $1;
+
+  $subject = $2	if $head eq 'Subject';
+
+   if ($head eq 'To')
+	{
+	# parse out (User Name). Be cheesy and use this pattern as a separator,
+	# so that all stuff of form (a) (a b) (a b c) drops out.
+	@addresses = split ( /\s*\([\w\s\.\-]+\)\s*|\s+/ , $2);
+	foreach $whom (@addresses)
+		{
+		$to = join (' ',$to,$whom);
+		}
+	}
+}
+
+#print STDERR $to;
+#exit 0;
+
+# use mush, or /usr/ucb/Mail, /usr/ucb/mail or possibly just mail
+if ($subject ne '')	
+	{
+	$MAILER = "| mush -s \"$subject\" $to ";
+	}
+else	# line Subject: is missing or is there but blank; can't pass -s
+	{
+	$MAILER = "| mush $to ";
+	}
+
+open(MAILER,$MAILER) || die "Can't pipe to $MAILER: $!";
+
+print MAILER <STDIN>;
+
+close (MAILER);
+exit 0

@@ -1,0 +1,270 @@
+/*
+ * $Header: /d/src/cvsroot/xrn/Imakefile,v 1.33 1994-10-21 20:01:44 jik Exp $
+ *
+ * xrn - an X-based NNTP news reader
+ *
+ * Copyright (c) 1988-1993, Ellen M. Sentovich and Rick L. Spickelmier.
+ *
+ * Permission to use, copy, modify, and distribute this software and its
+ * documentation for any purpose and without fee is hereby granted, provided
+ * that the above copyright notice appear in all copies and that both that
+ * copyright notice and this permission notice appear in supporting
+ * documentation, and that the name of the University of California not
+ * be used in advertising or publicity pertaining to distribution of 
+ * the software without specific, written prior permission.  The University
+ * of California makes no representations about the suitability of this
+ * software for any purpose.  It is provided "as is" without express or
+ * implied warranty.
+ *
+ * THE UNIVERSITY OF CALIFORNIA DISCLAIMS ALL WARRANTIES WITH REGARD TO 
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND 
+ * FITNESS, IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE FOR
+ * ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
+ * RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
+ * CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN 
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ */
+
+/*
+ * Imakefile - Imakefile for XRN
+ */
+
+/*
+ * Either uncomment the following, or use "-DUseMotif" to imake, or use
+ * "make Makefile IMAKE_DEFINES=-DUseMotif", to get a Makefile for the
+ * Motif version.
+ */
+
+/* #define UseMotif */
+
+/* Uncomment this to include editres support with Motif (X11R5 only). */
+/* #define UseEditres */
+
+#ifdef BandAidCompiler
+#include BandAidCompiler
+#endif
+
+/*
+ * If you use InterNetNews, set this define to the location of your
+ * InterNetNews library.
+ */
+
+#ifdef OV_CAMBRIDGE
+IMAKE_DEFINES = -DOV_CAMBRIDGE
+#define INN /afs/gza.com/development/news/build/inn/libinn.a
+#endif
+
+/*
+ * If you need to link against special libraries, put them in
+ * XRN_LOAD_FLAGS.  What's here may or may not be right for your
+ * system.  If in doubt, leave it alone and see what happens.
+ */
+
+#if defined(XmacIIServer) || defined(hp9000s300) || defined(hp9000s800) || defined(SGIArchitecture)
+XRN_LOAD_FLAGS = -lPW
+#endif
+
+#if defined(RsArchitecture)
+XRN_LOAD_FLAGS = -lPW -lbsd
+#endif
+
+#if defined(AMIX)
+XRN_LOAD_FLAGS = -lucb -lm -lgen
+#endif
+
+#if defined(SunArchitecture) && (OSMajorVersion > 4)
+#define SolarisArchitecture
+XRN_LOAD_FLAGS = -lgen
+#endif
+
+#ifdef BSD386Architecture
+XRN_LOAD_FLAGS = -lcompat
+#endif
+
+/*
+ * You probably won't need to change most of this.  However, you can
+ * change APPDEFAULTS if you want the class name to be something other
+ * than XRn (or XRnMotif for the Motif version).
+ */
+
+#ifdef UseMotif
+XAWMOTIFC = xawmotif.c
+XAWMOTIFO = xawmotif.o
+#include <Motif.tmpl>
+#ifdef UseEditres
+LOCAL_LIBRARIES = $(XMULIB) XmClientLibs
+DEPLIBS = $(DEPXMULIB) XmClientDepLibs
+MOTIFDEFINES = -DMOTIF -DEDITRES
+#else
+LOCAL_LIBRARIES = XmClientLibs
+DEPLIBS = XmClientDepLibs
+MOTIFDEFINES = -DMOTIF
+#endif
+APPDEFAULTS = XRnMotif
+#else
+LOCAL_LIBRARIES = XawClientLibs
+DEPLIBS = XawClientDepLibs
+APPDEFAULTS = XRn
+MOTIFDEFINES = /*nothing*/
+#endif
+
+/*
+ * Special compiler flags for your platform.  If in doubt, just leave
+ * them alone and see what happens.
+ */
+
+#if defined(HPArchitecture)
+XRN_DEFINES = -D_INCLUDE_POSIX_SOURCE -D_INCLUDE_HPUX_SOURCE \
+ -D_INCLUDE_XOPEN_SOURCE -D_INCLUDE_AES_SOURCE $(MOTIFDEFINES)
+#else
+# if defined(aiws)
+XRN_DEFINES = -a -Nn3000 -Nd4000 $(MOTIFDEFINES)
+# else
+#  if defined(hp9000s300)
+XRN_DEFINES = -Wc,-Ns4000 $(MOTIFDEFINES)
+#  else
+#   if defined(HCRevision)
+XRN_DEFINES = -DUNIXCPP -DNOSTDHDRS $(MOTIFDEFINES)
+#   else
+#    if defined(gould)
+XRN_DEFINES = -DNOVOID -DLONGINT -UINTSPRINTF $(MOTIFDEFINES)
+#    else
+#     if defined(SolarisArchitecture)
+XRN_DEFINES = -DSOLARIS $(MOTIFDEFINES)
+#     else
+XRN_DEFINES = $(MOTIFDEFINES)
+#     endif
+#    endif
+#   endif
+#  endif
+# endif
+#endif
+
+/*
+ * You probably don't need to change anything in this block.
+ */
+
+#ifdef OV_CAMBRIDGE
+SITE_DEFINES = -DOV_CAMBRIDGE
+#endif
+
+#if defined(INN)
+EXTRA_LOAD_FLAGS = $(XRN_LOAD_FLAGS) INN
+CLIENTSRC =
+CLIENTOBJ =
+DEFINES = $(XRN_DEFINES) $(SIGNAL_DEFINES) -DINN $(SITE_DEFINES)
+#else
+EXTRA_LOAD_FLAGS = $(XRN_LOAD_FLAGS)
+CLIENTSRC = clientlib.c
+CLIENTOBJ = clientlib.o
+DEFINES = $(XRN_DEFINES) $(SIGNAL_DEFINES) $(SITE_DEFINES)
+#endif
+
+/*
+ * If you want the program to be called something other than "xrn",
+ * change this.
+ */
+
+PROGRAMS = xrn
+
+/*
+ * You probably don't need to edit anything below this line.
+ */
+
+#if HasVoidSignalReturn
+SIGNAL_DEFINES = -DVOID_SIGNAL
+#endif
+
+HDRS = mesg_strings.h
+SRCS = avl.c buttons.c $(CLIENTSRC) compose.c cursor.c dialogs.c \
+       refile.c mesg.c error_hnds.c newsrcfile.c resources.c    \
+       internals.c save.c server.c utils.c xmisc.c xrn.c $(XAWMOTIFC) \
+       xthelper.c y.tab.c cancel.c vprintf.c tempnam.c strstr.c \
+       strtok.c mesg_strings.c
+OBJS = avl.o buttons.o $(CLIENTOBJ) compose.o cursor.o dialogs.o \
+       refile.o mesg.o error_hnds.o newsrcfile.o resources.o    \
+       internals.o save.o server.o utils.o xmisc.o xrn.o $(XAWMOTIFO) \
+       xthelper.o y.tab.o cancel.o vprintf.o tempnam.o strstr.o \
+       strtok.o mesg_strings.o
+
+all:: mesg_strings.h
+
+depend:: lex.yy.c y.tab.c mesg_strings.h
+
+ComplexProgramTarget($(PROGRAMS))
+InstallAppDefaults($(APPDEFAULTS))
+
+#if HasSaberC == YES
+# saber_xrn:: lex.yy.c
+# osaber_xrn:: lex.yy.c
+#endif
+
+lex.yy.c: newsrc.l
+	$(LEX) newsrc.l
+y.tab.c: newsrc.y
+	$(YACC) newsrc.y
+y.tab.o: lex.yy.c avl.h news.h newsrcfile.h utils.h
+
+mesg_strings.h: mesg_strings.c
+	-rm -f mesg_strings.h.tmp
+	awk 'BEGIN {print "extern char *message_strings[];" } \
+	     /^\/\* < [^ >]* > / { printf("#define %s_MSG message_strings[%d]\n",\
+				          $$3, msg_num); next } \
+	     /",/ { msg_num++; next }' < mesg_strings.c > mesg_strings.h.tmp
+	-rm -f mesg_strings.h
+	mv mesg_strings.h.tmp mesg_strings.h
+
+clean::
+	$(RM) y.tab.c lex.yy.c mesg_strings.h
+
+TAR_FILE =		xrn.tgz
+PATCH_FILE =		xrn.patch
+RCS_FILES = 		$(shell find . -name '*,v' -print)
+CHECKED_OUT_FILES =	$(shell rlog -R -L $(RCS_FILES))
+
+all-checked-in:
+	@if [ -n "$(CHECKED_OUT_FILES)" ]; then \
+		echo "Checked out files: $(CHECKED_OUT_FILES)"; \
+		exit 1; \
+	else \
+		 exit 0; \
+	fi
+
+$(PATCH_FILE) patch: all-checked-in
+	rcsdiff -u -rLAST_REL -rCURRENT_REL $(RCS_FILES) > $(PATCH_FILE); \
+	if [ \( $$? -eq 0 \) -o \( $$? -eq 1 \) ]; then exit 0; else exit 1; fi
+
+$(TAR_FILE) tar: all-checked-in
+	gtar --create --exclude Attic --exclude RCS --exclude '*~' \
+		--exclude '.#*' --exclude TAGS --exclude $(TAR_FILE) \
+		--exclude $(PATCH_FILE) --exclude '*.orig' \
+		--exclude '*.rej' \
+		--verbose --file - . | gzip --best > $(TAR_FILE)
+
+#ifdef OV_CAMBRIDGE
+label: all-checked-in
+ifdef RCS_LABEL
+	rcs -NLAST_REL:CURRENT_REL -n$(RCS_LABEL): \
+		-NCURRENT_REL:$(RCS_LABEL) $(RCS_FILES) >/dev/null
+else
+	echo "You must set RCS_LABEL!"; exit 1
+endif
+
+VERSION_FILES = XRn.ad XRnMotif.ad xrn.h xrn.man
+
+upversion:
+ifdef OLD_VERSION
+ifdef NEW_VERSION
+	co -l $(VERSION_FILES)
+	perl -pi -e 's/$(OLD_VERSION)/$(NEW_VERSION)/' $(VERSION_FILES)
+	ci -u -m'Update version number for $(NEW_VERSION).' $(VERSION_FILES)
+else
+	echo "You must set OLD_VERSION and NEW_VERSION!"; exit 1
+endif
+else
+	echo "You must set OLD_VERSION and NEW_VERSION!"; exit 1
+endif
+#endif
+
+.PHONY: all-checked-in

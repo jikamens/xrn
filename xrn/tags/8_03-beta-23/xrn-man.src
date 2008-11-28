@@ -1,0 +1,2100 @@
+.TH XRN 1 "$Date: 1997-03-02 19:01:04 $" "X"
+.\" $Id: xrn-man.src,v 1.173 1997-03-02 19:01:04 jik Exp $
+.\"
+.\" xrn - an X-based NNTP news reader
+.\"
+.\" Copyright (c) 1988-1993, Ellen M. Sentovich and Rick L. Spickelmier.
+.\"
+.\" Permission to use, copy, modify, and distribute this software and its
+.\" documentation for any purpose and without fee is hereby granted, provided
+.\" that the above copyright notice appear in all copies and that both that
+.\" copyright notice and this permission notice appear in supporting
+.\" documentation, and that the name of the University of California not
+.\" be used in advertising or publicity pertaining to distribution of 
+.\" the software without specific, written prior permission.  The University
+.\" of California makes no representations about the suitability of this
+.\" software for any purpose.  It is provided "as is" without express or
+.\" implied warranty.
+.\"
+.\" THE UNIVERSITY OF CALIFORNIA DISCLAIMS ALL WARRANTIES WITH REGARD TO 
+.\" THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND 
+.\" FITNESS, IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE FOR
+.\" ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
+.\" RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
+.\" CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN 
+.\" CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.ds XR \fIxrn\fP
+.ds NS ".newsrc"
+.ds NG \fBNewsgroup\fP
+.ds AR \fBArticle\fP
+.ds AL \fBAll\fP
+.ds AD \fBAdd\fP
+.ds XD "~/.Xresources"
+.\"
+.SH NAME
+xrn \- an X-based interface to the USENET news system that uses the NNTP remote news server
+.SH SYNOPSIS
+.PP
+\*(XR is an X-based interface to the USENET news system
+that uses the NNTP remote news protocol for accessing newsgroups
+and articles on an NNTP server, thus allowing
+users to read news from personal workstations
+by accessing a central news
+repository.
+This manual page applies to version 8.03-beta-23.
+.\"
+.SH DESCRIPTION
+.PP
+.nh
+\*(XR
+[\-addButtonList list]
+[\-allButtonList list]
+[\-artButtonList list]
+[\-artSpecButtonList list]
+[\-authenticator command]
+[\-authenticatorCommand command]
+[+/\-authorFullName]
+[\-breakLength len]
+[\-busyIconName name]
+[\-busyIconPixmap pixmap]
+[\-cacheFile file]
+[\-cancelCount number] 
+[+/\-cc]
+[+/\-ccForward]
+[\-confirm list] 
+[\-deadLetters file] 
+[\-defaultLines count]
+[+/-discardOld]
+[+/\-displayLineCount]
+[+/\-displayLocalTime]
+[\-distribution dist]
+[+/\-dumpCore]
+[\-editorCommand command]
+[+/\-executableSignatures]
+[+/\-fullNewsrc]
+[-geometry geometry]
+[\-iconGeometry +X+Y] 
+[\-iconName name]
+[\-iconPixmap pixmap]
+[\-ignoreNewsgroups list]
+[\-includeCommand command]
+[+/\-includeHeader]
+[\-includePrefix "prefix text"]
+[+/\-includeSep]
+[+/\-info]
+[+/\-killFiles] 
+[\-leaveHeaders list]
+[\-lineLength len]
+[+/\-localSignatures]
+[\-lockFile file]
+[\-mailer mailer] 
+[\-maxLines number] 
+[\-minLines number]
+[\-newsrcFile file] 
+[\-ngButtonList list]
+[\-nntpServer name] 
+[\-onlyShow number]
+[\-organization org]
+[+/\-pageArticles]
+[\-pointerBackground color]
+[\-pointerForeground color]
+[\-prefetchMax number]
+[\-prefetchMinSpeed kbytes]
+[\-printCommand command]
+[\-replyTo name]
+[+/\-rescanOnEnter]
+[\-rescanTime time]
+[+/\-resetSave]
+[\-saveDir directory]
+[\-saveMode mode] 
+[\-saveNewsrcFile file] 
+[\-savePostings file] 
+[\-saveString string]
+[\-signatureFile file] 
+[+/\-signatureNotify]
+[+/\-sortedSubjects]
+[+/\-stayInArticleMode]
+[\-stripHeaders list]
+[+/\-subjectRead] 
+[+/\-subjectScrollBack]
+[\-tmpDir directory]
+[\-topLines number]
+[+/\-typeAhead]
+[\-unreadIconName name]
+[\-unreadIconPixmap pixmap]
+[+/\-updateNewsrc]
+[\-verboseKill actions]
+[\-watchUnread list]
+.\"
+
+Along with the standard toolkit options, e.g.,
+\-display, \-geometry, \-xrm, and \-iconic.
+.\"
+.SH BASIC OPERATION
+.PP
+\fBDon't let the size of this manual page alarm you.\fP
+\*(XR is easy to learn on-line without reading
+the documentation.
+This manual page describes many features that may be obvious to the
+casual observer.
+It also describes how to use scroll bars, buttons, and select text;
+if you have used an X toolkit application before, the section
+titled "BUTTONS, SCROLL BARS, and SELECTION" can be skipped.
+.PP
+\*(XR uses the \*(NS file to determine what groups need
+to be read.
+If the \*(NS file does not exist, it is created, and the
+user is subscribed to the news group "news.announce.newusers".
+.PP
+\*(XR has four modes of operation: \*(AD, \*(NG, \*(AL,
+and \*(AR modes.
+\*(AD mode will be entered on startup if there are any groups
+that the news system knows about that are not in the \*(NS file
+(\fIi.e.,\fP new groups).
+In \*(AD mode, the user is given a
+list of new groups.
+Groups can then be subscribed to and placed in the \*(NS file
+at the first position, the last position, or after a group already
+in the \*(NS file.
+When \*(AD mode is exited, any remaining groups are
+added unsubscribed, so the user is not asked about them the
+next time \*(XR is started.
+On exit from \*(AD mode, or on startup if there are no new groups,
+\*(NG mode is entered.
+\*(NG mode displays the subscribed to groups that have unread
+articles and the range of available articles.
+The basic functions available in this mode allow the user to
+read a group,
+mark all articles in a group as read, 
+unsubscribe from a group,
+move the cursor around the newsgroup window,
+change the order of the list of newsgroups,
+re-visit the most recently visited group,
+and quit \*(XR.
+In addition, the user can
+subscribe to a group and specify its position in the \*(NS file, 
+query the news server for new articles and groups, and
+go to groups that are either not subscribed to or currently have
+no unread articles (\fIi.e.,\fP groups not displayed on the screen).
+From \*(NG mode the user can go into \*(AL mode.
+In \*(AL mode the user is presented with a sorted list of
+all known groups and their subscription status (subscribed
+or unsubscribed) and can change their status or location
+in the \*(NS file.
+On exiting \*(AL mode the user is placed back in \*(NG mode.
+In order to read the articles in a particular group, the user goes
+from \*(NG mode to \*(AR mode.
+In \*(AR mode the user can sequence through the articles in
+the group forward or backward, mark a group of articles
+as read or unread, mark all articles in the current group
+as read, unsubscribe to the current group, 
+return to the last article visited, search forward or backward
+for an article subject (either for the exact subject or for
+a regular expression in the subject), locally kill all articles with a
+particular subject, and quit (saving all changes) or exit
+(leaving all articles marked unread).
+In addition, the user can save the current
+article in a file, post an article to the group, post a followup
+to the current article,
+mail a reply to the author of an article, forward an article to
+another user via mail, and
+return to \*(NG mode.
+.\"
+.SH NEWS SYSTEM
+.PP
+.sp
+The news system is a set of bulletins, discussion groups, program sources,
+and other bits of information distributed around the world under the
+name "USENET".
+The information is generally called "news" and is broken up into
+"newsgroups".
+Each newsgroup deals with a subject or set of subjects.
+The subjects for newsgroups are varied:  from discussions about particular
+versions of UNIX to movie reviews, from information on the X window system
+to commentary on current social and political issues.
+.PP
+For information on what newsgroups are available, answers to commonly
+asked questions, and newsgroup ediquette, read the articles in the
+newsgroup "news.announce.newsusers".  Users who are new to the USENET
+are strongly encouraged to become familiar with the contents of the
+articles in "news.announce.newusers" before posting any messages.
+.\"
+.SH NEWS SERVER
+.PP
+In order to run \*(XR, you must have access to an NNTP news server.
+If you do not have access to such a server and would like to set one
+up, see the "USENET Software:
+History and Sources" posting in news.announce.newusers for information
+about where to get the appropriate software.
+The NNTP server to which to connect must be specified in one of the
+following ways:
+the "\-nntpServer" command line argument;
+the environment variable NNTPSERVER;
+the \fBnntpServer\fP X resource;
+xSERVER_FILE_STARTx
+the contents of the file "xSERVER_FILEx"
+xSERVER_FILE_ENDx
+xINN_STARTx
+the NNTP server configured into INN
+xINN_ENDx
+(these are listed in the order in which they are checked).
+The name can be either a host name
+(e.g., shambhala.berkeley.edu) or an internet number (e.g.,
+128.32.132.54).  If someone else has installed \*(XR at your site,
+then it is probably already configured to use the correct news server
+and you don't have to worry about it.
+.\"
+.SH SCREEN LAYOUT
+.PP
+The screen displayed by \*(XR consists of seven sections:
+a title bar, two scrollable text windows, two information bars,
+and two button boxes.
+The title bar displays the current version of the program.
+The top text window displays information based on the mode.
+In \*(AD mode, the window displays all groups that are
+not currently in the \*(NS file, one per line.
+In \*(NG mode, the
+window displays the groups containing unread articles.
+Each group is represented by a line of the form:
+.sp
+.ce 100
+Unread news in <group name>           <num> article(s) + <old> old
+.ce 0
+.sp
+<group name> is the name of the group,
+<num> is the number of unread articles, and <old> is the number of
+read articles that are still available (i.e. have not been expired) on
+the news server.  If "List old" is toggled on, then the word "Unread"
+will not appear on the lines of newsgroups with no unread articles,
+and furthermore, the words "news in" will not appear on the lines of
+newsgroups with no available articles at all.
+.PP
+In \*(AR mode, the window displays a list of subjects
+for the articles in the current group, with each subject line
+being represented by a line of the form:
+.sp
+.ce 100
+[+u][SP] <num>    <subject of the article> [<lines>] <author>
+.ce 0
+.sp
+where <num> is the article number, <lines> is the number of lines in
+the article (when available), and <author> is the author of the
+article.  A `+' in the first position
+means that the article has been read, a `u' in the first position
+means that the article has been marked as unread, a `S' in the second
+position means that the article has been saved to a file, and a `P' in
+the second position means that the article has been printed.
+.PP
+The top information bar displays information about the mode, the buttons
+in the top button box, and error messages.
+The top button box has buttons that are specific to the mode
+and apply to the information in the top text window.
+The bottom text window displays articles in \*(AR mode
+and a list of all known groups and their subscription status in \*(AL
+mode.
+The bottom information bar displays information about the mode,
+the buttons in the bottom button box, and error messages.
+The bottom button box has buttons that are specific to the mode
+and apply to the information in the bottom text window.
+.SH BUTTONS, SCROLL BARS, AND SELECTION
+.PP
+All button and text selection commands are done with the
+left mouse button.
+Single-line text selection is accomplished by
+clicking the left mouse button on the desired line.
+Multiple-line selection is accomplished by clicking the
+left mouse button on the first line, holding the button down,
+dragging the mouse to the last line, and releasing the mouse button.
+Multiple-line selection can also be accomplished by left-clicking
+on the first line, and right-clicking on the last line.
+Selected lines appear in reverse video (the foreground and background
+colors are switched).
+.PP
+The text windows are scrolled with the scroll bar on the
+left side of the window.
+Clicking the left mouse button in the scroll bar will scroll the
+text down
+some fraction of a page; clicking the right mouse button in 
+the scroll bar similarly scrolls up.
+Clicking the middle mouse button will scroll over larger areas:
+clicking at the top of the scroll bar will
+scroll to the top of the text, clicking in the middle will
+scroll to the middle of the text, and clicking at the bottom will
+scroll to the bottom of the text.
+For those who like using the keyboard,
+hitting control-V while the mouse cursor is in a scrollable text window
+will cause the window to scroll down one page, meta-V will scroll up one
+page.
+.PP
+Hitting the space bar (while the mouse cursor is in the top button box)
+will do the right thing; scroll the article text window
+when appropriate, go to the next article at the end of the current article,
+go to newsgroup mode when done with all articles in the current group, and
+go to the next group when in newsgroup mode.
+.PP
+Clicking the middle button on a newsgroup in \*(NG mode causes \*(XR
+to enter \*(AR mode in that newsgroup.  Clicking the middle button on
+an article in \*(AR mode causes that article to be displayed.
+.\"
+.SH MODES
+.PP
+The next few sections describe \*(XR's modes by presenting an overview
+of each mode and then a list of its buttons.  Each list includes the
+names and descriptions of the mode's buttons.  The labels that
+actually appear on the buttons when you run \*(XR are not listed; most
+of them are obvious, but if you are unsure about one, consult the list
+of button labels in the application-defaults file.
+
+The listed button names correspond to button widget names, so they can
+be used in X resources to control the appearance or behavior of
+individual button widgets.
+
+Furthermore, the button names are used in the "ButtonList" options
+(see their documentation in "COMMAND LINE ARGUMENTS", below) to
+control which buttons are actually displayed.  Note that only the
+buttons whose names are followed by asterisks in the lists below are
+displayed in the default \*(XR configuration; the others are displayed
+only if you specify a "ButtonList" option which requests them.
+
+All button names are also action procedure names and can therefore be
+used in Xt translations to specify key sequences that activate button
+behavior (consult the X toolkit intrinsics documentation for more
+information about translations).  Some buttons are already bound to
+key sequences by default; the key sequences for such buttons are
+listed in parentheses after their entries in the lists below.
+.\"
+.SH ADD MODE
+.PP
+\*(AD mode is entered when \*(XR detects groups that the news system 
+knows about that are not in the \*(NS file (i.e., newly created
+groups).
+
+To change or add key bindings to \*(AD mode, use the X resource
+"*addFrame.list.translations".
+.IP "addQuit * (`q')"
+Add remaining groups in the list to \*(NS as unsubscribed;
+go to group mode.
+.IP "addIgnoreRest * (`x')"
+If the "fullNewsrc" option is false, then mark the remaining groups
+"ignored" (i.e., don't subscribe to them or add them to the newsrc
+file) and go to group mode.  Otherwise, behave as "addQuit".
+.IP "addFirst * (`^')"
+Add the current group(s) to the beginning of the \*(NS file and
+mark as subscribed.
+The current group is the selected group(s), or the group
+on the line containing the cursor.
+.IP "addLast * (`$')"
+Add the current group(s) to the end of the \*(NS file and
+mark as subscribed.
+.IP "addAfter * (`+')"
+Add the current group(s) after a group already in the \*(NS.
+A dialog box is used to allow the user to enter the name of the
+group to add the group after.
+The mouse cursor must be in the dialog box
+for \*(XR to accept text (however, it does not have to be
+in the type-in area).
+The dialog box has two options: \fBabort\fP and \fBadd\fP.
+No other buttons on the screen will work until the user
+has selected an option in the dialog box.
+Hitting carriage return is the same as clicking the
+\fBadd\fP button (in all \*(XR dialog boxes hitting carriage
+return is the same as clicking in the rightmost button of the
+dialog box).
+.IP "addUnsub * (`u')"
+Add the current group(s) to the end of the \*(NS file
+and mark as unsubscribed.
+.IP "addIgnore * (`i')"
+If the "fullNewsrc" option is false, then mark the current group(s)
+"ignored".  Otherwise, behave as "addUnsub".
+.\"
+.SH NEWSGROUP MODE
+.PP
+\*(NG mode 
+informs the user of the groups with unread news and
+gives the user control over which groups are visited.
+Clicking the middle button on a newsgroup entry will enter that
+newsgroup.
+
+To change or add key bindings to \*(NG mode, use the X resource
+"*newsgroupFrame.newsgroups.translations".  In addition to the key
+bindings listed with buttons below, clicking the middle button on a
+group in the newsgroup list will cause \*(XR to enter that newsgroup.
+.IP "ngQuit * (`q')"
+Quit \*(XR.
+.IP "ngRead * (space or `y')"
+Read the articles in the current group.  The current group is either
+the first one selected (if one or more are selected) or the one on the
+line containing the cursor.  If all groups have been read, the user
+can still access groups by using the \fBgoto newsgroup\fP command.
+Hitting the space bar with the cursor in the top button box will call
+this function.
+.IP "ngNext * (down arrow or `n')"
+Move the cursor to the next group, leaving the articles in
+the current group untouched.
+.IP "ngPrev * (up arrow or `p')"
+Move the cursor to the previous group, leaving the articles in
+the current group untouched.
+.TP
+ngScroll ("Next", "Page Down" or Ctrl-v)
+Scroll the list of newsgroups forward a page.
+.TP
+ngScrollBack ("Prior", "Page Up" or Meta-v)
+Scroll the list of newsgroups backwards a page.
+.IP "ngCatchUp * (`c')"
+Mark all articles in the current group as read.
+.IP "ngSubscribe * (`s')"
+Subscribe to a group.
+A dialog box is used to allow the user to enter the
+name of the group.
+The dialog box has the following options:
+\fBabort\fP, 
+\fBprev group\fP (subscribe to the previous group visited),
+\fBfirst\fP (put group in the beginning of the \*(NS file),
+\fBlast\fP (put group in the end of the \*(NS file), and
+\fBcurrent position\fP (put group at the position of the cursor).
+This command can also be used to change the position of a subscribed
+group.
+Hitting carriage return after typing in the name is the same as
+clicking the \fBcurrent position\fP button.
+.IP "ngUnsub * (`u')"
+Unsubscribe from the current group.
+.IP "ngGoto * (`g')"
+Go to a newsgroup by typing its name into a dialog.
+The name specified can be a substring of the group name or
+a regular expression.  If the newsgroup is currently ignored, it is
+added to the end of the newsrc file and subscribed before it is
+visited.  If the newsgroup is not currently subscribed,
+it is subscribed before it is visited.
+The first unread article in the group is displayed, or the last
+article in the group if there are no unread articles.
+.IP "ngAllGroups * (`L')"
+Display all of the groups that exist, their subscription statuses,
+and a set of buttons for changing the status.
+.IP "ngRescan * (`r')"
+Query the server for any new groups or articles.  If "cacheActive"
+(see below) is True, then this command checks for new newsgroups in
+the foreground and then checks for new articles group by group in the
+background; if "cacheActive" is False, then the entire rescan takes
+place in the foreground.
+.IP "ngGetList (`R')"
+Retrieve a full list of newsgroups (and what articles are available in
+them) from the server and check for new newsgroups.  This command
+always retrieves a full list in the foreground, pausing \*(XR while
+the retrieval is happening, even if "cacheActive" is True.
+.IP "ngPrevGroup * (`-')"
+Re-visit the previous group visited.  If it is not currently
+subscribed, it is subscribed before it is visited.
+.IP "ngListOld * (`l')"
+Toggle between listing only groups with unread news and listing all
+subscribed groups whether or not they have unread news.  \*(XR starts
+out listing only groups with unread news.
+.IP "ngSelect * (Shift-S)"
+Select a range of groups for a subsequent "ngMove" operation.  This
+selection is cancelled automatically if the list of newsgroups
+displayed in the newsgroup list changes.
+.IP "ngMove * (`m')"
+Move the previously selected groups to the current cursor position,
+unless the cursor is currently within the selected groups, in which
+case nothing happens.
+.IP "ngExit * (`x')"
+Quit \*(XR, leaving the \*(NS file unchanged since the last time it
+was updated.  The \*(NS file is updated each time a rescan or
+checkpoint occurs, as well as each time you exit from \*(AR mode if
+"updateNewsrc" is true.  See below for more information about
+rescanning, checkpointing, and "updateNewsrc".
+.IP "ngCheckPoint * (Ctrl-s)"
+Update the \*(NS file based on \*(XR's current state.
+.IP "ngGripe * (Shift-G)"
+Send a gripe (bug, bug fix, complaint, feature request, etc.) to
+the maintainer of \*(XR.
+.IP "ngPost * (`a')"
+Post an article to a newsgroup or a comma-separated list of
+newsgroups.  See "COMPOSING MESSAGES" below for more information.
+.IP "ngPostAndMail * (Shift-A)"
+Post an article and mail it too.
+.IP "ngMail (Shift-M)"
+Send a mail message.
+.\"
+.SH ALL MODE
+.PP
+Use \*(AL mode to display a list of all groups, in \*(NS order
+or in alphabetical order; to subscribe to or unsubscribe from specific
+groups; or to change the order of groups in your \*(NS.  Operations in
+\*(AL mode apply to the selected groups if any are selected, or to the
+group on the same line as the cursor otherwise.
+
+To change or add key bindings to \*(AL mode, use the X resource
+"*allFrame.list.translations".  In addition to the key bindings listed
+with buttons below, clicking the middle button on a group in the
+newsgroup list will cause \*(XR to enter that newsgroup.
+.IP "allQuit * (`q')"
+Update the \*(NS file and return to group mode.
+.IP "allNext * (down arrow or `n')"
+Move the cursor to the next group.
+.IP "allPrev * (up arrow or `p')"
+Move the cursor to the previous group.
+.TP
+allScroll ("Next", "Page Down" or Ctrl-v)
+Scroll the list of newsgroups forward a page.
+.TP
+allScrollBack ("Prior", "Page Up" or Meta-v)
+Scroll the list of newsgroups backwards a page.
+.IP "allSub * (`s')"
+Subscribe to the selected groups, leaving them at their current
+position in the \*(NS file.
+.IP "allFirst * (`^')"
+Subscribe to the selected groups and move them to the beginning of the \*(NS file.
+.IP "allLast * (`$')"
+Subscribe to the selected groups and move them to the end of the \*(NS
+file.
+.IP "allAfter * (`+')"
+Subscribe to the selected groups and move them after a particular
+group (for which the user is prompted with a dialog box) in the \*(NS
+file.
+.IP "allUnsub * (`u')"
+Unsubscribe from the selected groups.
+.IP "allIgnore * (`i')"
+Ignore the selected groups, i.e., unsubscribe from them and remove
+them from the newsrc file.
+.IP "allGoto * (space or `g')"
+Go to the current newsgroup (either the first selected newsgroup or
+the newsgroup on the same line as the cursor).  As with "ngGoto",
+either the first unread article or the last article (if there are no
+unread articles) is displayed.  However, unlike "ngGoto", this button
+does not subscribe you to an unsubscribed newsgroup before entering
+it.
+.IP "allSelect * (Shift-S)"
+.IP "allMove * (`m')"
+Same as the "ngSelect" and "ngMove" buttons in \*(NG mode.  Note that
+"ignored" newsgroups cannot be moved, since they have no location in
+the newsrc file.
+.IP "allToggle * (`o')"
+Toggle between listing newsgroups in \*(NS order and alphabetical
+order.
+.IP "allPost * (`a')"
+Post an article, by default to the current newsgroup.
+.IP "allPostAndMail * (Shift-A)"
+Post an article and mail it too.
+.IP "allMail (Shift-M)"
+Send a mail message.
+.\"
+.SH ARTICLE MODE
+.PP
+Use \*(AR mode for reading and manipulating articles in a group.  When
+you enter \*(AR mode, it displays a list of unread articles and their
+Subjects, or it displays the last available article if there are no
+unread articles.  You can view previous articles by using "artPrev"
+when viewing the first article, by using "artGotoArticle" to go to a
+specific article older than the first article, by using one of the
+subject-search buttons to search backward for an article older than
+the first article, or by using "artListOld" to list all articles in
+the group
+
+Hitting the space bar in \*(AR mode will "do the right thing"; it
+will scroll an article if there is more of the article to see or call
+the "artNextUnread" action otherwise.
+
+To change or add key bindings to \*(AR mode, use the X resource
+"*artFrame.subjects.translations".  In addition to the key bindings
+listed with buttons below, clicking the middle button on an article in
+the list will display that article.
+
+Most of the buttons or actions in \*(AR mode keep the article window
+synchronized with the cursor position in the subject list, i.e., as
+you move the cursor in the subject list, \*(XR displays the article
+the cursor is on.  However, it is also possible to navigate in the
+subject list without changing the displayed article.  In particular,
+you can use the "artScrollIndex", "artScrollIndexBack", "artUp"
+and "artDown" actions to move the cursor without changing the
+displayed article; you can also select articles with the left and
+right mouse buttons without changing the displayed article.
+
+When you navigate the subject list in this manner, you can use the
+"artCurrent" action to tell \*(XR to display the article that the
+cursor is currently on in the subject list.
+.SS Buttons in the top button box
+.IP "artQuit * (`q')"
+Update the \*(NS file and return to \*(NG mode (or go to the next
+newsgroup, if "stayInArticleMode" is true).
+.IP "artNextUnread * (`n')"
+Starting at the first selected article if any articles are selected,
+or at the article under the cursor otherwise, display the next
+available unread article, wrapping around to the beginning of the
+subject list if there are no unread articles after the starting point
+but there are unread articles before it.  If no unread articles exist,
+\*(XR exits from \*(AR mode and returns to \*(NG or \*(AL mode (or
+goes to the next newsgroup, if "stayInArticleMode" is true).
+.IP "artNext * (`N')"
+Display the selected article, if any, or the article under the subject
+cursor if it isn't currently displayed, or the next article after the
+currently displayed one.  Exit from \*(AR mode (or go to the next
+newsgroup, if "stayInArticleMode" is true) after the last article has
+been reached.
+.IP "artPrev * (`P')"
+Display the selected article, if any, or the article under the subject
+cursor if it isn't currently displayed, or the article before the
+currently displayed one.
+.IP "artLast * (`-')"
+Display the last article accessed before the currently displayed one.
+This command only keeps track of one previously accessed article, so
+invoking it repeatedly simply toggles the display between two
+articles.
+.IP "artCurrent (Enter or Return)"
+If no articles are selected in the subject list, then display the
+article that the cursor is currently on.  Otherwise, display the first
+selected article.
+.IP "artUp (up arrow)"
+Move the cursor up one line in the subject list, without changing the
+currently displayed article.
+.IP "artDown (down arrow)"
+Move the cursor down one line in the subject list, without changing
+the currently displayed article.
+.IP "artNextGroup * (Meta-n)"
+Go directly to the next newsgroup with unread news, bypassing \*(NG or
+\*(AL mode.
+.IP "artCatchUp * (`c')"
+If any articles are currently selected, then mark as read all articles
+that are not explicitly marked unread, from the first listed article
+up to the first selected article.  Otherwise, mark as read all
+articles that are not explicitly marked unread, and exit \*(AR mode
+(note that "stayInArticleMode" does not affect this command).
+.IP "artFedUp * (Meta-c)"
+Mark as read all articles in the current group that are not explicitly
+marked unread, and then go to the next group with unread articles.
+.IP "artGotoArticle * (`.')"
+Go to a specific article (you will be prompted for the article number
+with a dialog box).
+.IP "artMarkRead * (`j')"
+Mark as read the current or selected articles, and then return the
+list cursor to the currently displayed article if it wasn't there
+already).
+.IP "artMarkUnread * (`m')"
+Mark as unread the current or selected articles, and then return the
+list cursor to the currently displayed article if it wasn't there
+already.
+
+When an article is marked as unread, a `u' is placed in the far left
+column next to the article's number.  The only way to mark an article
+as read once it has been marked with a `u' is to use the "artMarkRead"
+function.
+
+The "artNext", "artPrev", "artSubNext", "artSubPrev", and
+"artSubSearch" will all display articles that are marked unread as
+they encounter them, but "artNextUnread" will not.
+.IP "artUnsub * (`u')"
+Unsubscribe from the current group; exit from \*(AR mode (or go to the
+next newsgroup, if "stayInArticleMode" is set).
+.IP "artSubNext * (Ctrl-n)"
+.IP "artSubPrev * (Ctrl-p)"
+If articles are selected, then display the first selected article.
+Otherwise, if the cursor is not on the currently displayed article,
+then display the article the cursor is on.  Otherwise, find and
+display the next or previous article with the same subject as the
+current article (besides any "[rR][eE]:" prefix).  If there are no
+more articles with the current subject and there are more unread
+articles, display the first unread article.  If there are no more
+articles with the current subject and there are no more unread
+articles, exit \*(AR mode (or go to the next newsgroup, if
+"stayInArticleMode" is set).
+.IP "artListOld * (Shift-L)"
+List all articles available in the group, even those that have been
+read.  Note that this button does not toggle (clicking this button
+twice will not put you back to where you were).  Note, furthermore,
+that this command can take a while when is is executed on a newsgroup
+with many articles in it.
+.IP "artResort * (`o')"
+Resort the article list.  This command won't do anything when you
+first enter article mode, because the article list is pre-sorted.
+However, if you do something which causes new articles to be added to
+the beginning of the list (e.g., executing the "artPrev" command while
+viewing the first article in the list), you can use this command to
+resort the list.
+.IP "artKillSubject * (`k', Shift-K, Ctrl-k)"
+.IP "artKillAuthor * (Meta-k, Meta-Shift-K, Meta-Ctrl-k)"
+Locate either the first selected article if any articles are selected,
+or the article under the cursor otherwise, and mark all articles with
+its subject (or author) as read.  Then, if the command was executed
+with the Shift key held down, add a command to kill the subject (or
+author) to the current group's kill file, so that it will be marked
+read automatically in the future.  Alternatively, if the Ctrl key was
+held down, then the command is added to the global kill file, so that
+it will affect all newsgroups rather than just the current group.
+
+Note that the Shift and Ctrl bindings apply to the subject-kill and
+author-kill buttons as well as key commands.  E.g., if you hold
+down the Shift key while clicking on the "Subject kill" button, the
+kill command will be added to the group's kill file as well as being
+executed on the currently listed articles.  Also, for users who don't
+want to have to use the keyboard to kill articles, clicking button 3
+(usually the right button) on a kill button is equivalent to holding
+down the Shift key, and clicking button 2 (usually the middle button,
+if there is one) is equivalent to holding down Ctrl.
+.IP "artKillThread * (`t', Shift-T, Ctrl-t)"
+.IP "artKillSubthread * (Meta-t, Meta-Shift-T, Meta-Ctrl-t)"
+As above, but kill the article's thread or subthread instead of its
+subject or author.  An article's thread is killed by finding its
+oldest ancestor and killing all articles which claim to be descendants
+of that ancestor.  An article's subthread is killed by killing all of
+its descendants (as opposed to the descendants of its oldest
+ancestor).  When an article is the first one in a thread (i.e., it has
+no ancestors), killing its thread and its subthread do the same thing.
+
+Thread-killing functionality is not available unless "thread" is one
+of the sort types specified in the "sortedSubjects" option described
+below.
+.IP "artSubSearch * (`/')"
+Starting the first selected article if any articles are selected, or
+at the article under the cursor otherwise, search for an article whose
+subject matches specified regular expression.  This command pops up a
+dialog for you to enter the regular expression and select a direction
+in which to search.
+
+If you select s search direction without first entering a regular
+expression, the regular expression from the last search is used.  This
+can be used to switch the direction of the search without retyping the
+expression.
+.IP "artContinue * (Meta-/)"
+Continue the last regular expression search, searching for the same
+regular expression in the same direction.
+.TP
+artScroll ("Next", "Page Down" or Ctrl-v)
+Scroll the article text forward a page.
+.TP
+artScrollBack ("Prior", "Page Up", `b' or Meta-v)
+Scroll the article text backward a page.
+.IP "artScrollLine (Meta-down arrow)"
+Scroll the article text forward one line.
+.IP "artScrollBackLine (Meta-up arrow)"
+Scroll the article text backward one line.
+.IP "artScrollEnd (`>')"
+Scroll to the end of the article text.
+.IP "artScrollBeginning (`<')"
+Scroll to the beginning of the article text.
+.TP
+artScrollIndex (Shift-"Next", Shift-"Page Down" or Shift-Ctrl-V)
+Scroll the article index forward a page.
+.IP
+artScrollIndexBack (Shift-"Prior", Shift-"Page Up" or Shift-Meta-V)
+Scroll the article index backward a page.
+.IP "artPost * (`a')"
+Post an article to the current group.  See "COMPOSING MESSAGES"
+below for more information.
+.IP "artPostAndMail * (Shift-A)"
+Post an article to the current group and mail it as well.
+.IP "artMail (Shift-M)"
+Send a mail message.
+.IP "artExit * (`x')"
+Restore the current group's articles to the read/unread state they
+were in before the newsgroup was entered and exit from \*(AR mode.
+Note that articles marked read or unread by kill-file processing
+remain so marked.
+.IP "artCheckPoint * (Ctrl-s)"
+Same as "ngCheckPoint".
+.IP "artGripe (Shift-G)"
+Same as "ngGripe".
+.SS Buttons in the bottom button box
+(Note that buttons can only be placed in the button box in which they
+were originally assigned by \*(XR.  Therefore, if you want to include
+any of the buttons in this section in a "*ButtonList" option (see
+below), you must use "artSpecButtonList", not "artButtonList".)
+
+.IP "artSave * (`s', `w' or `|')"
+Save the current article in a file or mail folder or pipe it
+it into a command.  This command pops up a dialog for you to enter the
+file name in which to save, and buttons to execute the save or abort
+it.
+
+If the specified filename begins with a `|', the article is piped into
+the command specified after the `|'.
+If the filename begins with a `+', it is treated as an MH folder, and
+the article is refiled into the specified folder.
+If the name begins with a `@', it is assumed to be a BABYL file (i.e.,
+the type of file used by Emacs RMAIL mode), and the article is
+saved in the named file in BABYL format.
+
+If the filename does not start with any of those special characters,
+then it is assumed to be a normal filename, and the article is
+appended to it.  If the filename is relative (does not begin with `/'
+or `~'), "~/News/" (or the value of the "saveDir" option) will be
+prepended to it.
+
+If no filename is specified, the article is saved in
+"~/News/Groupname", where "Groupname" is the name of the current group
+with the first letter capitalized If "saveMode" (see below) is set to
+"subdirs", then "~/News/groupname/" will be used instead of "~/News/".
+
+If multiple articles are selected when this command is executed, then
+all will be saved as specified.
+
+If a specified filename has a "%d" in it, the "%d" will be replaced
+with the article number being saved.  To save in a file with `%' in
+its name, you must use two `%' characters, i.e., "%%".
+.IP "artReply * (`r')"
+Reply (by mail) to the author of the current article.
+See "COMPOSING MESSAGES" below for more information.
+.IP "artForward * (Meta-f)"
+Forward the current article to a person or multiple people via mail.
+.IP "artFollowup * (`f')"
+Post a followup to the current article.
+.IP "artFollowupAndReply * (Ctrl-F)"
+Post and mail a single response to the current article.
+.IP "artCancel * (Shift-C)"
+Cancel the current article.  You can only cancel an article that you
+wrote.
+.IP "artRot13 * (Shift-X or Ctrl-x)"
+Decrypt an article "encrypted" with the "rot-13" algorithm.
+In some newsgroups (e.g., "rec.humor", "rec.humor.funny"),
+articles that may offend certain people are sometimes posted.  To
+minimize the offense, these articles are sometimes encoded with
+"rot-13", a simple letter-substitution cipher, so that users must
+take explicit action in order to view them.  Executing this command
+will decode such an encoded message; executing the command a second
+time on the same article will return the article to its original
+contents.
+xXLATE_STARTx
+.IP "artXlate *"
+Translate the article from ISO 646 to ISO 8859-1.
+xXLATE_ENDx
+.IP "artHeader * (`v')"
+Toggle between showing all header lines in the article and showing a
+limited set of header lines.  This command is ineffective (and
+therefore its button is insensitive) if you have not set the
+"stripHeaders" or "leaveHeaders" option (see below).
+.IP "artPrint *"
+Print the article (see the "printCommand" option below).
+.\"
+.SH COMPOSING MESSAGES
+.SS Kinds of messages
+With \*(XR, you can compose and send both newsgroup articles and mail
+messages.  A newsgroup article can be either a followup to an existing
+article or an article without any relation to previous articles;
+similarly, a mail message can be a reply to an existing article or a
+stand-alone message.  Furthermore, a single message can be both a
+newsgroup posting and a mail message (e.g., if you want to post a
+followup to a previous posting and also send a copy of your followup
+to the author of the previous posting).
+.SS The message editor
+By default, when you tell \*(XR that you want to compose a message, it
+pops up a composition window with the message template in the standard
+X toolkit editor, whose command syntax is similar to that of
+.IR emacs (1).
+However, you can also use an editor of your own choosing to edit
+messages.  For more information, see the "editorCommand" option below.
+.SS Signature files
+\*(XR will attempt to read a signature file and include its contents
+in the message template.  (Note, however, that a signature may not be
+included in postings if the
+.IR inews (1)
+program at your site also includes a signature and \*(XR has been
+configured to use 
+.I inews
+to post articles.)
+
+The signature file name is set with the "signatureFile" option (see
+below); it defaults to "~/.signature".  However, rather than just
+checking for that file \*(XR will first check for a signature file
+that is specific to the current newsgroup or newsgroup hierarchy or to
+the type of message being composed.
+
+For example, if you are posting an article in "comp.sources.x" and
+"signatureFile" is set to "~/.signature", \*(XR will check for the
+existence of any of the following signature files (in this order):
+.sp
+.in +0.5i
+.nf
+~/.signature\-comp.sources.x
+~/.signature\-comp.sources
+~/.signature\-comp
+.fi
+.in -0.5i
+.sp
+Then, it will check for "~/.signature.post".  In general, the message
+types used for this check are and "followup", "forward", "gripe",
+"reply", "post", and "mail".  In this check, a message that is both a
+followup and a reply has type "followup", and a message that is both a
+posting and a mail message has type "post".  If none of these files is
+found, it will finally check for "~/.signature".
+
+If the "executableSignatures" option is enabled and the signature file
+that \*(XR finds is executable, \*(XR will run the signature file as a
+program and use its output as the signature.
+
+If the "signatureNotify" option is enabled, \*(XR will display an
+informational message telling you which signature file it is reading
+or executing.
+
+If the signature text is more than xMAX_SIGNATURE_SIZEx characters
+long, it will be ignored.  Long signatures are considered rude and
+should be avoided.
+.SS Composition window buttons
+There are up to five buttons (some of them are not relevant when
+composing some types of messages and are therefore omitted) at the
+bottom of the editor window which do the following: abort the message
+without sending it; save the message in the file specified by the
+"savePostings" option (see below); send the message; include in the
+message the text of article to which this is a followup and/or reply;
+or include in the message a specified file (for which you are prompted
+with a dialog box).
+
+You may only compose one message at a time.
+.SS Posting restrictions
+.if (xCROSSPOST_PROHIBITx > 0) \{\
+\*(XR will not permit you to post a message to xCROSSPOST_PROHIBITx or
+more newsgroups.
+.\}
+
+If the value of the "warnings.posting.crossPost" resource (see "X
+RESOURCES", below) is non-zero and you attempt to post to that many or
+more newsgroups, or if "warnings.posting.followupTo" is non-zero and
+attempt to post to that many or more groups when your "Followup-To"
+line does not contain fewer groups than that, \*(XR will ask you to
+consider reducing the number of newsgroups to which you are posting.
+Since it is unlikely that your message is appropriate in all of the
+groups in which you are posting it, or that followups to your message
+should also appear in all of those groups, please take this suggestion
+seriously.
+
+Note that the number of groups which cause \*(XR to warn you are
+configurable with X resources; for more information, see the "X
+RESOURCES" section, below.
+.SH CUSTOMIZING XRN
+.PP
+Colors, fonts, and other \*(XR options can be
+specified on the command line or using X resources.
+With the exception of the display name, all \*(XR options
+can be specified using X resources.
+Options specified on the command line take precedence over those specified
+using X resources.
+
+.SH COMMAND LINE ARGUMENTS
+.PP
+Here are the current command line arguments
+(the X resources have the same names and values as
+the command line arguments).
+.TP 10
+.B \-addButtonList list
+Use the given list of buttons for \*(AD mode in the order
+given rather than the default button list (described above).
+
+The "list" is a comma separated list of button names, as given in
+the lists of buttons above.  For example, your list might be:
+"addQuit, addIgnoreRest, addLast, addUnsub".
+
+Buttons whose functionality is not available will not be displayed
+even if they appear in your button list or in the default button list.
+For example, if you are not allowed to post articles to the news
+server, then none of the buttons which cause articles to be posted
+will be displayed.  Similarly, if you have not specified any value for
+the "leaveHeaders" or "stripHeaders" option, then header stripping is
+not active, so the "artHeader" button will not be displayed in \*(AR
+mode.
+.TP 10
+.B \-allButtonList list
+Use the given list of buttons for \*(AL mode.  The format of "list"
+is as described above for the \-addButtonList option.
+.TP 10
+.B \-artButtonList list
+Use the given list of buttons for \*(AR mode.
+.TP 10
+.B \-artSpecButtonList list
+Use the given list of buttons for the bottom button box in \*(AR mode.
+.TP 10
+.B \-authenticator command
+If "command" begins with the (case-insensitive) string "user/pass",
+then NNTP "AUTHINFO USER/PASS" authentication is activated.  After
+"user/pass", you may include optional whitespace, and then the
+username to use for authentication, if it is different from your UNIX
+username.  Note that the username may not begin or end with
+whitespace, i.e., whitespace preceding or following the username is
+ignored, and it may not contain a slash.
+.if (xALLOW_RESOURCE_PASSWORDSx > 0) \{\
+
+Following the username (or following "user/pass", if no username is
+specified), you may specify your NNTP password, preceded by a slash.
+If you do not specify a password here, you will be prompted for it
+when it is needed.  Like the username, the password may not begin or
+end with whitespace.
+
+For example, "user/pass username/password" specifies both the username
+and password, "user/pass username" specifies the username but omits
+the password, and "user/pass /password" specifies only the password.
+
+You are
+.B strongly discouraged
+from hard-coding your password in an application-defaults file that
+might be read by other people.  Furthermore, note that if you specify
+your password in a value for this option on the \*(XR command line,
+others might be able to see your password in the output of "ps".
+Therefore, you should specify your password in this option only when
+using secure, single-user machine to which you can be sure that you
+are the only one with access.
+.\}
+
+If the value of this option starts with anything other than
+"user/pass", then NNTP AUTHINFO GENERIC authentication is used, and
+"command" specifies the type of authentication to request from the
+server (that is, it is put in the NNTP command "AUTHINFO GENERIC
+<command>") in response to an authentication challenge (NNTP response
+code 480) from the news server.
+
+If the "NNTPAUTH" environment variable is present, it overrides the
+resource file entry for this option.  The default value of this option
+is "any <username>", where "<username>" is your username.
+.TP 10
+.B \-authenticatorCommand command
+This is the command line that is used to prompt the user for authentication.
+\*(XR invokes this command line, with "%s" replaced by the authenticator
+command (see above).
+The default (in the application defaults file) is an invocation of xterm, from which
+the authenticator command will prompt the user for authentication.
+.TP 10
+.B +/-authorFullName
+Display the full name of the author or the user/hostname of the author.
+.TP 10
+.B \-breakLength len
+Break lines longer than "len" characters into multiple lines.
+Default is 0 characters.  If set to 0, line breaking is disabled
+(see also "lineLength").
+.TP 10
+.B \-busyIconName name
+.TP 10
+.B \-busyIconPixmap pixmap
+When \*(XR is busy (e.g., doing an automatic rescan) and iconified,
+set the icon name and/or pixmap as specified instead of using the
+default.
+.TP 10
+.B \-cacheFile file
+Use the specified file to cache information other than what's in the
+newsrc file that needs to be preserved between invocations of \*(XR.
+Defaults to "~/.xrncache-hostname", where "hostname" is the NNTP
+server host, unless ~/.xrncache already exists and
+~/.xrncache-hostname doesn't, in which case ~/.xrncache will be used.
+.TP 10
+.B \-cancelCount number
+The number of articles to search before popping up the cancel
+button.
+.TP 10
+.B +/\-cc
+Put "Cc: user" in replies.  (X resources class is "CC".)
+.TP 10
+.B +/\-ccForward
+Put "Cc: user" in forwarded messages.  (X resources class is "CC".)
+.TP 10
+.B \-confirm list
+Turn on confirmation boxes for the buttons listed.
+These boxes pop up to ask the user to verify
+the invocation of "dangerous" actions (such as \fBcatch up\fP
+and \fBunsubscribe\fP).
+The list of buttons is a comma separated list of button names.
+The buttons that can be confirmed: \fBngQuit\fP,
+\fBngExit\fP, \fBngCatchUp\fP, \fBartCatchUp\fP, \fBartFedUp\fP, \fBngUnsub\fP,
+and \fBartUnsub\fP.
+.TP 10
+.B \-deadLetters file
+The name of the file to save failed postings and messages.
+Defaults to "~/dead.letter".
+.TP 10
+.B +defaultLines count
+Number of lines to scroll the subject list in article mode when
+scrolling automatically at the bottom of the list.
+.TP 10
+.B +/\-discardOld
+If enabled and "onlyShow" is set, then articles earlier than the
+requested number of articles at the end of the newsgroup are marked
+read automatically.  Disabled by default.
+.TP 10
+.B +/\-displayLineCount
+When set, display the number of lines in each article (if available)
+in the article index in \*(AR mode.  Set by default.
+.TP 10
+.B +/\-displayLocalTime
+Display the "Date:" field of the article using the local time zone
+(instead of GMT).
+.TP 10
+.B -distribution dist
+Set the default distribution to "dist".
+.TP 10
+.B +/\-dumpCore
+Dump core when a signal is detected.  The X resources class for the
+"dumpCore" X resource is "Debug".
+.TP 10
+.B \-editorCommand command
+Use an alternate editor for creating postings, followups, forwards,
+gripes, and replies.  "command" must be a string in
+.IR sprintf (3)
+format containing
+a "%s", which will be replaced by the file name to be edited.  The
+command will be executed using the bourne shell
+.RI ( sh (1)).
+Examples are:
+.sp
+.in +0.25i
+.nf
+xterm \-e vi %s
+xterm \-e microEmacs %s
+emacsclient %s
+.fi
+.in -0.25i
+.sp
+The resulting command should handle all editing and windowing.
+The article being followed up on, replied to or forwarded is
+automatically included.
+You can also specify "%D" and it will be replaced with the display
+name.
+For example:
+.sp
+.in +0.25i
+.nf
+xterm \-display %D \-e vi %s
+.fi
+.in -0.25i
+.sp
+If you specify an empty "editorCommand" string, the external editor is
+disabled and the editor built into \*(XR will be used.  You can
+use this to disable on the command line an "editorCommand"
+specification in your X resources, or to disable in your X resources
+an "editorCommand" specification in the \*(XR app-defaults file
+installed at your site.
+.TP 10
+.B +/\-executableSignatures
+If a signature file is executable, attempt to execute it and use its
+output as the signature text.  Three arguments are provided: the
+current newsgroup (or "NIL" if none), the current posting mode
+("post", "followup", "reply", "forward" or "gripe"), and the name of
+the file containing the text of the article being replied to (or "NIL"
+if none).  Non-executable signature files are already read (rather
+than executed), regardless of the setting of this option.  Also, if
+the execution of a signature file fails, it is read rather than
+executed.
+.TP 10
+.B +/-fullNewsrc
+If set, then the newsrc file will always contain all newsgroups
+known to the server.  Any time \*(XR discovers a newsgroup on the
+server that's not in the newsrc file, it will consider the newsgroup
+new and enter \*(AD mode to ask you what you want to do with it.
+
+If not set, then any newsgroups not found in the newsrc file will be
+considered "ignored" (as opposed to "subscribed" or
+"unsubscribed") and will be left out of the newsrc when \*(XR
+updates it.  In this case, only responses from the server to the
+"NEWGROUPS" command will be used to determine when new groups are
+created.
+
+When you run \*(XR with "fullNewsrc" disabled for the first time, any
+newsgroups created since the last time you ran \*(XR will be
+"missed" by \*(XR.  To verify that you haven't missed any
+interesting newsgroups because of this, enter \*(AL mode, execute the
+"allToggle" command, and page to the end of the newsgroup listing to
+see if there are any "ignored" groups there; if there are and you
+wish to subscribe to them, you can then do so.
+.TP 10
+.B \-geometry WxH+X+Y
+Specification of the \*(XR window size and location.
+The window manager may choose to ignore this specification.
+.TP 10
+.B \-iconGeometry +X+Y
+Specification of the initial \*(XR icon location.
+The window manager may choose to ignore this specification.
+.TP 10
+.B \-iconName name
+.TP 10
+.B \-iconPixmap pixmap
+Use the specified \*(XR icon name or pixmap instead of the default.
+.TP 10
+.B \-ignoreNewsgroups list
+A comma- or whitespace-separated list of regular expressions to be
+matched against the server's list of newsgroups.  Any newsgroup which
+matches one of the specified regular expressions is treated as an
+invalid group.  For example, specifying a list containing "^talk\\. ^rec\\."
+would cause all newsgroups in the "talk" and "rec" hierarchies to be
+ignored.  Note that if you specify
+.B \-ignoreNewsgropus
+on the command line, you should enclose your list in single quotes to
+prevent any backslashes and other special characters in it from being
+interpreted by the shell.  If, on the other hand, you specify it in
+your X resources, you should put two backslashes whenever you want a
+single backslash to appear in a regular expression, because
+the backslash is interpreted as a quoting character when X resources
+are parsed.
+.TP 10
+.B \-includeCommand command
+Use an alternate program for inserting current article text when
+following up on, replying to or forwarding a message.
+"command" must be a string in
+.I sprintf
+format that contains two "%s"s, which will be replaced by
+the include prefix and the article file name (in that order).
+Examples are:
+.sp
+.in +0.25i
+.nf
+sed \-e 's/^/%s /' %s
+xmh\-insrt\-repl \-separator '%s' %s
+.fi
+.in -0.25i
+.sp
+The command provided should output to its standard output the text to
+be included in the message, derived as desired from the prefix and the
+contents of the article file.  The command will be executed using the
+bourne shell.
+.TP 10
+.B +/\-includeHeader
+Include or do not include the original header in included
+articles.
+The default is to not include the header.
+.TP 10
+.B \-includePrefix "prefix text"
+Change the standard prefix for each line of included text from the
+default, "|> ", to the given text string.
+.TP 10
+.B +/\-includeSep
+Include or do not include the prefix text ("|> ") in front of included
+articles.
+The default is to include the prefix text ("|> ").
+.TP 10
+.B +/\-info
+Display all informative messages in the message pane.
+Defaults to display all information in the message pane.
+.TP 10
+.B +/\-killFiles
+Turn the use of kill files on/off.
+The default is on.  See "KILL FILE FORMAT" below for a description
+of the format of entries in kill files.
+.TP 10
+.B \-leaveHeaders list
+The header fields to leave in the article; a comma separated case-insensitive
+list of field names (\fIi.e.,\fP subject,from,organization).
+This option takes precedence over "stripHeaders".
+If the word "all" is specified instead of a list of fields, then all headers
+will be retained (This can be used in user X resources to override
+a resource specified in the global \*(XR application defaults, or on
+the command line to override a resource specified in either the
+application defaults or the user X resources.).
+.TP 10
+.B \-lineLength len
+Length of lines that are broken.
+Default is 0 characters.  If set to 0, line breaking is disabled
+(see also "breakLength").
+.TP 10
+.B +/\-localSignatures
+If enabled, signature files are searched for in the same manner as
+local kill files, except that the file searched for is called
+SIGNATURE instead of KILL.  For example, to find a signature file for
+a posting in news.software.readers, \*(XR will look for
+"~/News/news/software/readers/SIGNATURE",
+"~/News/news/software/SIGNATURE", "~/News/news/SIGNATURE", and
+"~/News/SIGNATURE", in that order, and use the first one it finds.
+.TP 10
+.B \-lockFile file
+Set the XRN lock file name to "file".  Defaults to "~/.xrnlock".
+.TP 10
+.B \-mailer mailer
+The command to use for mailing replies.
+This command must take all of it's input from stardard input
+(\*(XR will not build a command line).
+The default is "xSENDMAILx".
+.TP 10
+.B \-maxLines number
+The maximum number of lines above the cursor in the subject line display,
+or, if negative, the minimum number of lines below the cursor.  The
+default is -2 (i.e., display at least two lines below the cursor
+whenever possible).
+.TP 10
+.B \-minLines number
+The minimum number of lines above the cursor in the subject line display.
+If negative, the subject line display scrolls only at the bottom and
+only one line at a time.  The default is 3.
+.TP 10
+.B \-newsrcFile file
+The newsrc file to use.
+Defaults to "~/.newsrc".
+If a file with a name of the form "<newsrcFile>-<nntpServer>"'
+is found, it will be used.
+.TP 10
+.B \-ngButtonList list
+Use the given list of buttons for \*(NG mode.  The format of "list"
+is as described above for the \-addButtonList option.
+.TP 10
+.B \-nntpServer hostname
+The NNTP server to use (name or internet number).
+.TP 10
+.B \-onlyShow number
+Only grab the header information for the last "number" of articles
+in each group.  This is useful if you have been away for a while and
+only want to see that last 100 or so articles in each group (and thus 
+don't have to waste time having XRN fetch the subjects, authors, and 
+line counts for all the articles).
+
+Note that although only the specified number of articles are displayed
+when entering a newsgroup, the other articles are not marked read.
+This means that if you enter a newsgroup with onlyShow set, read the
+displayed articles, then exit the newsgroup and enter it again, the
+last block of articles before that will be displayed to you.  If you
+want earlier articles to be marked read automatically, use the
+"discardOld" option.
+.TP 10
+.B \-organization organization
+Set the organization name in postings and followups.
+You can also set the environment variable ORGANIZATION (NEWSORG on
+Apollo) to set the default organization name.
+.TP 10
+.B +/\-pageArticles
+If enabled, then space bar in article mode will scroll the current
+article, or go to the next article if at the end of the current
+article.  If disabled, then space bar in article mode will always go
+to the next article.  Default is enabled.
+.TP 10
+.B \-pointerBackground color
+Set the background color of the mouse cursor.  The default color is
+whatever the default background color is for xrn.
+.TP 10
+.B \-pointerForeground color
+Set the foreground color of the mouse cursor.  The default color is
+whatever the default foreground color is for xrn.
+.TP 10
+.B \-prefetchMax number
+Only prefetch newsgroups with at most the specified number of unread
+articles.  If
+.B number
+is 0, then there is no limit, i.e., newsgroups are prefetched
+regardless of the number of unread articles in them.  The default is
+0.
+.TP 10
+.B \-prefetchMinSpeed kbytes
+Only prefetch the next article if the speed of the network link to the
+NNTP server is greater than
+.B kbytes
+kilobytes per second.  The default is 3 kilobytes per second.  If set
+to 0, the next article will always be prefetched, regardless of the
+network link speed.
+.TP 10
+.B \-printCommand command
+Set the command used for printing articles.  The article is sent
+to the command via standard input.
+Defaults to "xPRINTCOMMANDx".
+.TP 10
+.B \-replyTo name
+Set the Reply-To field for articles and mail messages.
+.TP 10
+.B +/\-rescanOnEnter
+Check with the news server for new articles in a newsgroup when
+entering it, rather than only checking for new articles when
+rescanning all newsgroups.  By default, this feature is disabled.
+
+Enabling this feature has two potential disadvantages: (1) It can
+cause a slight additional delay when entering a newsgroup (although
+this delay is mostly unnoticeable except when the newsgroup has an
+extremely large number of unread articles in it), and a more
+noticeable delay when using "Next group" or "Fed up" in article mode
+after selecting "List old" in newsgroup mode; (2) It can cause some
+confusion, e.g., when you enter a newsgroup believing that there are
+no unread articles and therefore you will be shown the last read
+article, and instead you are shown new unread articles, or when you
+enter a newsgroup expecting to see five unread articles and instead
+see ten.
+
+On the other hand, this feature allows you to see new articles in a
+specific newsgroup immediately, without rescanning for new articles in
+all newsgroups.  Some people prefer this behavior, despite the
+disadvantages mentioned above.
+.TP 10
+.B \-rescanTime time
+Amount of idle time (in seconds) before checking for new articles
+automatically.  A rescan time of 0 means never to check automatically.
+The default (unless configured differently when compiling \*(XR) is
+0 (i.e., never check automatically).
+.TP 10
+.B +/\-resetSave
+Reset the string in the "save" dialog box upon entering each
+newsgroup.
+.TP 10
+.B \-saveDir dir
+The article saving directory.
+Defaults to "~/News" when \-saveMode specifies "onedir", or 
+"~/News/newsgroup" when \-saveMode specifies "subdirs".
+.TP 10
+.B \-saveMode mode
+The mode for saving articles; a comma separated list of options.
+The options can be "mailbox" or "normal", "headers" or "noheaders",
+and "onedir"  or "subdirs".
+The default is "normal,headers,onedir".
+.TP 10
+.B \-saveNewsrcFile file
+The saved \*(NS filename.
+Before the \*(NS file is modified on startup,
+it is saved in a backup file.
+Defaults to "~/.oldnewsrc".
+.TP 10
+.B \-savePostings file
+The name of the file in which to save postings and messages (via the
+"save" button in the composition window).
+Defaults to "~/Articles".
+.TP 10
+.B \-saveString string
+Use "string" as the default in the "save" dialog box.
+.TP 10
+.B \-signatureFile file
+The signature file to use.
+Defaults to "~/.signature".
+.TP 10
+.B +/\-signatureNotify
+When sending mail or posting, display a message saying which signature
+file is being used.
+.TP 10
+.B +/\-sortedSubjects
+Display the subject lines in the subject window sorted by subject.
+Note that the "sortedSubjects" X resource behaves differently from the
+command-line option, and provides additional functionality.  See the
+"X RESOURCES" section below for more information.
+.TP 10
+.B +/\-stayInArticleMode
+If enabled, then a number of operations in article mode (including
+unsubscribe, next article, previous article, subject next, subject
+prev, session kill, author kill, subject search, and continue search)
+will attempt to go to the next newsgroup when they would normally
+exit article mode.  Disabled by default.
+.TP 10
+.B \-stripHeaders list
+The header fields to strip from the article; a comma separated case-insensitive
+list of field names (\fIi.e.,\fP keywords,message-id).
+If the word "none" is specified instead of a list of fields,
+then no headers will be stripped
+(This can be used in user X resources to override
+a resource specified in the global \*(XR application defaults, or on
+the command line to override a resource specified in either the
+application defaults or the user X resources.).
+.TP 10
+.B +/\-subjectRead
+When using the space bar to scroll, when an article
+is finished, the space-bar scrolling invokes \fBsubject next\fP
+instead of \fBnext unread\fP.
+.TP 10
+.B +/\-subjectScrollBack
+If enabled (which is the default), then the subject index in article
+mode will always scroll to display the current article after
+operations on other articles in the index.  For example, if you use
+the scroll bar to scroll to several articles that you want to save,
+highlight the articles and click on the "Save" button, \*(XR will
+scroll back to the current article when done saving.  If disabled,
+then \*(XR will attempt to maintain the position you scrolled to even
+after performing an operation on other articles.  Note, however, that
+this may result in some flickering of the subject index, due to
+unavoidable "disagreements" between how \*(XR and the Athena Text
+widget think things should work.
+.TP 10
+.B \-tmpDir directory
+The directory to use for the temporary storage of articles fetched
+from the server.  The default is "/tmp".  Note that the environment
+variable "TMPDIR", if it is set, will override this option (or the
+default value).
+.TP 10
+.B \-topLines number
+The number of lines to be used for the subject list in \*(AR mode.
+The default is 10.
+.TP 10
+.B +/\-typeAhead
+Allow/disallow typeahead.  Defaults to allow typeahead.
+.TP 10
+.B \-unreadIconName name
+.TP 10
+.B \-unreadIconPixmap pixmap
+When there is unread news and \*(XR is iconified, set the icon name
+and/or pixmap as specified instead of using the default.
+.TP 10
+.B +/\-updateNewsrc
+Update the newsrc file when leaving \*(AR mode (or when going from one
+group directly to the next one with unread news).
+
+Note that whenever \*(XR updates the newsrc file, it also saves all
+kill files.  In between newsrc updates, \*(XR accumulates kill-file
+data in memory and therefore its memory usage will grow until that
+data is flushed by a newsrc update.  Therefore, if you find that \*(XR
+is using too much memory for your tastes, you might find it useful to
+set "updateNewsrc" so that kill-file information will be flushed after
+every newsgroup is read.
+.TP 10
+.B \-verboseKill actions
+By default, when processing kill files, the subject of each article
+that is marked read, marked unread, or saved is displayed, and a
+summary of all such articles is displayed when done processing the
+kill file.  This option allows you to select which subjects and
+summaries to display.  The
+.B actions
+specified should contain one or more of `l', `j', `m' and `s'.  `l'
+means to display each kill-file pattern as it is processed.  `j' means
+to display articles that are marked read, `m' means to display
+articles that are marked unread, and `s' means to display articles
+that are saved.  If
+.B actions
+is empty, then no information is displayed when processing kill files.
+.TP 10
+.B \-watchUnread list
+Only check for unread news in groups matching one of the listed
+regular expressions when determining whether to display the unread
+icon name and/or pixmap.  The listed regular expressions can be
+separated by spaces, tabs, commas and/or newlines.
+.\"
+.SH KILL FILE FORMAT
+\*(XR supports a super-subset of the kill-file commands supported by
+.IR rn (1)
+(i.e., some of its features are a subset of
+.IR rn 's
+and are compatible with it, and some are incompatible with
+.IR rn
+and you should use them only if you have no interest in your \*(XR
+kill files being compatible with
+.IR rn ).
+For compatibility with
+.IR rn ,
+lines in kill files beginning with `&' are ignored.  Blank lines (or
+lines containing only whitespace) and lines beginning with `#' are
+also ignored.
+
+A line beginning with "THRU " is assumed to contain the last article
+number previously killed in the newsgroup, and this line is updated by
+\*(XR after processing the kill file for the newsgroup.
+
+A line of the form "include name" directs \*(XR to read another kill
+file and process the commands in it as if they appear at that point in
+the including file.  If "name" is the name of a newsgroup, the local
+kill file for that newsgroup is used. Otherwise, if "name" starts
+with `/' or `~', it is treated as an absolute file name to use.
+Otherwise, "name" is treated as a file name relative to the setting of
+the "saveDir" option (see above), which defaults to "~/News".
+
+Kill-file inclusion is subject to the following constraints:
+.TP 3
+\(bu
+"THRU" lines in nested include files are ignored (but will be written
+intact back to the included kill file if it is later saved by \*(XR,
+e.g., if kill-file entry timeouts in it have been updated).
+.IP \(bu
+Loops and multiple inclusions of the same kill file 
+are silently ignored.
+.IP \(bu
+Kill files won't necessarily be updated properly if the user does
+any of the following:
+.RS 3
+.TP 3
+\(bu
+Includes a newsgroup's kill file by specifying its file name
+instead of by specifying its newsgroup name.
+.IP \(bu
+Includes the global kill file in another kill file.
+.IP \(bu
+Includes the same kill file using two different file names in
+two different files (e.g., with an absolute path in one and a
+relative path in another).
+.RE
+
+Any line in the format "/pattern/options:command" is
+interpreted as a kill-file command; its components are:
+.IP pattern
+A regular expression which is matched against article header fields to
+determine to which articles "command" should be applied.  Slashes in
+the expression should be quoted with a backslash to prevent them from
+being interpreted as the end of the expression.
+.IP options
+The option `h' affects which header fields the regular expression is
+matched against, as described below.  If `h' is not specified, the
+regular expression is matched against the "From" and "Subject" fields
+of the article.
+
+The option `t', followed by a positive integer, specifies the number
+of idle days after which the entry should automatically be expired.
+That is, any kill-file command which contains a `t' option and does
+not match any articles for the number of days specified in that option
+is automatically removed from the kill file by \*(XR when the kill
+file is updated.
+
+The option `u', followed by a positive integer, is used by \*(XR to
+keep track of when a kill-file command was last used, for purposes of
+deciding when to expire it.
+
+Any other values will cause \*(XR to display an error and ignore the
+command.
+
+Note that the `t' and `u' options are incompatible with
+.IR rn .
+Therefore, if you choose to use the `t' option, either manually or
+automatically by setting the "killTimeout" X resource (see below), you
+will not be able to use your \*(XR kill files with
+.IR rn .
+In this case, if you use both \*(XR and
+.IR rn ,
+you may wish to consider setting the "killFileName" X resource (see
+below) so that your \*(XR kill files are stored separately from your
+.I ir
+kill files.
+.IP command
+A single letter, either `j' (mark the article read), `m' (mark the
+article unread), or `s' (save the article in the default save file for
+the newsgroup).
+.PP
+If the first character in the options field is `h', then \*(XR will
+check to see if the regular expression starts with "^From:",
+"^Subject:", "^Newsgroups:", "^Date:", "^Message-ID:", "^References:",
+or "^Xref:".  If it does, then the pattern will be matched against the
+corresponding header field in the article.  The comparison will be
+"anchored", that is, the pattern must match from the beginning of the
+field value in order to be considered a match.
+
+For example "/jik/:j" will mark read any article containing the string
+"jik" in its "Subject" or "From" line; "/^From: .*jik/h:j" will mark
+read articles containing "jik" in their "From" lines (but not articles
+containing "jik" only in their "Subject" lines); and
+"/^Newsgroups:.*,.*,/h:j" will mark read any articles cross-posted to
+three or more newsgroups.
+
+If the `h' option is specified and the regular expression doesn't
+start with one of the field names mentioned above, then it will be
+compared against all of the fields mentioned above.
+
+Note that normally, \*(XR doesn't fetch the "Newsgroups", "Date",
+"Message-ID", "References", or "Xref" fields of articles; it fetches
+them only when it notices while processing a kill file entry that they
+are needed.  Therefore, specifying kill file entries which must be
+matched against one of those fields may cause \*(XR to take longer to
+fetch newsgroups, since it will have to fetch extra data.  However, if
+you're using a sorting algorithm which uses some or all of these
+fields, as described in the documentation below for the
+"sortedSubjects" resource, then the fields being used for sorting are
+already being fetched and no additional data need be fetched in order
+to match kill file entries against them.
+
+Any line not in one of the already mentioned formats will cause \*(XR
+to display an error.
+.\"
+.SH X RESOURCES
+.PP
+\*(XR supports some X resources that do not have corresponding command
+line arguments (however, see the documentation of the
+.B \-xrm
+command line argument in
+.BR X (1)
+for information about setting any X
+resource from the command line):
+.TP 10
+.B buttonsOnTop
+By default, \*(XR arranges its window in such a way that button boxes
+are below the display areas they affect.  However, some users do not
+like this behavior because it causes the frequently used buttons to
+be located in different areas of the \*(XR window in different modes.
+
+If "buttonsOnTop" is set to True, then button boxes will be placed
+above, rather than below, the display areas they affect.  They most
+significant result is that the most frequently used buttons will
+always be at the top of the \*(XR window, rather than changing
+positions depending on the mode.
+.TP 10
+.B cacheActive
+By default, \*(XR fetches a full newsgroup list from the NNTP server
+when it starts up and every time you execute the "ngRescan" command.
+However, this can take a long time if you are using a slow NNTP
+server, or if you are using a server with a very large number of
+newsgroups, or if you are talking to the NNTP server over a slow
+network (e.g., a SLIP or PPP Internet connection).
+
+In such a situation, you can set the "cacheActive" resource to True,
+which will cause \*(XR to cache the newsgroup list.  It will only
+retrieve a complete list from the server if either (a) it encounters a
+newsgroup that it can't find in its cache (in some of these
+situations, it will ask you for confirmation before fetching the list,
+but in some it will not), or (b) you execute the "ngGetList" command.
+
+When "cacheActive" is True, then the "ngRescan" command does a
+group-by-group rescan instead of retrieving a full newsgroup list;
+furthermore, it does the rescan in the background instead of pausing
+\*(XR for more information.
+
+See also the "fullNewsrc" command-line option and resource, which you
+may wish to use in conjunction with "cacheActive" to prevent \*(XR's
+cache file from becoming too large.
+.TP 10
+.B domainName
+Your internet domain (e.g., ".Berkeley.EDU", ".orst.edu").  Equivalent
+to setting the DOMAIN environment variable.  You probably don't have
+to specify this; if you do, \*(XR will tell you so when you try to
+post or send mail.
+.TP 10
+.B hiddenHost
+The host name which you wish to appear in the "From" lines of messages
+you compose.  Note that your real host name (or, at least, \*(XR's
+idea of your real host name) may appear in a "Sender" line in your
+messages, regardless of what you specify for this resource.
+
+This resource is overridden by the "HIDDENHOST" environment variable
+(see below).
+.TP 10
+.B killFileName
+Tells \*(XR to name each of its kill files as specified instead of
+using the default name "KILL".  This is useful, e.g., if you use
+another News reader besides \*(XR whose kill-file format is
+incompatible with \*(XR's, but which uses "KILL" as the name of its
+kill files.
+.TP 10
+.B killTimeout
+Specifies the number of days after which to automatically expire
+(i.e., remove from the kill file) unused kill-file entries.
+
+Note that this is only the default timeout which is placed in new
+kill-file entries created by \*(XR as the value of the `t' option.
+This resource will not affect kill-file entries which already exist
+and do not contain a `t' option.
+
+See the "KILL FILE FORMAT" section above for more information.
+.TP 10
+.B nntpPort
+Specifies the TCP/IP port number to use to connect to the NNTP
+server.  Defaults to the port number for the TCP "nntp" service.
+.TP 10
+.B saveSentMail
+.TP 10
+.B saveSentPostings
+Save mail messages (articles) which are successfully sent (posted) in
+the indicated file.  By default, these resources are unset (i.e.,
+outgoing messages are not saved automatically).  If these resources
+are both set to the same file, messages which are both posted and
+mailed will be saved in the indicated file only once.  Both of these
+resources have the class "SaveSent".
+.TP 10
+.B sortedSubjects
+Tells \*(XR how to sort articles before displaying them in the subject
+list in \*(AR mode.  Should contain a list of one or more of "date"
+"subject" and "thread", separated by commas or whitespace.  More
+preferred sorting should be listed first, e.g., if you want articles
+sorted by subject, and within each subject by date, you should specify
+"subject date".  It doesn't make mush sense to specify any sorting
+types after "date", since most articles in a newsgroup will have
+different dates, which means that a "date" sort will mostly undo any
+other sort.  It also doesn't make much sense to specify "thread" after
+"subject", since subject sorting will to some extent undo thread
+sorting Therefore, values for this option which make sense are "date",
+"subject", "subject date", "thread", "thread date", and "thread
+subject date" (which is what the author of \*(XR uses).
+
+For backward-compatibility reasons, "true", "on" and "1" (case
+insensitive) are all equivalent to "subject", and "false, "off" and
+"0" are eqivaulent to specifying no sorting at all.
+
+If no sorting is specified, articles are sorted by article number.
+
+Note that \*(XR needs to retrieve articles' "Date" fields from the
+server in order to sort by date, and it doesn't normally do this, so
+sorting by date may cause some degradation in performance, especially
+when talking to a server over a slow network connection.  Similarly,
+"Message-ID" and "References" fields must be retrieved from the server
+in order to do thread sorting.
+.TP 10
+.B warnings.followup.followupTo (class warnings.Followup)
+By default, when you start composing a followup to a previous message,
+\*(XR will warn you if the default "Newsgroups" line of your followup
+is different from the "Newsgroups" line of the previous message
+because of a "Followup-To" line in that message.  To disable this
+warning, set this resource to "False" or the class to "0".
+.TP 10
+.B warnings.followup.crossPost (class warnings.Followup)
+By default, when you start composing a followup to a previous message,
+\*(XR will warn you if your followup is being cross-posted to multiple
+newsgroups.  If you set this resource to `0', this warning will be
+disabled completely; if you set it to a non-zero value, this warning
+will occur only if your article is being cross-posted to that many
+groups or more.
+.TP 10
+.B warnings.posting.crossPost (class warnings.Posting)
+This resource controls the number of newsgroups in the Newsgroups line
+of your posting at which \*(XR will suggest that you remove some
+groups.  The default is xCROSSPOST_CONFIRMx.  See "COMPOSING
+MESSAGES", above, for more information.
+.TP 10
+.B warnings.posting.followupTo (class warnings.Posting)
+This resource controls the number of newsgroups in the Newsgroups and
+Followup-To line of your posting at which \*(XR will suggest that you
+remove some.  The default is xFOLLOWUPTO_CONFIRMx.  See "COMPOSING
+MESSAGES", above, for more information.
+.PP
+Furthermore, \*(XR takes a number of specifications for colors, fonts,
+border widths, and other program options.
+.pp
+The format for an \*(XR X resource is
+.sp
+.ce 100
+xrn.x.y....z.a: value
+.ce 0
+.sp
+where \fIx.y....z\fP specifies the path from the top level of
+\*(XR to a particular item
+(think of \*(XR as a hierarchical collection of windows, panes, and buttons,
+and \fIx.y....z\fP is a path from the top of the hierarchy to a node
+in the hierarchy),
+\fIa\fP is the type of default (\fIi.e.,\fP font, border,
+foreground, background, borderWidth), and \fIvalue\fP is the value of
+the default (\fIi.e,.\fP a color name or hex representation, a font name,
+a numeric value).
+Specifying a default for a item at some point in the hierarchy will set
+that default for all items from that point down in the hierarchy.
+A higher level default can be overridden by specifying
+a default at a lower level directly.
+.sp
+XRN widget hierarchy:
+.nf
+...xrn (Shell)
+vpane (Paned)
+  titlebar (Label)  (optional)
+  index (Text)
+  indexinfo (Label)
+  indexbuttons (Box)
+      buttonName (Command)
+  articleText (Text)
+  textinfo (Label)
+  textbuttons (Box)
+      buttonName (Command)
+
+Composition (Shell)
+  vpane (Paned)
+    label (Label)
+    text (Text)
+    box (Box)
+       abort (Command)
+       send (Command)
+       save (Command)
+       includeArticle (Command)
+       includeFile (Command)
+
+dialogs...
+.fi
+.sp
+Examples of defaults are:
+.in +0.3i
+.nf
+#
+xrn.newsrcFile:		~/.newsrc
+xrn.nntpServer:		pasteur
+xrn.organization:	UC Berkeley XRN Design Team
+xrn.replyTo:		user@machine.domain
+xrn.iconGeometry:	+64+521
+xrn.leaveHeaders:	subject,from
+xrn.includeHeader:	off
+xrn.signatureFile:	~/.signature
+xrn.geometry:		=750x770+10+10
+xrn.deadLetters:	~/dead.letter
+xrn.savePostings:	~/Articles
+xrn.topLines:		9
+xrn.saveMode:		mailbox,headers,onedir
+xrn.minLines:		3
+xrn.maxLines:		6
+xrn.tmpDir:		/tmp
+xrn.mailer:		/usr/lib/sendmail \-oi \-t
+#
+xrn.Gripe.geometry:	+50+50
+#
+xrn.ngButtonList: ngQuit,ngRead,ngCatchUp,ngRescan,ngSubscribe,ngPost
+xrn.artButtonList: artQuit,artNextUnread,artCatchUp,artPost,artNextGroup
+#
+xrn*background:		plum
+xrn*foreground:		red
+xrn*font:		9x15
+xrn*border:		LightGray
+#
+xrn*Text*Background:	DarkSlateGray
+xrn*Text*Foreground:	yellow
+xrn*ScrollBarMgr.thickness: 22
+xrn*ScrollBar.background: DarkSlateGray
+xrn*ScrollBar.foreground: yellow
+xrn*ScrollBar.border: White
+xrn*Label.background:		cyan
+xrn*Label.foreground:		blue
+xrn*Command.foreground:		White
+xrn*Command.background:		coral
+#
+xrn*Box.ngQuit.foreground:	Black
+xrn*Box.ngQuit.background:	red
+#
+xrn*dialog*font:		9x15
+xrn*dialog*background:		LimeGreen
+xrn*dialog*foreground:		CornflowerBlue
+xrn*dialog*Label.foreground:	NavyBlue
+xrn*dialog*Command.foreground:	Black
+xrn*dialog*Command.background:	yellow
+xrn*dialog*Text.background:	Wheat
+xrn*dialog*Text.foreground:	SteelBlue
+xrn*dialog*borderWidth:		2
+#
+.fi
+.in -0.3i
+
+.SH FILES
+.TP 15
+~/.newsrc[-hostname]
+description of the groups and the articles read in each group
+.TP 15
+~/.xrncache-hostname
+internal cache containing \*(XR variable settings and/or cached
+newsgroup data
+.TP 15
+~/.oldnewsrc
+backup of ~/.newsrc (created at startup)
+.TP 15
+~/.signature*
+signatures for use when sending messages
+.TP 15
+~/News
+directory where articles are saved
+.TP 15
+~/Articles
+where saved postings and messages are stored
+.TP 15
+~/dead.letter
+where failed postings and messages are stored
+.TP 15
+~/.xrnlock
+lock file
+xSERVER_FILE_STARTx
+.TP 15
+xSERVER_FILEx	location of the news server hostname (optional)
+xSERVER_FILE_ENDx
+xHIDDEN_FILE_STARTx
+.TP 15
+xHIDDEN_FILEx	location of the hiddenhost name (optional)
+xHIDDEN_FILE_ENDx
+xPATH_FILE_STARTx
+.TP 15
+xPATH_FILEx	location of the path host name (optional)
+xPATH_FILE_ENDx
+xDOMAIN_FILE_STARTx
+.TP 15
+xDOMAIN_FILEx	location of the domain name (optional)
+xDOMAIN_FILE_ENDx
+xUUCPNAME_STARTx
+.TP 15
+xUUCPNAMEx		location of the UUCP name for your host (optional)
+xUUCPNAME_ENDx
+xSENDMAIL_STARTx
+.TP 15
+xSENDMAILx		command for sending mail
+xSENDMAIL_ENDx
+
+.SH ENVIRONMENT VARIABLES
+.TP 11
+NNTPSERVER
+hostname of the news server
+.TP 11
+TMPDIR
+temporary directory
+.TP 11
+DOMAIN
+name of your internet domain (".Berkeley.EDU", ".orst.edu")
+.TP 11
+HIDDENHOST
+full domain-style name of the host that you want your return path to
+be from (e.g., "decvax.dec.com", "Berkeley.EDU")
+.TP 11
+HIDDENPATH
+name of the host that you want put in the Path field of messages
+.TP 11
+USER
+login name of the user
+.TP 11
+HOME
+home directory of the user
+.TP 11
+FULLNAME
+full name of the user, used for the From field of messages
+
+.SH SEE ALSO
+emacs(1), readnews(1), rn(1), sh(1) sprintf(3), vnews(1), X(1), nntpd(8)
+
+.SH COMMENTS
+.PP
+The name (\*(XR) is a bit of a misnomer.
+\*(XR is not an X interface to "rn" (the terminal-based news reading
+program by Larry Wall), but is an X-based news reader that has
+had part of the functionality of "rn" added since a number of our
+users are (were?) "rn" users (all of the code is new).
+Much of the "rn" funcionality that \*(XR currently has was not in the original
+plan (kill files, for example).
+.sp
+The user interface look and feel is modeled after that of "XMH"
+(by Terry Weissman).
+.sp
+The \*(NS file is updated on executing the "quit" command in \*(NG
+mode, during every "rescan", and by "checkpoint".
+If the "updateNewsrc" option is set, the \*(NS file will be updated
+every time \*(AR mode is exited.
+.sp
+\*(XR catches signals and X errors and will clean up on error exit
+(remove temporary files, update the \*(NS file).
+The cleanup will be done and then a death notifier box will
+be posted (if the signal is SIGHUP or SIGINT,
+the death notifier will be skipped
+and the program will exit).
+The "click to exit" button must be pressed in the death notifier box
+for the program to exit.
+.sp
+XREFS are handled by \*(XR, however only articles that
+are actually read (not marked as read by "catchup" or "mark as read")
+have their XREFS chased and only groups that are currently subscribed
+to have XREFed articles marked as read.
+.sp
+The default specifications for color and fonts can be confusing
+(thousands of different X resources can be specified for \*(XR,
+no two users' \*(XR displays need to be the same).
+.sp
+\*(XR uses the XHDR command of the Berkeley NNTP news server
+(XHDR is not part of the protocol defined by RFC 977).
+\*(XR will detect the presence of this command and complain
+if it does not exist.
+.sp
+Since the NNTP protocol does not define a unique response code
+for server timeout, timeout recovery may not work if the format
+of the timeout error message changes.
+.sp
+\*(XR assumes a mailer that understands domain-based mail addresses.
+.sp
+\*(XR notices that the \*(NS file has been updated by another program while
+\*(XR is running and informs the user (and gives the user the option to quit
+without updating the "\*(NS or to continue on).
+.sp
+Article temporary files can be removed and \*(XR will recover.
+.sp
+\*(XR strips "<character>^H" from articles.
+.sp
+The v{f,s}printf implementation included with \*(XR is from 
+Robert A. Larson <blarson@skat.usc.edu>.
+.sp
+The strtok implementation included with \*(XR is from
+Henry Spencer <henry@zoo.toronto.edu>.
+.sp
+PointerForeground is the resource name for the color of the 
+cursor (pointer).  Some other programs use PointerColor/CursorColor.
+.SH BUGS
+.PP
+.sp 
+See TODO for a larger list of bugs and things that need to be done.
+.sp
+Incomplete kill file support.
+.sp
+See config.h for a list of defines you may want to use based
+on problems that may exist in your version of the X11 toolkit and widgets.
+.sp
+See COMMON-PROBLMS for a list of common problems and solutions to the
+problems.
+.sp
+Report bugs and requests for features to "bug\-xrn@cam.ov.com".
+.sp
+Requests to be placed on the \*(XR users mailing list should be sent to
+"xrn\-users\-request@cam.ov.com".  The only thing that comes
+across this mailing list is announcements of new releases and
+patches for serious problems so don't expect very much traffic.
+.\"
+.SH "AUTHORS"
+.PP
+Jonathan Kamens (OpenVision Technologies, jik@cam.ov.com)
+.PP
+Ellen M Sentovich (UC Berkeley, ellen@ic.berkeley.edu)
+.PP
+Rick L Spickelmier (formerly UC Berkeley, now Objectivity, Inc.,
+ricks@berkeley.edu, ricks@objy.com)
+.PP
+See the ChangeLog file for other people who have contributed to \*(XR.

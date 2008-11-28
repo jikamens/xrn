@@ -1,0 +1,198 @@
+ #
+# $Header: /d/src/cvsroot/xrn/Imakefile,v 1.12 1994-10-10 19:16:22 jik Exp $
+#
+# xrn - an X-based NNTP news reader
+#
+# Copyright (c) 1988-1993, Ellen M. Sentovich and Rick L. Spickelmier.
+#
+# Permission to use, copy, modify, and distribute this software and its
+# documentation for any purpose and without fee is hereby granted, provided
+# that the above copyright notice appear in all copies and that both that
+# copyright notice and this permission notice appear in supporting
+# documentation, and that the name of the University of California not
+# be used in advertising or publicity pertaining to distribution of 
+# the software without specific, written prior permission.  The University
+# of California makes no representations about the suitability of this
+# software for any purpose.  It is provided "as is" without express or
+# implied warranty.
+#
+# THE UNIVERSITY OF CALIFORNIA DISCLAIMS ALL WARRANTIES WITH REGARD TO 
+# THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND 
+# FITNESS, IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE FOR
+# ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
+# RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
+# CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN 
+# CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+# Suggestions, comments, or improvements are welcome and should be
+# addressed to:
+/*
+ * Imakefile - Imakefile for XRN
+ */
+
+/*
+ * Either uncomment the following, or use "-DUseMotif" to imake, or use
+ * "make Makefile IMAKE_DEFINES=-DUseMotif", to get a Makefile for the
+ * Motif version.
+ */
+
+/* #define UseMotif */
+
+/* Uncomment this to include editres support with Motif (X11R5 only). */
+/* #define UseEditres */
+
+#ifdef BandAidCompiler
+#include BandAidCompiler
+#endif
+
+/*
+ * If you use InterNetNews, set this define to the location of your
+ * InterNetNews library.
+ */
+
+#ifdef OV_CAMBRIDGE
+#define INN /afs/gza.com/development/news/build/inn/libinn.a
+#endif
+
+/*
+ * If you need to link against special libraries, put them in
+ * XRN_LOAD_FLAGS.  What's here may or may not be right for your
+ * system.  If in doubt, leave it alone and see what happens.
+ */
+
+#if defined(XmacIIServer) || defined(hp9000s300) || defined(hp9000s800) || defined(SGIArchitecture)
+XRN_LOAD_FLAGS = -lPW
+#endif
+
+#if defined(RsArchitecture)
+XRN_LOAD_FLAGS = -lPW -lbsd
+#endif
+
+#if defined(AMIX)
+XRN_LOAD_FLAGS = -lucb -lm -lgen
+#endif
+
+/*
+ * You probably won't need to change most of this.  However, you can
+ * change APPDEFAULTS if you want the class name to be something other
+ * than XRn (or XRnMotif for the Motif version).
+ */
+
+#ifdef UseMotif
+#include <Motif.tmpl>
+#ifdef UseEditres
+LOCAL_LIBRARIES = $(XMULIB) XmClientLibs
+DEPLIBS = $(DEPXMULIB) XmClientDepLibs
+MOTIFDEFINES = -DMOTIF -DEDITRES
+#else
+LOCAL_LIBRARIES = XmClientLibs
+DEPLIBS = XmClientDepLibs
+MOTIFDEFINES = -DMOTIF
+#endif
+APPDEFAULTS = XRnMotif
+#else
+LOCAL_LIBRARIES = XawClientLibs
+DEPLIBS = XawClientDepLibs
+APPDEFAULTS = XRn
+MOTIFDEFINES = /*nothing*/
+#endif
+
+/*
+ * Special compiler flags for your platform.  If in doubt, just leave
+ * them alone and see what happens.
+ */
+
+#if defined(aiws)
+XRN_DEFINES = -a -Nn3000 -Nd4000 $(MOTIFDEFINES)
+#else
+#if defined(hp9000s300)
+XRN_DEFINES = -Wc,-Ns4000 $(MOTIFDEFINES)
+#else
+#if defined(HCRevision)
+XRN_DEFINES = -DUNIXCPP -DNOSTDHDRS $(MOTIFDEFINES)
+#else
+#if defined(gould)
+XRN_DEFINES = -DNOVOID -DLONGINT -UINTSPRINTF $(MOTIFDEFINES)
+#else
+#if defined(UltrixArchitecture)
+XRN_DEFINES = -DNOSTDHDRS $(MOTIFDEFINES)
+#else
+XRN_DEFINES = $(MOTIFDEFINES)
+#endif
+#endif
+#endif
+#endif
+#endif
+
+/*
+ * You probably don't need to change anything in this block.
+ */
+
+#ifdef OV_CAMBRIDGE
+SITE_DEFINES = -DOV_CAMBRIDGE
+#endif
+
+#if defined(INN)
+EXTRA_LOAD_FLAGS = $(XRN_LOAD_FLAGS) INN
+CLIENTSRC =
+CLIENTOBJ =
+DEFINES = $(XRN_DEFINES) -DINN $(SITE_DEFINES)
+#else
+EXTRA_LOAD_FLAGS = $(XRN_LOAD_FLAGS)
+CLIENTSRC = clientlib.c
+CLIENTOBJ = clientlib.o
+DEFINES = $(XRN_DEFINES) $(SITE_DEFINES)
+#endif
+
+/*
+ * If you want the program to be called something other than "xrn",
+ * change this.
+ */
+
+PROGRAMS = xrn
+
+/*
+ * You probably don't need to edit anything below this line.
+ */
+
+SRCS = avl.c buttons.c $(CLIENTSRC) compose.c cursor.c dialogs.c \
+       refile.c mesg.c error_hnds.c newsrcfile.c resources.c    \
+       internals.c save.c server.c utils.c xmisc.c xrn.c xawmotif.c \
+       xthelper.c y.tab.c cancel.c vprintf.c tempnam.c strstr.c \
+       strtok.c mesg_strings.c
+OBJS = avl.o buttons.o $(CLIENTOBJ) compose.o cursor.o dialogs.o \
+       refile.o mesg.o error_hnds.o newsrcfile.o resources.o    \
+       internals.o save.o server.o utils.o xmisc.o xrn.o xawmotif.o \
+       xthelper.o y.tab.o cancel.o vprintf.o tempnam.o strstr.o \
+       strtok.o mesg_strings.o
+
+all::
+
+depend:: lex.yy.c y.tab.c
+
+ComplexProgramTarget($(PROGRAMS))
+InstallAppDefaults($(APPDEFAULTS))
+
+#if HasSaberC == YES
+# saber_xrn:: lex.yy.c
+# osaber_xrn:: lex.yy.c
+#endif
+
+lex.yy.c: newsrc.l
+	$(LEX) newsrc.l
+y.tab.c: newsrc.y
+	$(YACC) newsrc.y
+y.tab.o: lex.yy.c avl.h news.h newsrcfile.h utils.h
+
+clean::
+	$(RM) y.tab.c lex.yy.c
+
+TAR_FILE =	xrn.tgz
+
+tar:
+	gtar --create --exclude Attic --exclude RCS --exclude '*~' \
+		--exclude '.#*' --exclude TAGS --exclude $(TAR_FILE) \
+		--verbose --file - . | gzip --best > $(TAR_FILE)
+
+label:
+	rcs -n$(RCS_LABEL): `find . -name '*,v' -print`

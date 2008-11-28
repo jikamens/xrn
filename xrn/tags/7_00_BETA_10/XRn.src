@@ -1,0 +1,207 @@
+!
+! $Header: /d/src/cvsroot/xrn/XRn.src,v 1.16 1994-10-23 21:00:30 jik Exp $
+!
+XRn.version:			7.00 beta 10
+*Geometry:			+0+0
+XRn.Geometry:			680x700
+*breakLength:			0
+*font:			8x13
+*Label.font:			8x13
+*Command.font:		9x15
+*Dialog.borderWidth:		1
+*Dialog.default.Accelerators: #override \n\
+	<Key>0xff0a: set() notify() unset() \n\
+	<Key>0xff0d: set() notify() unset()
+
+*PrefetchMax:        50
+*lockFile:	~/.xrnlock
+
+*includeHeader:	off
+
+! Index asciiText window stuff
+*index.cursor:         left_ptr
+! Composition pane stuff
+*Composition.pane.text.scrollVertical:		always
+*Composition.pane.text.wrap:			never
+*Composition.pane.text.autoFill:		true
+
+! button keybindings
+
+*index.Translations:   #override \n\
+  <Btn2Down>:  select-start() extend-end() doTheRightThing(jump)
+
+*ngBindings: \
+  <Key>0x20:	doTheRightThing(goto)	\n\
+  <Key>y:	doTheRightThing(goto)	\n\
+  :<Key>u:	ngUnsub()	\n\
+  :<Key>c:	ngCatchUp()	\n\
+  <Key>n:	ngNext()	\n\
+  <Key>Down:	ngNext()	\n\
+  <Key>p:	ngPrev()	\n\
+  <Key>Up:	ngPrev()	\n\
+  <Key>-:	ngPrevGroup()	\n\
+  :<Key>g:	ngGoto()	\n\
+  :<Key>L:	ngAllGroups()	\n\
+  <Key>q:	ngQuit()
+*artBindings: \
+  <Key>b:	artScrollBack()		\n\
+  <Key>0x20:	doTheRightThing(goto)	\n\
+  ^<Key>N:	artSubNext()	\n\
+  :<Key>N:	artNext()	\n\
+  :<Key>n:	artNextUnread()	\n\
+  ^<Key>P:	artSubPrev()	\n\
+  <Key>P:	artPrev()	\n\
+  :<Key>-:	artLast()	\n\
+  :<Key>/:	artSubSearch()	\n\
+  <Key>f:	artFollowup()	\n\
+  <Key>r:	artReply()	\n\
+  <Key>s:	artSave()	\n\
+  <Key>w:	artSave()	\n\
+  <Key>|:	artSave()	\n\
+  <Key>%:	artSave("| uudecode")	\n\
+  :<Key>C:	artCancel()	\n\
+  :<Key>v:	artHeader()	\n\
+  ^<Key>X:	artRot13()	\n\
+  :<Key>X:	artRot13()	\n\
+  :<Key>c:	artCatchUp()	\n\
+  :<Key>j:	artMarkRead()	\n\
+  <Key>m:	artMarkUnread()	\n\
+  :<Key>k:	artKillSession()	\n\
+  :<Key>K:	artKillLocal()	\n\
+  :<Key>u:	artUnsub()	\n\
+  <Key>.:	artGotoArticle()	\n\
+  <Key>q:	artQuit()
+
+*allBindings: \
+  <Key>q:	allQuit()
+
+*addBindings: \
+  <Key>q:	addQuit()
+
+! scrollbars, resize, wrap
+*popup.dialog.value.scrollVertical: never
+*popup.dialog.value.scrollHorizontal: never
+*vpane.Text.scrollVertical: always
+*vpane.Text.resize: never
+*titlebar.resize: false
+*articleText.wrap: word
+*index.wrap: never
+
+! A few directions for vpane resizing...
+*vpane.Text.allowResize: False
+*vpane.Text.skipAdjust: False
+*vpane.Box.allowResize: True
+*vpane.Box.skipAdjust: True
+*vpane.Label.allowResize: True
+*vpane.Label.skipAdjust: False
+! grips
+*articleText.showGrip:	False
+*titlebar.showGrip:	False
+*indexinfo.showGrip:	False
+*indexbuttons.showGrip:	False
+*textinfo.showGrip:	False
+
+! button names
+*addQuit.label:               Quit
+*addFirst.label:              Add first
+*addLast.label:               Add last
+*addAfter.label:              Add after group
+*addUnsub.label:              Add unsubscribed
+
+*ngQuit.label:                Quit
+*ngRead.label:                Read
+*ngNext.label:                Next
+*ngPrev.label:                Prev
+*ngCatchUp.label:             Catch up
+*ngSubscribe.label:           Subscribe
+*ngUnsub.label:               Unsubscribe
+*ngGoto.label:                Goto group
+*ngListOld.label:	      List old
+*ngAllGroups.label:           All groups
+*ngRescan.label:              Rescan
+*ngPrevGroup.label:           Prev group
+*ngSelect.label:              Select groups
+*ngMove.label:                Move
+*ngExit.label:                Exit
+*ngCheckPoint.label:          Checkpoint
+*ngPost.label:                Post
+*ngGripe.label:               Gripe
+*ngScroll.label:              Scroll forward
+*ngScrollBack.label:          Scroll backward
+
+*allQuit.label:               Quit
+*allSub.label:                Subscribe
+*allFirst.label:              Subscribe first
+*allLast.label:               Subscribe last
+*allAfter.label:              Subscribe after group
+*allUnsub.label:              Unsubscribe
+*allGoto.label:               Goto group
+*allSelect.label:             Select groups
+*allMove.label:               Move
+*allToggle.label:             Toggle order
+*allScroll.label:             Scroll forward
+*allScrollBack.label:         Scroll backward
+*allPost.label:		      Post
+
+*artQuit.label:               Quit
+*artNext.label:               Next
+*artScroll.label:             Scroll forward
+*artScrollBack.label:         Scroll backward
+*artScrollLine.label:         Scroll line forward
+*artScrollBackLine.label:     Scroll line backward
+*artScrollEnd.label:          Scroll to end
+*artScrollBeginning.label:    Scroll to beginning
+*artScrollIndex.label:	      Scroll index
+*artScrollIndexBack.label:    Scroll index backward
+*artNextUnread.label:         Next unread
+*artPrev.label:               Prev
+*artLast.label:               Last
+*artNextGroup.label:          Next group
+*artGotoArticle.label:        Goto article
+*artCatchUp.label:            Catch up
+*artFedUp.label:	      Fed up
+*artMarkRead.label:           Mark read
+*artMarkUnread.label:         Mark unread
+*artUnsub.label:              Unsubscribe
+*artSubNext.label:            Subject next
+*artSubPrev.label:            Subject prev
+*artKillSession.label:        Session kill
+*artKillLocal.label:          Local kill
+*artKillGlobal.label:         Global kill
+*artKillAuthor.label:         Author kill
+*artSubSearch.label:          Subject search
+*artContinue.label:           Continue
+*artPost.label:               Post
+*artExit.label:               Exit
+*artCheckPoint.label:         Checkpoint
+*artGripe.label:              Gripe
+*artListOld.label:	      List old
+
+*artSave.label:               Save
+*artReply.label:              Reply
+*artForward.label:            Forward
+*artFollowup.label:           Followup
+*artFollowupAndReply.label:   Followup & Reply
+*artCancel.label:             Cancel
+*artRot13.label:              Rot-13
+*artXlate.label:              Translate
+*artHeader.label:             Toggle header
+*artPrint.label:              Print
+
+*compAbort.label:             abort
+*compSend.label:              send
+*compSave.label:              save
+*compIncludeArticle.label:    include article
+*compIncludeFile.label:       include file
+
+*Information.pane.label.showGrip:	False
+*Information.pane.text.showGrip:	False
+*Information.saveUnder:			False
+*Information.pane.height:		150
+*Information.pane.width:		600
+*Information.pane.text.displayCaret:	False
+*Information.pane.text*scrollVertical:	always
+*Information.pane.text*wrap:		word
+
+*Cancel*label:		      Cancel Search
+

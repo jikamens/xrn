@@ -1,0 +1,1734 @@
+Tue Dec 13 03:14:30 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.src, XRnMotif.src, patchlevel.h, xrn-man.src:
+	Update version number for 7.01-beta-10.
+
+Mon Dec 12 22:02:26 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* internals.c: In getSortedSubjects() and getUnsortedSubjects(),
+	don't mark an article unavailable just because it has no subject
+	line.  That could be just because we decided not to retrieve it
+	from the server at this time, not because it's unavailable.  Leave
+	the job of deciding what's available and what isn't to
+	getsubjectlist().
+
+ *	* buttons.c: Fix a number of bugs in "List old" in article mode,
+	including: (1) If you've read articles first through n-1 and n+1
+	through last in a newsgroup, and you entered the newsgroup so that
+	you're viewing only article n, and you click on "List old", it
+	will list only articles first through n, and not n+1 through
+	list. (2) when you click on "List old", the current article is
+	changed to the first article in the newsgroup.  That shouldn't
+	happen.  It should list old articles but leave you on the same
+	article you were on before.
+
+	* config.h: Get rid of XRN_PREFETCH_UNREAD_ONLY.  It's unnecessary
+	tweak and there's no good reason for it ever to be undefined, so
+	just always prefetch only unread articles.
+
+ *	* internals.c: Don't process KILL files twice when entering a
+	newsgroup when the rescanOnEnter resource is true.
+
+	* cursor.c: In removeLine(), when we remove a line from a text
+	source, we need to reset the string in the text source, or the
+	window doesn't update properly to indicate the removed line.
+
+Mon Dec 12 16:00:29 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.src, XRnMotif.src, patchlevel.h, xrn-man.src:
+	Update version number for 7.01-beta-9.
+
+Mon Dec 12 15:53:30 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* config.h: Because our version of strstr() is faster than the one
+	provided with SunOS 4.1.3 (and earlier SunOS 4 releases), we'll
+	use ours instead of the SunOS version, even though SunOS provides
+	one.  Suggested by per@erix.ericsson.se (Per Hedeland).
+
+	* compose.c: Document more clearly above getHeader that real_host
+	isn't domainified but host is.
+
+ *	* newsrcfile.c: When updating the .newsrc file, always treat
+	unavailable articles as if they were read.  Before, unavailable
+	articles were being treated as read some of the time, but not all
+	of the time.  I removed the inconsistency.
+
+	* server.c: When retrieving the subject list from the server, mark
+	any article which doesn't have a subject as unavailable.
+
+	When retrieving subject, author and lines lists from the server,
+	don't try to retrieve articles that are marked unavailable.
+
+	* internals.c: When building the list of articles to display in
+	article mode, don't assume that every article that has a Subject
+	also has a Lines line; this will prevent a null pointer
+	dereference when the server doesn't return a Lines line for a
+	valid article.
+
+ *	* internals.c: Keep track of whether we're talking to a "fast NNTP
+	server", i.e., whether the server is fast and the network over
+	which we're talking to it is fast, based on how fast the server
+	sends back responses to XHDR requests.  If the server we're
+	talking to is slow, then don't prefetch articles in the
+	background, because prefetching an article can take along time and
+	hang up the interface while it's happening.
+
+ *	* config.h, xrn-man.src: By default, never rescan automatically.
+
+ *	* buttons.c, compose.c, newsrc.l, newsrc.y, resources.c, server.c,
+	utils.c: Don't pass function calls that have side effects into
+	XtNewString, because it's a macro which will cause them to be
+	executed multiple times.  The most noticeable effect of this bug,
+	reported by uri@watson.ibm.com, was that the save file name wasn't
+	getting preserved in between saves in a single newsgroup.
+
+ *	* buttons.c, xrn-man.src: When saving an article, always do %d
+	substitution, not just when a highlighted range of articles is
+	being saved.
+
+ *	* xrn-man.src: Document that `@' at the beginning of a save file
+	name means a BABYL file.
+
+ *	* internals.c: When we finish a prefetch in progress, finish the
+	work that needs to be done in big chunks instead of in the same
+	small chunks that were used while prefetching in the background,
+	because it's much more efficient.
+
+Sun Dec 11 19:29:47 1994  Jonathan Kamens  <jik@cam.ov.com>
+
+ *	* buttons.c: Empty CurrentIndexGroup when NewsGroupsString is
+	empty when redrawing the newsgroup text widget, to avoid the
+	cursor ending up in the wrong place when a whole bunch of
+	newsgroups get KILLed, thus emptying NewsGroupsString, and then a
+	rescan causes the last KILLed newsgroup to show up again with new
+	articles.
+
+	* compose.c: In buildFrom, don't try to use the sender_host field
+	if INEWS is defined.  In general, clean up the buildFrom code so
+	that it doesn't deal with real_addr or sender at all when INEWS is
+	defined.  Problem first reported by "chris (c.r.) lewis"
+	<clewis@bnr.ca>.
+
+ *	In buildFrom, I had the sense of the real and user-requested
+	addresses reversed, i.e., the address which should have been
+	appearing in the From line was instead appearing in Sender line
+	and vice versa.  I've fixed this.
+
+Fri Dec  9 19:41:13 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.src, XRnMotif.src, patchlevel.h, xrn-man.src:
+	Update version number for 7.01-beta-8.
+
+Fri Dec  9 19:22:57 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	In redrawNewsgroupTextWidget(), only redraw the text widget if if
+	has changed since the last time we drew it (or if we are just
+	entering newsgroup mode).
+
+	* mesg.c: In info(), cache the last string displayed, to avoid
+	unnecessary interactions with the X server.  Also, use
+	XtVaSetValues() instead of XtSetValues().
+
+	In infoNow(), use xthHandlePendingExposeEvents() instead of
+	xthHandleAllPendingEvents(), so that we don't handle things like
+	button presses that will confuse us.  I had to do this because the
+	prefetching sequence was getting corrupted when it used infoNow()
+	to display its current status, and the user had hit a button that
+	caused a new prefetch to be started.
+
+	* xrn.c, xrn.h: Add the TopContext global to store the top-level
+	application context.
+
+	* resources.c: Use XtAppInitialize instead of XtInitialize, and
+	store the application context return by XtOpenApplication and
+	XtAppInitialize in the TopContext variable.
+
+	* internals.c: Significantly clean up and simply the prefetch
+        routines.
+
+	* error_hnds.c, internals.c, xrn.c: Use XtApp* functions instead
+	of corresponding Xt* functions.
+
+	* buttons.c, error_hnds.c, xrn.c, xthelper.c: Use the new
+	TopContext variable to get the application context, instead of
+	calling XtWidgetToApplicationContext(TopLevel).
+
+	* XRn.src, XRnMotif.src: Remove the "PrefetchMax" line, since
+	there's a default coded into the binary and since we want the
+	default to be 0 anyway.
+
+	* internals.c: Fix some null pointer derefs in debugging code.
+
+	* utils.h: Define MIN(a,b) if it isn't already defined.
+
+Thu Dec  8 23:02:32 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* internals.c, server.c, news.h: Support incremental processing of
+	KILL files, similar to the incremental fetching of header info
+	from the NNTP server that I implemented earlier today.
+
+ *	* internals.c: Keep track of what articles have already been run
+	through a newsgroup's KILL files, and don't run KILL files over
+	the same articles in any particular newsgroup more than once in
+	any single XRN invocation (eventually, I should augment this to
+	write the THRU line to the KILL file like rn does, but for now,
+	this will be sufficient).
+
+	* server.c, server.h: Modify the getsubjectlist, getauthorlist and
+	getlineslist functions so that the work they do can be broken up
+	into smaller chunks (for better prefetching).
+
+ *	* internals.c: Break up the prefetching work further, so that
+	single chunks of prefetching work don't take more than a few
+	seconds.  Dynamically ajust how much work to do in any single
+	chunk based on how quickly the NNTP server is responding to
+	requests.  Aim for a delay time of one second for any one prefetch
+	work chunk.  In other words, when you're reading a newsgroup and
+	XRN is prefetching the next one, you should never have to wait
+	more than a few seconds in response to a command you give the
+	program.
+
+	Get rid of a minor memory leak if a prefetch is cancelled in
+	between when the prefetchSetFetch work procedure is installed and
+	when it actually runs.
+
+	Allow prefetchMax to be 0, in which case there is no limit on
+	newsgroup size when prefetching.
+
+ *	* config.h: Set the default prefetchMax to 0, i.e., by default,
+	there's no limit to newsgroup size when prefetching.
+
+ *	* xrn-man.src: Add documentation for prefetchMax.
+
+ *	* buttons.c: Fix this bug: (1) Start the program. (2) Click on a
+	newsgroup all of whose articles will be killed by its KILL
+	file. (3) Note that when it goes away, the cursor goes back to the
+	beginning of the list, instead of staying where the removed group
+	was.
+
+	* mesg_strings.c: Add ABORTED_MSG and PREFETCHING_MSG.
+
+ *	Prefetch the current newsgroup after updating newsgroup mode.
+	This means that the current newsgroup will be prefetched when the
+	program starts up, when the exits article mode back to newsgroup
+	mode, and when a rescan is done.
+
+ *	When jumping to a newsgroup with "goto", copy the newsgroup into
+	CurrentIndexGroup, so that when the user switches back into
+	newsgroup mode, his position in the newsgroup list will change.
+	This makes the behavior similar to that of rn.
+
+ *	* internals.c: Get rid of the code which prevents prefetching the
+	next group when entering a newsgroup using "goto".  The
+	prefetching is efficient enough that it doesn't hurt to prefetch
+	the next group even if we're not going to go to it, and besides,
+	if the user clicks on "Next group" after entering a group with
+	"goto", he'll want the next group prefetched.
+
+ *	Add code in the prefetch routines to put messages in the top info
+	line when a prefetch starts, finishes or is aborted.
+
+ *	When we prefetch a group and discover that it has no unread
+	articles in it, release its resources and prefetch the next group.
+	This means that prefetching, once it starts, will continue until
+	either it finds a group with unread articles or it encounters a
+	group that is too large to prefetch.
+
+ *	Redraw the newsgroup text widget when done prefetching a
+	newsgroup, because the prefetching may have changed the widget's
+	contents.
+
+	* internals.c, internals.h: Add a prefetchGroup function, which
+	takes a newsgroup name and tries to prefetch that group.
+
+	* config.h: Change an "i.e." to "e.g.".
+
+ *	* buttons.c, internals.c, internals.h: Redo the way the current
+	position in the newsgroup list is stored.  Instead of trying to
+	store a character position in the list of newsgroups, store the
+	group we're currently on.  Add a getNearbyNewsgroup function to
+	find a newsgroup in the list close to the specified newsgroup,
+	even if the specified newsgroup has been totally read (and
+	therefore isn't in the list any longer).  These seems to fix quite
+	a few bugs with cursor positioning in the newsgroup list,
+	especially when exiting from article mode back to newsgroup mode.
+
+Wed Dec  7 13:58:55 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.src, XRnMotif.src, patchlevel.h, xrn-man.src:
+	Update version number for 7.01-beta-7.
+
+Wed Dec  7 13:46:48 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+ *	* cursor.h, internals.c, mesg_strings.c: More
+	internationalization/German patches, from kay@zhv.basf-ag.de (Kay
+	Marquardt), with some cleanup by me.
+
+Mon Dec  5 22:28:48 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* buttons.c, compose.c, internals.c, mesg.c, mesg.h, newsrc.y,
+	newsrcfile.c: Redo the changes to mesgPane in beta 6 a little bit,
+	to prevent consecutive groups of messages from the different
+	invocations of the same function to be appended to each other when
+	they should be separate.
+
+	* compose.c: Convert compAbortFunction into compAbortUtil and
+	modify things that call it, so that the stupid "append" argument
+	syntax is gone.
+
+Mon Dec  5 19:33:05 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.src, XRnMotif.src, patchlevel.h, xrn-man.src:
+	Update version number for 7.01-beta-6.
+
+Mon Dec  5 19:24:41 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* compose.c (compSendFunction): Disable text redisplay when
+	preparing a message for sending, so that the cursor doesn't flash
+	all over the place when parsing headers in the message.
+
+	* buttons.c, internals.c, internals.h: Modify killItem so that the
+	newsgroup in which to kill is passed into it, and call it properly
+	from places that use it.  This is necessary because the places
+	that use it may cause the current newsgroup to switch after
+	deciding what to kill but before calling it.
+
+ *	* internals.c: When creating a new kill file entry, instead of
+	replacing all special characters with periods, quote them with
+	backslashes or square braces.  Furthermore, some characters that
+	were being replaced with periods before ('-', ':', '\'', '\"')
+	aren't special and therefore don't need to be quoted.
+
+ *	* internals.c (killItem): For some reason, the code for adding an
+	entry to the KILL file was truncated regular expressions in
+	entries to only 24 characters.  I don't know why, and I can't
+	figure out a good reason (if there is one, I suppose I'm going to
+	find out about it now!), so I've changed it to only limit the
+	input enough to make sure that XRN will be able to read back the
+	written entry.  I've also fixed a potential array bounds read,
+	although it's not a big deal because it could only be encountered
+	for Subject or From lines that are more than 1023 characters long.
+
+	* compose.c: When a post fails, don't try to append the "Saving in
+	~/dead.letter."  message on the same line as the previous error
+	message, because if it came from the server, it won't be formatted
+	for that properly.  Also, only display the "Saving in
+	~/dead.letter." message when actually doing the saving.
+
+	* buttons.c, compose.c, cursor.c, internals.c, mesg.c, mesg.h,
+	newsrc.y, newsrcfile.c, refile.c, resources.c, save.c, server.c,
+	xrn.c: Change the way appending to the last message in the message
+	pane works, so that it's much less likely that two messages that
+	should have a separator between them end up without one.
+
+Sun Dec  4 21:43:03 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+
+	* mesg_strings.c: Add MULTI_MSG, for when there are multiple
+	fields in a message.
+
+ *	* compose.c (compSendFunction): Check if there are multiple
+	Subject, From, Newsgroups, or Path lines in the message, and
+	display an error and refuse to send the message if there are.
+
+ *	(compSendFunction): When verifying fields in a composition before
+	sending it, don't remove them from the message unless actually
+	replacing them.  This is useful especially when running XRN on slow
+	displays, e.g., over a SLIP line.
+
+	* buttons.c, resources.h, resources.c, xrn-man.src:
+	Add the stayInArticleMode option/resource.  When enabled, a number of
+	operations in article mode which would normally exit article mode
+	instead attempt to go to the next newsgroup.
+
+	* buttons.c (artNextGroupFunction): Only rebuild NewsGroupsString
+	if it doesn't already exist.  Otherwise, if all the articles in a
+	newsgroup are killed while prefetching, we'll get confused about
+	where in NewsGroupsString we are.
+
+	* xrn-man.src: Improve the documentation for pageArticles
+        slightly.
+
+	* mesg_strings.c: Add UNREAD and NEWS_IN strings, to be used by
+	internals.c and buttons.c.
+
+	* butexpl.h: Change ARTNEXTGROUP_EXSTR and ARTFEEDUP_EXSTR to
+	indicate that the next unread group, rather than the next group,
+	is the one that's switched to (I hope I got the German right!).
+
+	* internals.c: Use strings from mesg_strings.c for the "Unread"
+	and "news in" strings.  Note, further, that these strings are now
+	used in buttons.c in artNextGroupFunction.
+
+	* xrn-man.src: Document that using rescanOnEnter will cause a
+	delay when using "Next group" or "Fed up" in article mode after
+	selecting "List old" in newsgroup mode.
+
+ *	* buttons.c (fedUpART): Change the behavior of the "Fed up"
+	button, so that it finds the next unread newsgroup even when "List
+	old" has been selected in newsgroup mode.  Previously, if "List
+	old" was selected in newsgroup mode, then hitting "Fed up" in
+	article mode would exit article mode instead of going to vthe next
+	unread newsgroup.
+
+ *	(artNextGroupFunction): Do the right thing even when "List old" has
+	been selected in newsgroup mode.  Previously, when the user
+	clicked on "Next group" and "List old" was selected in newsgroup
+	mode, this function would try to enter a whole bunch of newsgroups
+	with no unread articles; now, it checks for newsgroups with unread
+	articles and only tries to enters them.
+
+ *	* save.c: When saving a message in an MH or RMAIL folder, if the
+	save fails, say "failed" instead of "done" in the top info line.
+
+	* server.c (digits): Add a function prototype.
+
+	(getsubjectlist): Fix a bug which causes the article numbers in the
+	subject index to be misaligned sometimes.  How to duplicate the bug:
+	(1) Create a new test newsgroup. (2) Post five messages in it. (3)
+	Read them.  (4) Quit from XRN.  (5) Post ten more messages in it.
+	(6) Run XRN.  (7) Enter the newsgroup.  (8) Hit 'P'.  Note how the
+	subject index line that just came up, for the last article you
+	already read, has its number aligned wrong.
+
+	* Imakefile: Check for the symbol "HPArchitecture" instead of
+	"hpux".  Problem pointed out by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+	Delete the "-Wc,-Ns4000" argument in XRN_DEFINES when compiling
+	under HP-UX.  I have no idea what it's supposed to do, and the
+	compiler doesn't understand the option under HP-UX 9.01 anyway.
+	Problem pointed out by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+Fri Dec  2 13:42:32 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+ *	* compose.c, dialogs.c, mesg_strings.c: More
+	internationalization/German changes, from kay@zhv.basf-ag.de
+	(Kay Marquardt).
+
+Thu Dec  1 23:26:02 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.src, XRnMotif.src, compose.c, compose.h, server.c: Some
+	fixes to the AUTHINFO GENERIC support, from "chris (c.r.) lewis"
+	<clewis@bnr.ca>, with some cleanup by me.
+
+ *	* server.c (start_server): Call close_server before doing anything
+	else, to make sure we get rid of the file descriptors from the
+	previous server connection (if any).  This isn't a problem if
+	there wasn't a previous connection, because close_server only
+	actually does something if it has a previous connection to close.
+	This fix removes a file descriptor leak which would eventually
+	make XRN no longer able to reconnect to the news server after a
+	large number of reconnects.
+
+	* error_hnds.c: Ignore SIGPIPE even if app_resources.dumpCore is
+	true.  It's not an error condition for us to get a SIGPIPE, and
+	besides, it doesn't cause a coredump, it causes the program to
+	exit, so it doesn't belong with the other "dumpCore" signals.
+
+ *	* XRn.src, XRnMotif.src: Had the English and German button labels
+	for "Subject search" reversed.
+
+Wed Nov 30 15:12:28 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* xrn-man.src: Add some spaces in a list of buttons so that it can
+	be wrapped.
+
+Tue Nov 29 22:33:01 1994  Jonathan Kamens  <jik@cam.ov.com>
+
+	* XRn.src, XRnMotif.src, patchlevel.h, xrn-man.src:
+	Update version number for 7.01-beta-5.
+
+Tue Nov 29 22:17:16 1994  Jonathan Kamens  <jik@cam.ov.com>
+
+	* internals.c: Move the call to articleArrayResync in setUpGroup
+	so that it's only done at the beginning of fetching the group,
+	rather than at each stage.
+
+ *	* internals.c, resources.c, resources.h, xrn-man.src: Add
+	"rescanOnEnter" command line option and X resource, to allow the
+	user to specify that XRN should check for new articles in a
+	newsgroup when entering it, rather than only when rescanning all
+	newsgroups.
+
+Fri Nov 25 20:50:47 1994  Jonathan Kamens  <jik@cam.ov.com>
+
+	* utils.h: Add putenv() declaration for SunOS.
+
+	* clientlib.c: Code cleanup: Don't define XRNrcsid if GCC_WALL is
+	defined.
+
+ *	* XRn.src, XRnMotif.src, resources.c, resources.h, server.c,
+	xrn-man.src: Patches to support new NNTP AUTHINFO GENERIC
+	protocol.  Mostly from "chris (c.r.) lewis" <clewis@bnr.ca>, with
+	some cleanup by me.
+
+	* Imakefile: Instead of checking for "hp9000s300" or "hp9000s800",
+	just check for "hpux".  Fix from "chris (c.r.) lewis"
+	<clewis@bnr.ca>.
+
+ *	* xrn-man.src: Fix the documentation for the ignoreNewsgroups
+	option so that some backslashes that were supposed to appear in it
+	actually appear in it (I forgot to double the backslashes for
+	nroff), and document how to quote the list of ignored newsgroup
+	expressions when specifying them either on the command line or in
+	X resources.  Problem pointed out by olivier@lise.paris.sgi.com
+	(Olivier DAVID).
+
+Thu Nov 24 21:14:34 1994  Jonathan Kamens  <jik@cam.ov.com>
+
+ *	* internals.c, resources.c, resources.h, xrn-man.src: Change the
+	semantics of the verboseKill X resource.  It used to be a boolean
+	which controlled whether the user was notified of messages that
+	were killed and of the summary of all actions taken while
+	processing a KILL file.  It has now been changed to a string,
+	which can contain any of "j", "m" and "s", to indicate that the
+	user wants to be told about articles that are marked read,
+	articles that are marked unread, and/or articles that are saved.
+	For example, "-verboseKill m" will only notify the user of
+	articles that are marked unread, "-verboseKill jms" will notify
+	the user of all KILL file actions, and "-verboseKill ''" won't
+	notify the user at all of KILL file actions.
+
+Wed Nov 23 21:10:04 1994  Jonathan Kamens  <jik@cam.ov.com>
+
+	* config.h: HP-UX supports vfork, according to Michel Eyckmans
+	(MCE) <eyckmans@imec.be>.
+
+	* internals.c: The definition for parseRegexpList should be K&R,
+	not ANSI.  Pointed out by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+ *	* Imakefile, XRn.src (renamed from XRn.ad), XRnMotif.src (renamed
+        from XRnMotif.ad), butexpl.h (new file), buttons.c, mesg.c,
+        mesg_str.awk (new file) mesg_strings.c: Support for a German
+        version of XRN.  Mostly from kay@zhv.basf-ag.de (Kay Marquardt),
+        with some enhancements by me.
+
+	* Imakefile: Add a second "all:: mesg_strings.h" line, after the
+	"all:: xrn" line, to make up for systems whose Make programs
+	process dependences in the Makefile in reverse order.  This should
+	fix the problem of "xmkmf" followed by "make" reporting an error
+	about mesg_strings.h on some systems.
+
+ *	* internals.c: When entering a newsgroup, use the first article
+	number returned by the GROUP command, because it sometimes is more
+	up-to-date than the first article number returned by the LIST
+	command.  The biggest effect this will have is to prevent XRN from
+	trying to retrieve articles that no longer exist (but that the
+	LIST command doesn't know no longer exist) when the user clicks on
+	"List Old".  Problem pointed out by Konstantin Laufer
+	<laufer@math.luc.edu>.
+
+ *	When entering a newsgroup, correctly tell the user when the last
+	read article is being displayed because no unread articles were
+	found.  This used to work properly; I'm not sure when I broke it,
+	but now it's fixed.
+
+	* server.c (getactive): Remove a comment about when to call
+	articleArrayResync and when not to.  Remove an XXX that is no
+	longer needed about the call to articleArrayResync.  Delete a
+	couple unneeded braces.
+
+	* refile.h, xrn-man.src, clientlib.h, xthelper.h, mesg_strings.c,
+	config.h, buttons.c, COMMON-PROBLMS, xthelper.c, xmisc.h, xrn.c,
+	xmisc.c, internals.c, utils.h, utils.c, server.h, server.c,
+	save.h, resources.h, save.c, refile.c, newsrcfile.h, newsrcfile.c,
+	newsrc.y, newsrc.l, news.h, modes.h, mesg.h, mesg.c, internals.h,
+	xrn.h, resources.c, error_hnds.h, dialogs.h, dialogs.c, cursor.h,
+	cursor.c, copyright.h, compose.h, compose.c, codes.h, clientlib.c,
+	cancel.h, cancel.c, buttons.h, butdefs.h, avl.h, avl.c,
+	error_hnds.c, XRnMotif.ad, XRnMotif.src, TODO, README, Imakefile,
+	XRn.ad, XRn.src, COPYRIGHT, Xresources.sam: Use Id instead of
+	Header in RCS strings.
+
+Tue Nov 22 18:03:28 1994  Jonathan Kamens  <jik@cam.ov.com>
+
+	* README: Add a note about doing "make mesg_strings.h" explicitly
+	if for some reason Make doesn't build mesg_strings.h in response
+	to "make".  Problem reported by Lucas James
+	<jj@ldjpc.apana.org.au>.
+
+	* Imakefile: Use the file name mesg_str.tmp instead of
+	mesg_strings.h.tmp, because the latter is too long for
+	short-filename systems, and conflicts with mesg_strings.h on such
+	systems.  Problem pointed out by kay@zhv.basf-ag.de (Kay
+	Marquardt).
+
+Mon Nov 21 19:27:13 1994  Jonathan Kamens  <jik@cam.ov.com>
+
+ *	* buttons.c: Fix this bug: "If I press the <Prev> button when I'm
+	reading the first article in a newsgroup, I have to press <Next>
+	twice before I get the next article.  Pressing <Prev> more than
+	once have exactly the same effect."  Problem reported by
+	sturle.sunde@usit.uio.no (Sturle Sunde).
+
+Fri Nov 18 19:39:53 1994  Jonathan Kamens  <jik@cam.ov.com>
+
+	* internals.c: Remove the newline from the end of strings read
+	from KILL files before processing, so that if there are errors and
+	error messages are displayed, they won't have the newline in them.
+
+Fri Nov 18 17:21:52 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, patchlevel.h, xrn-man.src:
+	Update version number for 7.01-beta-4.
+
+Fri Nov 18 17:18:24 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* compose.c: Declare gen_id() before using it.  Problem pointed
+	out by nissen@montefiore.ulg.ac.be (Alain Nissen).
+
+	Use strftime(), instead of asctime(), to get the Date: field value
+	when GENERATE_EXTRA_FIELDS is defined.  Otherwise, the generated
+	Date: field violates RFC 822.  Fix from
+	nissen@montefiore.ulg.ac.be (Alain Nissen).
+
+	* config.h: GENERATE_EXTRA_FIELDS requires strftime() now.
+
+	* config.h: Reorganize the various #define's use to control host
+	names, to go along with the changes to compose.c.
+
+	* compose.c (getHeader): INN "fromhost", HIDDEN_FILE and
+	RETURN_HOST are no longer used when determining "real_host".
+	Instead, they are used when determining "host".  A new #define,
+	REAL_HOST, has been added for determining "real_host".
+
+	(getHeader): The "path" variable is now determined from "real_host",
+	rather than "host", if no other source for it is available.
+
+	(getHeader): A new "sender_host" variable has been added, to store
+	what gets put in the Sender: field.  Support for a SENDER_HOST
+	#define has been added.
+
+	(gen_id): "real_host", rather than "host", is now used as the host
+	name in the Message ID.
+
+ *	Practically speaking, what the changes above to getHeader and
+	gen_id mean is that when a user posts a message, the actual host
+	he's posting from is more likely to appear in the message
+	somewhere (i.e., in the Sender:, Path: and/or Message-ID: fields),
+	unless the person who installs XRN defines REAL_HOST.  However,
+	return addresses in From: lines should appear the same as they did
+	previously.  The necessity of this fix was pointed out by
+	nissen@montefiore.ulg.ac.be (Alain Nissen).
+
+	(getHeader): Use strncpy and strncat instead of strcpy and strcat in
+	more places, to avoid memory overrun problems.  Also, make sure to
+	null-terminate host, real_host, sender_host and path.
+
+	* compose.c: Don't use INN's "domain" config value for real_host.
+
+	* compose.c: Add a comment indicating exactly how real_host, host,
+	path and domain are determined and used, because I'm about to
+	change things around a bit and I wanted to have the status quo
+	clearly spelled out before I started mucking with things.
+
+	When using UUCPNAME, don't copy real_host into host right after
+	reading real_host, because that happens later anyway.
+
+	* xrn-man.src: Remove a reference to the FIXERS file, which has
+	been removed.
+
+	Use the RCS "Date" tag in the date header of the man page, so that
+	the current RCS date shows up in the formatted man page.
+
+	Set up some variables to be updated automatically when the program
+	is built, and some files not to be included at all when they're
+	not actually used in the local installation.  See also the changes
+	to Imakefile to build xrn.man from xrn-man.src (to which this file
+	has been renamed).
+
+ *	Document unreadIconName and unreadIconPixmap.
+
+ *	Update the documentation for watchUnread to indicate what the list
+	separators are and to indicate that regular expressions, rather
+	than newsgroup names, should be listed.
+
+ *	Add documentation for the domainName resource.
+
+	Fix some typos, and some other minor formatting nits.
+
+	* xmisc.c, xmisc.h: Add makeDefaultButton(), to modify a Command
+	or PushButton widget to indicate that it is the default in a set
+	of buttons.
+
+	* xawmotif.c: Code cleanup: Include <Xm/List.h>.
+
+	* utils.h: Add a bunch of include files and function declarations
+	on SunOS (defined(sun) && !defined(SOLARIS)).
+
+ *	* mesg.c: Add a "clear" button to clear the text in the
+	information window without dismissing it.
+
+	* mesg.c, mesg.h: Get rid of the mesgEnableRedisplay() and
+	mesgDisableRedisplay() functions, since they're no longer needed
+	now that the code has been optimized not to reset the entire
+	string each time a new message comes in.
+
+	Move some X resources that were hard-coded in arg arrays into the
+	app-defaults files instead.
+
+	Some other minor code cleanup.
+
+	* internals.c: Get rid of calls to mesgDisableRedisplay() and
+	mesgEnableRedisplay().
+
+	* dialogs.c: In Motif, use a RowColumn widget instead of a Form
+	widget to put the buttons in.
+
+	Moved the code for marking a button as the default into xmisc.c,
+	so that it can be used from the Information window code too.
+
+	Reenable an XtSetKeyboardFocus call for the Xaw interface; a
+	comment claimed that it was causing coredumps, but I doubt that's
+	true anymore, and in any case, it didn't say what X11 release it
+	was causing coredumps under, and the only way for me to find that
+	out is to reenable it.
+
+	* copyright.h: Code cleanup: Don't define copyright if GCC_WALL is
+	defined.
+
+	* compose.c: Code cleanup: Include <libinn.h> when using INN.
+
+	Code cleanup: Merged some blocks of Motif and non-Motif code so
+	that fewer #ifdef's are needed.
+
+	* buttons.c, compose.c, dialogs.c, xawmotif.c, xmisc.c, xrn.c:
+	Code cleanup: Got rid of unused variables.
+
+	* avl.c, buttons.c, cancel.c, compose.c, cursor.c, dialogs.c: Code
+	cleanup, error_hnds.c, internals.c, mesg.c, utils.c, server.c,
+	save.c, resources.c, refile.c, newsrcfile.c, newsrc.y,
+	mesg_strings.c, xmisc.c, xrn.c, xthelper.c: Code cleanup: Don't
+	define XRNrcsid if GCC_WALL is defined.
+
+	* XRnMotif.ad: Added a few resources for button boxes in the
+	Information window and dialogs.
+
+	* XRn.ad: Added a resource from the Information window that
+	doesn't need to be hard-coded in the binary (and removed it from
+	the binary).
+
+Thu Nov 17 22:25:37 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* Imakefile: Add the INNINC variable, to specify the directory
+	where the INN header files are accessible, so that <libinn.h> can
+	be included by the files that use it.
+
+ *	* mesg.c: Instead of setting the Information window string
+	explicitly each time a message is added to it, just append the new
+	message to the text already in the window.  This improves
+	performance considerably when XRN is being run over a slow network
+	(e.g., a SLIP line).  A side-effect of this change is that the
+	text in the Information window can now grow arbitrarily large; I'm
+	going to fix that by adding a "Clear" button to the window to
+	clear the text in it.
+
+ *	* internals.c: Make the bottom info line message about what
+	article is being viewed and what's next more terse, so that it'll
+	get cut off less frequently.
+
+	* xrn.c: Don't need to set icon name here on startup, since it'll
+	be done by redrawAddTextWidget() or redrawNewsgroupTextWidget().
+
+	* server.c: Use parseRegexpList() to parse the ignoreNewsgroups
+        list.
+
+	* resources.h: Get rid of the ignoreNewsgroupsList field in the
+	app_res structure, because it's no longer needed.
+
+	* resources.c: Move the code to parse ignoreNewsgroups out of here
+	and into getactive(), where it belongs.
+
+	* mesg_strings.c: Added UNKNOWN_LIST_REGEXP_ERROR and
+	KNOWN_LIST_REGEXP_ERROR.
+
+	* internals.c, internals.h: Added parseRegexpList() function,
+	which is used to parse the list of regular expressions in
+	ignoreNewsgroups and watchUnread.
+
+	* compose.c: Code cleanup: Parentheses around truth values.
+
+	* buttons.c: Improve the code in watchingGroup().
+
+ *	The watchUnread option now takes a list of regular expressions
+	rather than a list of newsgroup names, and the regular expressions
+	can be separated by spaces, tabs, newlines, and/or commas.
+
+	* buttons.c, config.h, internals.c, resources.c, resources.h: The
+	watchUnread code is now compiled all the time, not just when WATCH
+	is defined.
+
+	* Imakefile: Add rules for generating xrn-man.sed and xrn.man from
+	xrn-man.sym and xrn-man.src, and build xrn.man as part of the
+	"all" target.
+
+	* xrn-man.src: New file (renamed from xrn.man).
+
+	* xrn-man.sym: New file.
+
+	* server.c: Make SERVER_FILE optional.  Improve the message that's
+	displayed if the server can't be determined (and move it into
+	mesg_strings.c).
+
+	* resources.h, resources.c: Add domainName resource.
+
+	* mesg_strings.c: Add NO_DOMAIN and NO_SERVER messages.
+
+	* compose.c: Don't put path element in struct header when INN is
+	defined.  Clear Header in getHeader before putting stuff into it,
+	instead of trying to initialize it with a constant structure.
+	Return an error from getHeader if the domain name can't be
+	determined, and check for that error in things that call it.  Pull
+	the code that finds out the user's username out of getHeader and
+	put it into a separate getUser function, so that it can be used in
+	saveMessage.  Make HIDDEN_FILE, PATH_FILE and DOMAIN_FILE
+	optional.  Make DOMAIN_NAME optional (except under VMS).
+
+	* config.h: Document GRIPES better.  Document DOMAIN_NAME better
+	and make it optional.  Make SERVER_FILE, HIDDEN_FILE, PATH_FILE,
+	and DOMAIN_FILE optional.  Fix a minor formatting nit in the
+	documentation for MAX_SIGNATURE_SIZE.  Document DUMPCORE better.
+
+Wed Nov 16 23:16:58 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* xrn.c (main): EditRes support can be compiled in if
+	XtSpecificationRelease is anything higher than 4, not just if it's
+	5 (i.e., it should work for X11R6 as well as X11R5).
+
+	* newsrc.y: When reading the .newsrc file, display all error
+	messages in a single chunk, i.e., use XRN_APPEND.
+
+ *	* server.c (getsubjectlist): Line up the article numbers correctly
+	in the article list when the numbers are not all the same length
+	and some of the articles in the range are marked read.
+
+ *	* internals.c (strip): Display and sort subjects properly when the
+	number of digits in the article numbers in the newsgroup is not
+	constant, e.g., when the unread article numbers go from 9990 to
+	10010.
+
+ *	* cursor.c (subjectSearch): Fixed an erroneous "Article not
+	available" message when doing a subject search.
+
+	* server.c: Delete a tab from the "Can't get the name of the news
+	server" message, since it's displayed in a label instead of as
+	text now that the window pops up before connecting to the news
+	server, and since the label widget doesn't display tabs properly.
+
+Tue Nov 15 18:36:07 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* xmisc.c: Only include <X11/Xaw/Text.h> and <X11/Xaw/TextSink.h>
+	if not using Motif.
+
+	* utils.h: Don't define _HPUX_SOURCE under HP-UX if it's already
+	defined.  Fix from Richard Lloyd <R.K.Lloyd@csc.liv.ac.uk>.
+
+	* config.h: Checks for "hpux" symbol should also check for
+	"__hpux".  Idea for fix Richard Lloyd <R.K.Lloyd@csc.liv.ac.uk>.
+
+ *	* XRnMotif.ad: Added missing labels for the composition pane
+	buttons for Motif xrn.  Fix from Richard Lloyd
+	<R.K.Lloyd@csc.liv.ac.uk>.
+
+Mon Nov 14 18:47:21 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, patchlevel.h, xrn.man:
+	Update version number for 7.01-beta-3.
+
+Mon Nov 14 17:36:16 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+ *	* README: Update documentation for ChangeLog slightly.
+	Significant user-visible changes are now marked in ChangeLog with
+	an asterisk in the second column.
+
+	* compose.c: Don't try to use preprocessor directives in the
+	argument to a preprocessor macro (in this case, XtNewString),
+	because some brain-damaged C preprocessors (e.g., the one that's
+	used by the SunOS 4.1.3 native C compiler) will choke on them.
+	Fix from Odd Einar Aurbakken <oea@ifi.uio.no>.
+
+Sun Nov 13 21:07:19 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* config.h: HP doesn't really need our version of vprintf,
+	according to "Richard +Allen" <ra@os.is>.
+
+ *	* mesg.c: When displaying the time in the Information window,
+	display only time, rather than the day, date, time and year.  The
+	day, date and year are almost totally useless and just take up
+	space.
+
+ *	* buttons.c, compose.c: Use XRN_SAME_LINE.
+
+	* mesg_strings.c: Update strings (add spaces to the ends of some)
+	so they can be used with XRN_SAME_LINE.
+
+ *	* mesg.h, mesg.c: Add XRN_SAME_LINE to allow a mesgPane() message
+	to be appended to the same line as the last message.
+
+	* buttons.c, cancel.c, error_hnds.c, internals.c, newsrc.y,
+	server.c: Code cleanup: Include XRN header files with needed
+	declarations in them.
+
+	* buttons.c, clientlib.c, compose.c, internals.c, xrn.c: Code
+	cleanup: Get rid of unused variables.
+
+	* buttons.c, compose.c, newsrcfile.c, save.c: Code cleanup:
+	Parentheses around assignments used as truth values.
+
+	* clientlib.c, compose.c, internals.c, tempnam.c: Code cleanup:
+	Include more system header files as needed (<arpa/inet.h>,
+	<sys/wait.h>, <unistd.h>, <signal.h>, <sys/types.h>, <fcntl.h>).
+
+	* error_hnds.c, newsrcfile.c: Code cleanup: Use "%ld" instead of
+	"%d" where arguments to *printf functions are long.
+
+	* clientlib.c: Code cleanup:
+		* Don't declare get_dnet_socket() when it isn't defined.
+		* Declare get_server_init_msg() before it's used.
+		* Give the return type of get_tcp_socket1() explicitly.
+
+	* utils.h: Code cleanup:
+		* Signal handler functions have only one argument under
+		  Linux.
+		* Include <regex.h> under Linux instead of declaring
+		  re_comp() explicitly.
+		* Add a declaration for re_exec().
+
+	* save.h: Code cleanup: Declare createNewsDir().
+
+	* config.h: Code cleanup: Although Linux has the tempnam()
+	function, it doesn't declare it when compiling in strict ANSI
+	mode, since it isn't an ANSI function.  Therefore, we'll use our
+	own, which means we'll have our own declaration for it.
+
+	* xmisc.c: Code cleanup: Include <X11/Xaw/Text.h> and
+	<X11/Xaw/TextSink.h>.
+
+	* internals.h: Code cleanup: Declare toggleXlation() and
+	unreadNews().
+
+	* avl.c: Code cleanup: Add some casts in calls to printf() when
+	printing pointer values as unsigned integers.
+
+	* error_hnds.c: Code cleanup: Add "return(0);" at the end of
+	int-returning error-handler functions, even though they're never
+	reached.
+
+	* newsrcfile.c: Code cleanup: Declare yyparse() before using it.
+
+	* internals.c: Code cleanup:
+		* Fix a typo in the function prototype for
+		  getUnSortedSubjects().
+		* The comparison function passed to qsort should have
+		  arguments of type CONST void * on _POSIX_SOURCE as well
+		  as on __osf__.
+
+	* README: Get rid of the list of supported platforms.  It's a pain
+	to maintain and isn't all that meaningful now that so many
+	platforms work.  Replace it with a short list of the platforms
+	reported by users.
+
+ *	* server.c (getlineslist): Properly parse "Lines:" fields that
+	have extra whitespace at the beginning.  Problem reported by
+	dstarks@rc.tudelft.nl (D. Starks-Browning).
+
+	* buttons.h: Declare createButtons().
+
+	* buttons.c: createButtons() shouldn't be static anymore, because
+	it's called explicitly from xrn.c.
+
+	determineMode() doesn't need to create buttons, because xrn.c does
+	it now.
+
+	determineMode() doesn't need to manage the ArtSpecButtons, because
+	swapMode() does it.
+
+ *	* xrn.c: Map the main window before connecting to the news server,
+	rather than afterwards.  This way, messages about problems
+	connecting to the server and about creating a new .newsrc file can
+	be displayed in the information window instead of in the tty xrn
+	was run from.  Also, if it is necessary to interact with the user
+	while connecting (e.g., to do prompts for authinfo support), a
+	dialog can be used.
+
+	I've tested this change and it works under X11R6 with Xaw, but it
+	might cause problems with previous X11 releases or with Motif.  If
+	you encounter problems with the various panes in the window not
+	being the right size when it first pops up, let me know.
+
+	* mesg_strings.c: Add ARTS_NOT_AVAIL_MSG.
+
+	* mesg.h, mesg.c: Get rid of mesgEnableAppend() and
+	mesgDisableAppend(), which are no longer needed.
+
+	* buttons.c, cursor.c, internals.c: getArticle() and
+	moveToArticle() no longer display an error message when they can't
+	get an article, so the caller has to do it.
+
+ *	* buttons.c: Fix artListOldFunction() so that when multiple
+	articles in a row aren't available, it displays one message for
+	all of them instead of displaying a whole slew of messages.  This
+	is important when the active file on the news server isn't
+	renumbered properly.  Problem reported by
+	Gerry.Tomlinson@newcastle.ac.uk.
+
+Fri Nov 11 17:39:45 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, patchlevel.h, xrn.man:
+	Update version number for 7.01-beta-2.
+
+Fri Nov 11 16:33:54 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* compose.c (buildSubject): Fix an uninitialized variable.
+	Problem pointed out by "Richard Allen" <ra@os.is>.
+
+Wed Nov  9 23:45:47 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* compose.c: Make ORG_NAME optional.
+
+	* config.h: Clean up the file a little bit, improve some of the
+	comments, and make it clearer what needs to be configured.  Some
+	of these changes were suggested by Wolfgang Roeckelein
+	<wolfgang@wi.WHU-Koblenz.de>.
+
+	* README: Got rid of the FIXERS file, since I note in the
+	ChangeLog the origins of fixes.
+
+	* newsrcfile.c: Use chmod() instead of fchmod() when NO_FCHMOD is
+	defined.  Problem reported by Robert Broughton <bob@zadall.com>.
+
+	* config.h: Add NO_FCHMOD for systems that don't have the fchmod()
+	system call.
+
+Wed Nov  9 21:36:51 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, patchlevel.h, xrn.man:
+	Update version number for 7.01-beta-1.
+
+	* README: Document that a template Makefile is now included in the
+	distribution.
+
+	* xrn.h: Include patchlevel.h instead of putting version constants
+	here explicitly.
+
+	* patchlevel.h: New file (required for comp.sources.x).
+
+	* Imakefile: Move the stuff for building distributions into
+	another file that isn't part of the actual distribution.
+
+	* Makefile: New file (required for comp.sources.x).
+
+	* config.h: SCO needs SYSV_REGEX.  Fix by
+	Robert_Broughton@mindlink.bc.ca (Robert Broughton).
+
+	* internals.c, save.c, server.c, utils.c, utils.h: Move inclusion
+	of <sys/param.h> into utils.h, so that it doesn't have to be
+	included separately by the serveral files which need it.
+
+	In utils.h, define MAXPATHLEN if it isn't already defined, even if
+	we're not on VMS.  Specifically, it isn't defined on SCO.  Problem
+	reported by Robert Broughton <bob@zadall.com>.
+
+Tue Nov  8 19:20:46 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* README: beta.tgz only exists if there's a beta release more
+	current than the last production release.
+
+	Add a paragraph about comp.sources.x and ftp.x.org.
+
+Tue Nov  8 18:30:03 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for 7.00.
+
+Tue Nov  8 18:23:24 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* server.c (wrapText): One of the allocations of this_line was using
+	app_resources.breakLength instead of maxLength, which is a problem
+	(and can cause segfaults) if lineLength is greater than breakLength.
+
+Fri Nov  4 20:39:27 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.ad: Add arrow bindings for artNext() and artPrev() in
+	article mode.
+
+Thu Nov  3 15:02:02 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 15.
+
+Wed Nov  2 16:03:59 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* utils.h: Under HP-UX, need to define _HPUX_SOURCE before
+	including <stdio.h>, because <stdio.h> includes <sys/stdsyms.h>,
+	and defining _HPUX_SOURCE won't do the right thing if it's done
+	*after* <sys/stdsyms.h> is included.  Problem pointed out by
+	Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	* strstr.c, strtok.c, vprintf.c: Don't include <stdio.h>., since
+	"utils.h" does.
+
+	* utils.h: Don't define index and rindex if they're already
+	defined.  Problem pointed out by schuld@btv.ibm.com (Dave
+	Schuler).
+
+Mon Oct 31 16:22:01 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 14.
+
+Mon Oct 31 16:20:27 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* compose.c: Make sure that From and (when specified by the user)
+	Reply-To lines are included in all outgoing messages.  Bug
+	reported by rcmodsb@mo6.rc.tudelft.nl (David Starks-Browning).
+	Also, some other minor code cleanup which shouldn't affect
+	functionality.
+
+Thu Oct 27 16:12:31 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* buttons.c: Fixed a type in a function declaration that gets used
+	only under X11R4.  Fix by dbrooks@ics.com.
+
+Thu Oct 27 14:53:00 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 13.
+
+Thu Oct 27 14:51:13 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* server.c (wrapText): Make a variable that is negated and used as
+	an array reference signed instead of unsigned, because apparently,
+	the expression "- x" takes on type unsigned if the variable x is
+	unsigned, and the resulting value used as the array reference is
+	huge and wrong.  Slightly different fix for this reported by Phil
+	Garner <garner@signal.dra.hmg.gb>.
+
+Wed Oct 26 20:50:31 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* README: Be more specific about what to include when reporting a
+	working environment.
+
+	* README: Updated and reformatted section about supported
+	platforms.  Told people to provide details when sending me
+	information about working platforms.
+
+Wed Oct 26 18:14:02 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 12.
+
+Tue Oct 25 13:06:34 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* compose.c: Only disallow ',' or expand '&' in Header.fullname
+	when it was extracted from the GECOS field of the user's passwd
+	file entry.  In other contexts, the ',' and '&' are not special.
+	Pointed out by Michael Salmon <Michael.Salmon@eos.ericsson.se>.
+
+	* Imakefile: Instead of having multiple definitions of
+	EXTRA_LOAD_FLAGS and DEFINES, define them once (in the section of
+	the Imakefile that people probably don't have to edit) and include
+	in them variables conditionally set elsewhere in the Imakefile.
+
+	Instead of including $(MOTIFDEFINES) in all of the OS_specific
+	settings of XRN_DEFINES, just include it in the one setting of
+	DEFINES.
+
+	* Imakefile, utils.h: Get rid of the special XRN_DEFINES for HP-UX
+	in Imakefile.  Instead, if hpux is defined in utils.h, define
+	_HPUX_SOURCE and include <sys/stdsyms.h> to get all the other
+	needed symbols.  Suggested by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+Mon Oct 24 20:21:20 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* error_hnds.c: Use VOID_SIGNAL, which is defined by the
+	Imakefile, instead of a whole bunch of OS_specific symbols, to
+	decide whether signal() returns a void-returning function or an
+	int-returning function.
+
+	* newsrc.l: Don't need to declare yylineno if FLEX_LEX_COMPAT
+	(which will be supported in flex 2.5, according to the author) is
+	defined.
+
+Mon Oct 24 17:57:02 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 11.
+
+Mon Oct 24 17:54:41 1994  Jonathan I. Kamens  <jik@cam.ov.com>
+
+	* compose.c, save.c, server.c, utils.h: If we're declaring our own
+	popen and pclose functions, call them xrn_popen and xrn_pclose
+	instead of popen and pclose, so as not to conflict with
+	declarations in system header files and not to replace behavior
+	that library routines are expecting (e.g., if they're expecting to
+	use the system popen and pclose).  Call popen and pclose as
+	xrn_popen and xrn_pclose everywhere they're called, and if using
+	the system popen and pclose, define xrn_popen and xrn_pclose to
+	popen and pclose.  Fix the prototype of xrn_popen to agree with
+	the prototype in utils.h.  Declare pclose in utils.h even if we're
+	using the system one instead of ours, because unfortunately some
+	systems don't bother to declare it.  The problems with
+	popen/pclose were pointed out by Axel Nennker
+	<nennker@cs.tu-berlin.de>.
+
+	* internals.c: Because of a recent modification to server.c, a tab
+	is no longer used to separate article numbers from Subject lines
+	in the Subject array.  Instead, a space is used, so look for that.
+
+	* server.c: Instead of always leaving five spaces for the article
+	numbers in a newsgroup and putting a tab after the number on each
+	line, figure out how many digits the last article number in the
+	newsgroup has, and use that many digits as the width of the column
+	for the article number, and put a space after it instead of a tab.
+	This allows more of the Subject to be displayed when the article
+	numbers have less than five digits, and prevents lots of
+	whitespace because of the tab when the article numbers have more
+	than five digits.  Problem pointed out by per@erix.ericsson.se
+	(Per Hedeland).
+
+	* Imakefile: Move the OV_CAMBRIDGE configuration stuff into a
+	single block and out of the way, so that people will be less
+	likely to stumble over it when configuring for their own sites.
+
+	* config.h: Linux doesn't need tempnam.  Fix from
+	glenr@cu74.crl.aecl.ca (Glen Reesor).
+
+	* newsrc.l, Imakefile: Newer versions of flex support a "-l"
+	option which causes yylineno to be supported, but they don't
+	support any way of determining at compile-time whether or not it
+	was specified.  In other words, although the FLEX_SCANNER symbol
+	can be used to determine whether or not we *might* need to define
+	and maintain yylineno ourselves, it doesn't tell us anything
+	definite.  I've file a bug report about this with the maintainer
+	of the flex, but in the meantime, I've documented both in
+	Imakefile and newsrc.l that the "-l" option should not be
+	specified when building lex.yy.c from newsrc.l.  Problem pointed
+	out by glenr@cu74.crl.aecl.ca (Glen Reesor).
+
+Sun Oct 23 21:00:30 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 10.
+
+Sun Oct 23 20:58:46 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* mesg_strings.c: Add NO_NEWSGROUPS, DEFAULT_ADDED, EMPTY_ADDED
+	and FILL_IN_RESEND messages, to be used by compose.c.
+
+	* compose.c (Call_Editor): Instead of passing the template text
+	into Call_Editor, pass a boolean indicating whether it should
+	retrieve the template from the ComposeText widget and save it into
+	the editor file.  This allows callers to tell Call_Editor to
+	resave a modified template when in the middle of editing.  This is
+	an enhancement, not a bug fix, and is necessitated by some other
+	fixes.  Also update all invocations of Call_Editor for the new
+	syntax.
+
+	If the Subject field is missing, add an empty Subject field to the
+	message and tell the user to fill it in and resend.  Also, if calling
+	Call_Editor to re-edit the message, tell it to resave the message into
+	the editor file.
+
+	If the Subject field is empty, tell the user to fill it in and
+        resend.
+
+	If there is no Newsgroups field in the message, don't just put a
+	default Newsgroups field into the message and send it.  A program
+	should never post messages to newsgroups not explicitly requested
+	by the user.  Instead, add a default (or empty) Newsgroups field
+	to the message, and tell the user to edit it and then resend.
+
+	In composePane, free the header template as soon as it's no longer
+	needed -- a little earlier than it was being freed before, since
+	it's no longer being passed into Call_Editor.
+
+	* compose.c (compSendFunction): Don't assume that there's a space
+	after the colon on the Subject line -- the user could have removed
+	it.  This fixes a bug which could cause uninitialized memory to be
+	referenced when checking the posting before sending it when INN
+	was defined.
+
+	* compose.c (newsgroupsStatusUnion): Don't miss the last newsgroup
+	on the Newsgroups line if there are multiple groups there.  Here's
+	an example of where this bug was a problem: compose a posting to
+	two newsgroups, the first of which you don't get at your site and
+	the second of which you do.  When you click on "Send", instead of
+	posting the message, XRN will claim that you have no postable
+	newsgroups on the Newsgroups line, because it misses the last
+	newsgroup on the line.
+
+	* config.h: SunOS doesn't need our version of strtok or strstr.
+
+	* avl.h, clientlib.c, internals.c, save.c, utils.h: Use CONST
+	instead of const in more cases.  Reported by Odd Einar Aurbakken
+	<oea@ifi.uio.no>.
+
+	* strstr.c: Declare the two arguments to strstr separately, to
+	make sure that the CONST specifier is applied to both of them.
+	Problem reported by Odd Einar Aurbakken <oea@ifi.uio.no>.
+
+Fri Oct 21 20:01:44 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 9.
+
+Fri Oct 21 14:05:22 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* mesg.c, mesg.h, utils.h, vprintf.c: Be more paranoid about when
+	to use stdarg and when to use varargs.  Problem first reported by
+	jback@tristan.corsair.com (Joseph F.Backo).
+
+Thu Oct 20 17:15:00 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 8.
+
+Thu Oct 20 17:09:53 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* compose.c, config.h: Only include X-newsreader and X-mailer
+	lines in postings and mail messages if
+	IDENTIFY_VERSION_IN_MESSAGES is defined, and don't define it by
+	default.  First requested by archer@cett.alcatel-alsthom.fr
+	(Vincent ARCHER).
+
+	* compose.c: The Distribution: header included in a cancel message
+	should be identical to the Distribution: header in the article
+	being cancelled, or shouldn't be there at all if there is no
+	Distribution: header in the article being cancelled.  The default
+	distribution in app_resources.distribution shouldn't have anything
+	to do with what goes into a cancel message.  Pointed out by
+	archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+Thu Oct 20 15:22:45 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 7.
+
+Thu Oct 20 15:10:13 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* compose.c: Allow DISTRIBUTION to not be defined, in which case
+	an empty Distribution: header is included in postings if there's
+	no other source for the distribution to be used.
+
+	Don't include an empty Distribution: header in cancel messages.
+
+	* config.h: Don't use distribution "world" by default.  Problem
+	pointed out by Odd Einar Aurbakken <oea@ifi.uio.no>.
+
+	Add more documentation about exactly what DISTRIBUTION does and
+	how to use it.
+
+	* compose.c: Put an X-newsreader field in all postings (or
+	messages that are both followups and replies), and an X-mailer
+	field in all mail messages.  Fix from Michael Salmon
+	<Michael.Salmon@eos.ericsson.se>.
+
+Wed Oct 19 18:52:38 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* utils.h: Include prototypes only if _NO_PROTO isn't defined
+	*and* FUNCPROTO is defined.  Frankly, I'm not sure whether
+	_NO_PROTO really should be checked at all.  I can't find anything
+	in either the X Imake stuff or the X header files that defines it.
+	I guess there's no harm in excluding prototypes if it happens to
+	be defined, though.
+
+Mon Oct 17 19:23:50 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 6.
+
+Mon Oct 17 15:37:29 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* mesg.h, mesg.c:
+	Add mesgDisableAppend and mesgEnableAppend to allow mesgPane appending
+	(the XRN_APPEND option to mesgPane) to be enabled or disabled outside
+	of a call to mesgPane.  This is useful if a function A calls another
+	function B that generates calls to mesgPane, and A wants the messages
+	generated by B to appear in a single block.
+
+	* buttons.c:
+	In artListOldFunction, if the first article in the group is
+	unavailable, step forward until an available article is found, rather
+	than giving up.  Also, enable mesgPane appending after the first error
+	is displayed, so that all of the errors about unavailable articles
+	will appear in one message block.
+
+	* Imakefile: Generate mesg_strings.h automatically from mesg_strings.c.
+
+	* mesg_strings.c:
+	Delete a message string no longer used by artListOldFunction.
+
+	Add the string names from mesg_strings.h as comments in a specific
+	format in this file, so that mesg_strings.h can be generated
+	automatically from this file.
+
+	* config.h:
+	Comment out the DO_NOT_EAT_TYPE_AHEAD #define and add a comment
+	indicating that it doesn't work right now.  Problem pointed out by
+	Gordon Berkley <gordonb@mcil.comm.mot.com>.
+
+	* xrn.man:
+	Add documentation for buttons that weren't documented, and change a
+	couple instances of "backwards" to "backward" in the button
+	documentation.
+
+	* XRn.ad:
+	Get rid of the *ngQuit.info resource, set to "Quit XRN (app defaults
+	file)".  Not sure why it was there in the first place.
+
+	* XRn.ad, XRnMotif.ad, buttons.c:
+	Add buttons in newsgroup mode to scroll the newsgroup list.
+	Patches from per@erix.ericsson.se (Per Hedeland).
+
+	* xawmotif.c: Need to cast argument to XtFree to char *.  Fix from
+	mikey@euky.engr.sgi.com (Mike Yang).
+
+Sun Oct 16 21:12:17 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* internals.c:
+	Don't try to get articles in prefetchGetArticles if newsgroup->current
+	is 0, which means that setUpGroup() couldn't find any unread articles
+	in the group.  Before, a coredump could happen in this situation.
+
+	* buttons.c, config.h:
+	Force buttons in the top button box to have the same translations
+	as the rest of the xrn window, so that hitting space when the
+	mouse is on top of one of them won't activate it when using Motif.
+	Fix from mikey@euky.engr.sgi.com (Mike Yang), with minor
+	modifications by me.
+
+Sun Oct 16 17:43:35 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 5.
+
+Sun Oct 16 17:32:21 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* buttons.c, config.h:
+	Force buttons in the top button box to have the same translations
+	as the rest of the xrn window, so that hitting space when the
+	mouse is on top of one of them won't activate it when using Motif.
+	Fix from mikey@euky.engr.sgi.com (Mike Yang), with minor
+	modifications by me.
+
+	* XRn.ad, XRnMotif.ad:
+	Make the up and down arrows do the same thing as 'p' and 'n' when
+	viewing the list of newsgroups.  Suggested by Gordon Berkley
+	<gordonb@mcil.comm.mot.com>.
+
+	* README:
+	Mention more about dxrn, including that it can be compiled to provide
+	a DECwindows interface or spiffier Motif interface (MXRN) under UNIX.
+
+	* still-to-do/cancel: Deleted this file because I cannot duplicate
+	the bug described in it, and it was reported so long ago that it's
+	likely that it was fixed in some other way by now.
+
+	* error_hnds.c, error_hnds.h, resources.c, xrn.c:
+	Patches from "Ralph R. Swick" <swick@x.org> to support the X11R6
+	session manager.
+
+	* buttons.c, xthelper.c, xrn.c, error_hnds.c, dialogs.c:
+	Updated to use application contexts.  Patches submitted by "Ralph
+	R. Swick" <swick@x.org>.
+
+	* buttons.c:
+	Updated the code in setTranslations a little bit.  Patches submitted
+	by "Ralph R. Swick" <swick@x.org>.
+
+	* config.h:
+	HP-UX has its own strcasecmp(), and therefore doesn't need ours.
+	Pointed out by "Ralph R. Swick" <swick@x.org>.
+
+	* compose.c:
+	Add _ARGUMENTS((void)) to the prototype for signatureFile().
+
+	* butdefs.h: Wrap some long lines.
+
+	* Imakefile:
+	"Ralph R. Swick" <swick@x.org> says that Ultrix doesn't need to define
+	NOSTDHDRS.
+
+	I forgot to include $(MOTIFDEFINES) in XRN_DEFINES on Solaris.
+
+	* README, xrn.man:
+	Updated names of xmh-insrt-repl, COMMON-PROBLMS, Xresources.sam.
+
+	* Renamed files whose names were more than fourteen characters
+	long, so that they could be used on systems with a
+	fourteen-character file name limit.  File name changes:
+	  COMMON-PROBLEMS		->	COMMON-PROBLMS
+	  Xresources.sample		->	Xresources.sam
+	  contrib/XRn.bindings.emacs	->	contrib/XRn.bind.emacs
+	  contrib/xmh-insert-reply	->	contrib/xmh-insrt-repl
+	  contrib/VMS-CLIENTLIB.C	->	contrib/VMSCLIENTLIB.C
+	Problem pointed out by "Ralph R. Swick" <swick@x.org>.
+
+Thu Oct 13 23:32:36 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* Imakefile, compose.c, internals.c, utils.h:
+	Patches for OSF/1 2.0 support.  From Randy Coulman
+	<coulman@skdad.usask.ca>.
+
+Thu Oct 13 12:37:29 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for beta 4.
+
+Thu Oct 13 12:35:01 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* dialogs.c:
+	Make an array static that doesn't really need to be static, because of
+	bugs in older C compilers (most notably, compilers based on pcc).
+	Problem pointed out by archer@cett.alcatel-alsthom.fr (Vincent
+	ARCHER).
+
+	* clientlib.c:
+	Make sure the server is in reader mode by sending a "MODE READER"
+	command to it after connecting (and ignoring the error if there is
+	one, since it probably just means that the server doesn't understand
+	the MODE command; if it really means that the user doesn't have
+	permission to go into READER mode, we'll notice the problem later
+	anyway).  Problem pointed out by archer@cett.alcatel-alsthom.fr
+	(Vincent ARCHER).
+
+Wed Oct 12 19:46:39 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* Imakefile:
+	Under BSD/386, need to link against -lcompat.  Reported by Matt Bush
+	<xomox@boris.eden.com>.
+
+	* server.c:
+	Fixed a bug that was preventing ignoreNewsgroups from working under
+	SYSV_REGEX.  Fix submitted by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+	* utils.c:
+	Use CONST instead of const so that non-__STDC__ systems can compile.
+	Pointed out by archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	* utils.h:
+	Define CONST to const or nothing depending on whether or not __STDC__
+	is defined.
+
+	Don't declare strtok unless NEED_STRTOK is defined.
+
+	* strstr.c, strtok.c:
+	Include utils.h to get the CONST definition, and to make sure that
+	the declarations in it don't conflict with the definitions here.
+
+	* buttons.c, compose.c, utils.h:
+	Delete the strstr() declaration from individual files and move it
+	into utils.h.  Also, don't declare it in utils.h unless
+	NEED_STRSTR is defined.
+
+	* avl.c, internals.c:
+	Missing _ARGUMENTS() around arguments that will only work if
+	__STDC__.  Pointed out by archer@cett.alcatel-alsthom.fr (Vincent
+	ARCHER).
+
+	* xawmotif.c, server.c, internals.c, clientlib.c, utils.h, avl.c:
+	Use XtMalloc, XtRealloc, XtCalloc, XtFree, instead of malloc, realloc,
+	calloc, free.
+
+	* config.h:
+	1000 is too high for MAX_SIGNATURE_SIZE.  It should be closer to 320,
+	which is 80*4 (i.e., allow a four-line signature).  Pointed out by
+	archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	* README:
+	Document that Imakefile and config.h need to be made writeable with
+	chmod before being edited.  Problem pointed out by
+	archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	* Imakefile: Use C comments instead of '#' comments.  Pointed out by
+	archer@cett.alcatel-alsthom.fr (Vincent ARCHER).
+
+	Delete the text saying where to send suggestions, since it was missing
+	an address anyway, and since that information is already given in
+	README.
+
+	* cursor.c, internals.c:
+	Free memory returned by regcmp() when it is no longer needed.  Leak
+	pointed out by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	* cursor.c:
+	In subjectSearch, assert that a search has been done before when the
+	regular expression passed in is null.  This is just to make sure that
+	none of the functions calling subjectSearch are misbehaving.
+
+	* cursor.c, server.c:
+	Delete some declarations that are unnecessary because they're in
+	utils.h.
+
+	* internals.c:
+	When creating a regular expression to add to a KILL file, protect the
+	')' and ']' characters in addition to '(' and '['.  Suggested by
+	Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	Add a comment indicating that I don't understand why special
+	characters are protected by replacing them with '.' instead of by
+	quoting them with backslash.
+
+Wed Oct 12 13:13:12 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* XRn.ad, XRnMotif.ad, xrn.h, xrn.man:
+	Update version number for 7.00 beta 3.
+
+Wed Oct 12 13:05:34 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* utils.c:
+	Clean up the code for getting the time zone when
+	REALLY_USE_LOCALTIME is defined.  The SOLARIS part of the fix was
+	initially suggested by mitchell@aol14.wff.nasa.gov (Richard
+	Mitchell 1026).
+
+	* xrn.man:
+	Update version number.  Problem pointed out by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+	* config.h:
+	Change the print command for UNIX to "lp -sc" (for SYSV) or "lpr" (for
+	non-SYSV).  It used to be "enscript -g", but far more sites have lpr
+	and lp than have enscript.  Suggested by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+Tue Oct 11 21:33:00 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* utils.h: Include <memory.h> under Solaris.  I'm not sure why this is
+	necessary, since <stdlib.h> should get included and should declare
+	malloc and realloc, but for some reason it didn't get declared,
+	according to a "make" log sent to me by phigro@phigro.rnd.symix.com
+	(Phil Gross).
+
+	* config.h:
+	Sun doesn't really need strcasecmp.  Pointed out in "make" output from
+	phigro@phigro.rnd.symix.com (Phil Gross).
+
+	* Imakefile:
+	Define SOLARIS and link against -lgen under Solaris.  Suggested by
+	phigro@phigro.rnd.symix.com (Phil Gross).
+
+	* utils.h, newsrcfile.c, clientlib.c, compose.c, internals.c, refile.c, resources.c, save.c, utils.c, server.c:
+	Move "#define index strchr" out of C files into utils.h.  Also, add
+	"#define rindex strrchr", and make sure this happens on VMS, SOLARIS
+	and SYSV.  phigro@phigro.rnd.symix.com (Phil Gross) pointed out the
+	need for this fix.
+
+	* clientlib.c:
+	Solaris no longer needs a different getservbyname declaration.  Fix
+	from phigro@phigro.rnd.symix.com (Phil Gross).
+
+	* MotifXawHack.h:
+	Fix another function prototype vs. promoted argument problem that
+	didn't turn up before because it's in the Motif code.  Problem
+	reported by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	* mesg.c:
+	Need to include <Xm/Label.h> when doing Motif, because we're using
+	XmCreateLabel.  From Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	* internals.c:
+	Change the message in the info line when KILL file processing is done.
+	Suggested by Michel Eyckmans (MCE) <eyckmans@imec.be>.
+
+	Say in the info line message what newsgroup's KILL file is being
+	processed.
+
+	* Imakefile:
+	Add XRN_DEFINES for HPArchitecture.  From Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+	Indent the #ifdef's in the XRN_DEFINES block, to make the nesting
+	clearer.
+
+	* Imakefile:
+	Don't assume that everyone is using GNU make -- don't use GNU make
+	"ifdef ... else ... endif" construct unless OV_CAMBRIDGE is defined.
+	Pointed out by per@erix.ericsson.se (Per Hedeland).
+
+	* Imakefile, utils.h:
+	Use HasVoidSignalReturn in the Imakefile to determine whether signal
+	handlers should return void.  Simply the declaration of SIG_PF0 in
+	utils.h to use the VOID_SIGNAL symbol defined if necessary by the
+	Imakefile, and also to use _ARGUMENTS() for the arguments of the
+	SIG_PF0 typedef.  Suggested by Michel Eyckmans (MCE)
+	<eyckmans@imec.be>.
+
+Tue Oct 11 16:22:49 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* XRn.ad, XRnMotif.ad, xrn.h: Update version number for beta 2.
+
+Tue Oct 11 16:12:02 1994  Jonathan I. Kamens  (jik@cam.ov.com)
+
+	* compose.c:
+	Can't take the address of an array in a call to buildSubject.
+	Instead, assign its address to a pointer and take the address of
+	that.  Reported by per@erix.ericsson.se (Per Hedeland).
+
+	* resources.c:
+	Delete the separate command-line option list for VMS, and instead
+	convert the options in it to lower case under VMS before calling
+	XtInitialize.
+
+	* compose.c:
+	Always include article text when calling an external editor command.
+	Fix from per@erix.ericsson.se (Per Hedeland).
+
+	* config.h:
+	Add a comment (from per@erix.ericsson.se (Per Hedeland)) documenting
+	XRN_PREFETCH_UNREAD_ONLY.
+
+	* README, config.h:
+	Add CONFIG_H_IS_OK symbol to config.h, which determines whether or
+	not to print the error about editing config.h, so that people can
+	configure the program by editing only the Imakefile.  Document
+	this change in README.  Change suggested by per@erix.ericsson.se
+	(Per Hedeland).
+
+	* README:
+	Document what to do about OV_CAMBRIDGE and "#error" in the config.h
+	file.  The need for this was first pointed out by Jay Vassos-Libove
+	<libove@libove.mindspring.com>.
+
+	* buttons.c:
+	TRANSLATIONS_NOT_FREED patch in setTranslations.  First pointed out by
+	mikey@euky.engr.sgi.com (Mike Yang).
+
+	* MotifXawHack.h, dialogs.c, mesg.c, xawmotif.c, xrn.c:
+	Patches for Motif support from mikey@euky.engr.sgi.com (Mike Yang).
+
+	* utils.h:
+	Correct malloc and realloc declarations for SGI.  First pointed out by
+	mikey@euky.engr.sgi.com (Mike Yang).
+
+	* xrn.c:
+	Missing arguments for the NO_APP_DEFAULTS_MSG string in a call to
+	mesgPane.  First pointed out by mikey@euky.engr.sgi.com (Mike Yang).
+
+	* utils.h, internals.c:
+	Delete regexp routine declarations from internals.c and add them to
+	utils.h (well, actually, most of them were already duplicated in
+	utils.h, but the declaration for regex() was missing).
+
+	* compose.c:
+	Arguments to XtVaCreateManagedWidget should be cast to XtArgVal, not
+	XtPointer.  First pointed out by per@erix.ericsson.se (Per
+	Hedeland).
+
+	* buttons.c, cursor.h, error_hnds.h, internals.c, server.h:
+	Change some prototype arguments to "int" so that there aren't
+	conflicts with K&R function definitions that cause arguments to be
+	promoted to int.
+
+	* strstr.c:
+	Insert a couple of casts to get rid of warnings from the compiler.
+
+	* compose.c: strncmp should have been strcasecmp.  First pointed
+	out by mush@sunota.cat.com (Paul Mauschbaugh).
+
+# $Id: ChangeLog,v 1.32 1994-12-13 03:14:48 jik Exp $
