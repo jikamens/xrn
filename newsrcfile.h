@@ -2,7 +2,7 @@
 #define NEWSRCFILE_H
 
 /*
- * $Id: newsrcfile.h,v 1.10 2006-01-03 16:38:21 jik Exp $
+ * $Id: newsrcfile.h,v 1.7 1997-01-12 03:41:22 jik Exp $
  */
 
 /*
@@ -36,19 +36,13 @@
 
 #include "news.h"
 
-extern ng_num checkNewsrcSize _ARGUMENTS((ng_num));
-/* This will fail if ng_num isn't big enough.  If so, modify the
-   typedef for ng_num in news.h to make it a larger integer type. */
-#define CHECKNEWSRCSIZE(size)			\
-  {						\
-    assert(checkNewsrcSize(size) == size);	\
-  }
+extern void checkNewsrcSize _ARGUMENTS((ng_num));
 
-extern int isLongNewsrcFile _ARGUMENTS((void));
 /* return 1 for okay, 0 for fatal error */
-extern int readnewsrc _ARGUMENTS((void));
+extern int readnewsrc _ARGUMENTS((char *,char *));
 extern int updatenewsrc _ARGUMENTS((void));
 
+extern char *NewsrcFile;
 extern FILE *Newsrcfp;
 extern char *optionsLine;
 

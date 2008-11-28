@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: mesg.c,v 1.28 1998-01-28 21:18:29 jik Exp $";
+static char XRNrcsid[] = "$Id: mesg.c,v 1.27 1997-03-30 18:15:00 jik Exp $";
 #endif
 
 /*
@@ -61,7 +61,6 @@ static char XRNrcsid[] = "$Id: mesg.c,v 1.28 1998-01-28 21:18:29 jik Exp $";
 #include "ButtonBox.h"
 #include "InfoLine.h"
 #include "InfoDialog.h"
-#include "mesg_strings.h"
 
 char error_buffer[2048];
 static char *MesgString = 0;
@@ -115,8 +114,6 @@ va_dcl
     time_t tm;
     char *time_str;
     char addBuff[MESG_SIZE];
-    static Boolean intro_displayed = False;
-    char *separator = "\n--------\n";
 
     if (name && last_name && (name == last_name))
 	type |= XRN_APPEND;
@@ -151,11 +148,6 @@ va_dcl
 
     if (! (MesgLength() || MesgString)) {
 	(void) sprintf(addBuff, "%s: ", time_str);
-	if (! intro_displayed) {
-	  intro_displayed = True;
-	  (void) sprintf(&addBuff[strlen(addBuff)], "%s%s%s: ",
-			 MESG_PANE_DISMISS_MSG, separator, time_str);
-	}
     }
     else if (type & XRN_SAME_LINE) {
 	*addBuff = '\0';
@@ -164,7 +156,7 @@ va_dcl
 	(void) sprintf(addBuff, "\n%8s  ", "");
     }
     else {
-	(void) sprintf(addBuff, "%s%s: ", separator, time_str);
+	(void) sprintf(addBuff, "\n--------\n%s: ", time_str);
     }
 
     (void) vsprintf(&addBuff[strlen(addBuff)], fmtString, args);

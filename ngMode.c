@@ -221,7 +221,6 @@ void ngReadFunction(widget, event, string, count)
 	    switchToArticleMode();
 	}
 	else {
-	    exitNewsgroup();
 	    if (status == XRN_NOUNREAD)
 		mesgPane(XRN_INFO, 0, PROBABLY_KILLED_MSG, name);
 	    else if (status == BAD_GROUP)
@@ -435,14 +434,12 @@ static void subscribeHandler(widget, client_data, call_data)
 		goto done;
 	    }
 	    else if (ret == GOOD_GROUP) {
-	      if (subscribe()) {
+		subscribe();
 		CurrentIndexGroup = XtRealloc(CurrentIndexGroup,
 					      strlen(LastGroup) + 1);
 		(void) strcpy(CurrentIndexGroup, LastGroup);
 		updateNewsgroupMode(True, False);
 		exitNewsgroup();
-	      }
-	      
 	    }
 	    else {
 		mesgPane(XRN_SERIOUS, 0, UNKNOWN_FUNC_RESPONSE_MSG, ret,
@@ -601,7 +598,6 @@ static void gotoHandler(widget, client_data, call_data)
 		  mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_MSG, name);
 	     }
 	     else if (ret == XRN_NOMORE) {
-		  exitNewsgroup();
 		  mesgPane(XRN_SERIOUS, 0, NO_ARTICLES_MSG, name);
 	     }
 	     else {
@@ -759,7 +755,6 @@ void ngPrevGroupFunction(widget, event, string, count)
 	    mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_DELETED_MSG, LastGroup);
 	}
 	else if (ret == XRN_NOMORE) {
-	    exitNewsgroup();
 	    mesgPane(XRN_SERIOUS, 0, NO_ARTICLES_MSG, LastGroup);
 	}
 	else {
@@ -1153,10 +1148,7 @@ void switchToNewsgroupMode(
 
     /* update the newsgroup mode windows */
     updateNewsgroupMode(True, skip_last);
-
-    /* Set up the rescan timer, if automatic rescanning is configured. */
-    addTimeOut();
-
+    
     return;
 }
 
@@ -1199,10 +1191,6 @@ static void autoRescan _ARGUMENTS((XtPointer, XtIntervalId *));
 
 void addTimeOut()
 {
-#ifdef DEBUG
-  fprintf(stderr, "addTimeOut()\n");
-#endif
-
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
@@ -1215,6 +1203,8 @@ void addTimeOut()
     if (TimeOut) {
 	return;
     }
+    /* handle race conditions??? */
+    TimeOut = 1;
 
     TimeOut = XtAppAddTimeOut(TopContext,
 			      app_resources.rescanTime * 1000, autoRescan, 0);
@@ -1224,18 +1214,19 @@ void addTimeOut()
 
 void removeTimeOut()
 {
-#ifdef DEBUG
-    fprintf(stderr, "removeTimeOut()\n");
-#endif
+    XtIntervalId temp;
 
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
 
+    /* handle race conditions??? */
+    temp = TimeOut;
+    TimeOut = 0;
+
     /* do not allow recursive timeouts */
-    if (TimeOut) {
-	XtRemoveTimeOut(TimeOut);
-	TimeOut = 0;
+    if (temp) {
+	XtRemoveTimeOut(temp);
     }
     return;
 }
@@ -1247,10 +1238,6 @@ static void autoRescan(data, id)
 {
     String params[1];
     Cardinal num_params = 1;
-
-#ifdef DEBUG
-    fprintf(stderr, "autoRescan(...)\n");
-#endif
 
     params[0] = "nonewgroups";
 

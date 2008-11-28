@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: xrn.c,v 1.36 2005-12-01 08:49:34 jik Exp $";
+static char XRNrcsid[] = "$Id: xrn.c,v 1.34 1997-06-30 02:51:46 jik Exp $";
 #endif
 
 /*
@@ -50,6 +50,7 @@ static char XRNrcsid[] = "$Id: xrn.c,v 1.36 2005-12-01 08:49:34 jik Exp $";
 #include "buttons.h"
 #include "mesg.h"
 #include "xrn.h"
+#include "patchlevel.h"
 #include "compose.h"
 #include "mesg_strings.h"
 #include "InfoLine.h"
@@ -144,13 +145,14 @@ int main(argc, argv)
     determineMode(True);
 
     xrnUnbusyCursor();
+    addTimeOut();
 
     if (app_resources.version == 0) {
 	mesgPane(XRN_SERIOUS, 0, NO_APP_DEFAULTS_MSG);
-    } else if (strcmp(app_resources.version, PACKAGE_VERSION) != 0) {
+    } else if (strcmp(app_resources.version, XRN_VERSION) != 0) {
 	mesgPane(XRN_SERIOUS, 0, NO_APP_DEFAULTS_MSG);
 	mesgPane(XRN_SERIOUS | XRN_APPEND, 0, VERSIONS_MSG, app_resources.version,
-		 PACKAGE_VERSION);
+		 XRN_VERSION);
     }
 
     XtAppAddInput(TopContext,
