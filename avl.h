@@ -1,10 +1,8 @@
-#include "utils.h"
-
 #ifndef AVL_H
 #define AVL_H
 
 /*
- * $Id: avl.h,v 1.5 1994-11-23 01:44:52 jik Exp $
+ * $Header: /d/src/cvsroot/xrn/avl.h,v 1.3 1994-10-10 18:46:30 jik Exp $
  */
 
 /*
@@ -62,7 +60,7 @@ struct avl_generator_struct {
 #define AVL_BACKWARD 	1
 
 
-extern avl_tree *avl_init_table _ARGUMENTS((int (*)(CONST char*,CONST char*)));
+extern avl_tree *avl_init_table _ARGUMENTS((int (*)(const char*,const char*)));
 extern int avl_delete _ARGUMENTS((avl_tree *,char **,char **));
 extern int avl_insert _ARGUMENTS((avl_tree *,char *,char *));
 extern int avl_lookup _ARGUMENTS((avl_tree *,char *,char **));

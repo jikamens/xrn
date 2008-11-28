@@ -1,6 +1,6 @@
 
-#if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: avl.c,v 1.9 1994-12-15 15:47:15 jik Exp $";
+#if !defined(lint) && !defined(SABER)
+static char XRNrcsid[] = "$Header: /d/src/cvsroot/xrn/avl.c,v 1.3 1994-10-10 18:46:30 jik Exp $";
 #endif
 
 /*
@@ -30,6 +30,7 @@ static char XRNrcsid[] = "$Id: avl.c,v 1.9 1994-12-15 15:47:15 jik Exp $";
 
 #include "copyright.h"
 #include "config.h"
+#include <sys/types.h>
 #include "utils.h"
 #include "avl.h"
 
@@ -42,10 +43,9 @@ static char XRNrcsid[] = "$Id: avl.c,v 1.9 1994-12-15 15:47:15 jik Exp $";
 #ifdef FREE
 #undef FREE
 #endif
-#define ALLOC(type, number)  (type *) XtMalloc((unsigned) sizeof(type) \
-					       * number)
+#define ALLOC(type, number)  (type *) malloc((unsigned) sizeof(type) * number)
 #define NIL(type)            (type *) 0
-#define FREE(item)           XtFree((void *) item)
+#define FREE(item)           (void) free(item)
 
 #define XRNMAX(a,b)             ((a) > (b) ? (a) : (b))
 
@@ -80,6 +80,9 @@ avl_tree * avl_init_table(compar)
     avl_tree *tree;
 
     tree = ALLOC(avl_tree, 1);
+    if (! tree) {
+	 return 0;
+    }
     tree->root = NIL(avl_node);
     tree->compar = compar;
     tree->num_entries = 0;
@@ -198,7 +201,7 @@ static void avl_record_gen_forward(node, gen)
     }
 }
 
-static void avl_record_gen_backward _ARGUMENTS((avl_node *, avl_generator *));
+static void avl_record_gen_backward(avl_node *, avl_generator *);
 
 static void avl_record_gen_backward(node, gen)
     avl_node *node;
@@ -219,8 +222,14 @@ avl_generator * avl_init_gen(tree, dir)
 
     /* what a hack */
     gen = ALLOC(avl_generator, 1);
+    if (! gen) {
+	 return 0;
+    }
     gen->tree = tree;
     gen->nodelist = ALLOC(avl_node *, avl_count(tree));
+    if (! gen->nodelist) {
+	 return 0;
+    }
     gen->count = 0;
     if (dir == AVL_FORWARD) {
 	avl_record_gen_forward(tree->root, gen);
@@ -427,6 +436,9 @@ static avl_node * new_node(key, value)
     register avl_node *new;
 
     new = ALLOC(avl_node, 1);
+    if (! new) {
+	 return 0;
+    }
     new->key = key;
     new->value = value;
     new->height = 0;
@@ -467,27 +479,27 @@ static int do_check_tree(node, compar, error)
     
     if (comp_height != node->height) {
 	(void) printf("Bad height for 0x%08x: computed=%d stored=%d\n",
-	    (unsigned int) node, comp_height, node->height);
+	    node, comp_height, node->height);
 	++*error;
     }
 
     if (bal > 1 || bal < -1) {
 	(void) printf("Out of balance at node 0x%08x, balance = %d\n", 
-	    (unsigned int) node, bal);
+	    node, bal);
 	++*error;
     }
 
     if (node->left != NIL(avl_node) && 
 		    (*compar)(node->left->key, node->key) > 0) {
 	(void) printf("Bad ordering between 0x%08x and 0x%08x", 
-	    (unsigned int) node, (unsigned int) node->left);
+	    node, node->left);
 	++*error;
     }
     
     if (node->right != NIL(avl_node) && 
 		    (*compar)(node->key, node->right->key) > 0) {
 	(void) printf("Bad ordering between 0x%08x and 0x%08x", 
-	    (unsigned int) node, (unsigned int) node->right);
+	    node, node->right);
 	++*error;
     }
 
