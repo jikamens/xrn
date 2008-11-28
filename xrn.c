@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: xrn.c,v 1.36 2005-12-01 08:49:34 jik Exp $";
+static char XRNrcsid[] = "$Id: xrn.c,v 1.29 1997-04-07 02:47:29 jik Exp $";
 #endif
 
 /*
@@ -37,9 +37,6 @@ static char XRNrcsid[] = "$Id: xrn.c,v 1.36 2005-12-01 08:49:34 jik Exp $";
 #include "utils.h"
 #include <X11/Xos.h>
 #include <X11/Intrinsic.h> /* so we have Widget */
-#ifdef MOTIF
-# include <Xm/Xm.h>
-#endif
 
 #include "news.h"
 #include "xthelper.h"
@@ -50,12 +47,12 @@ static char XRNrcsid[] = "$Id: xrn.c,v 1.36 2005-12-01 08:49:34 jik Exp $";
 #include "buttons.h"
 #include "mesg.h"
 #include "xrn.h"
+#include "patchlevel.h"
 #include "compose.h"
 #include "mesg_strings.h"
 #include "InfoLine.h"
 #include "Frame.h"
 #include "ngMode.h"
-#include "file_cache.h"
 
 #ifdef XFILESEARCHPATH
 static void AddPathToSearchPath _ARGUMENTS((char *));
@@ -71,7 +68,6 @@ Widget BottomInfoLine;   /* bottom button info line                   */
 int XRNState;            /* XRN status: news and x                    */
 
 int inchannel, outchannel;
-file_cache FileCache;
 
 /*ARGSUSED*/
 int main(argc, argv)
@@ -94,17 +90,8 @@ int main(argc, argv)
     
     TopLevel = Initialize(argc, argv);
 
-    if (app_resources.cacheFilesMaxFiles < 10)
-      app_resources.cacheFilesMaxFiles = 10;
-    if (app_resources.cacheFilesMaxSize < 0)
-      app_resources.cacheFilesMaxSize = 1;
-    
     ehInstallSignalHandlers();
     ehInstallErrorHandlers();
-
-    FileCache = file_cache_create(app_resources.tmpDir, "xrn",
-				  app_resources.cacheFilesMaxFiles,
-				  app_resources.cacheFilesMaxSize);
 
     if (app_resources.geometry != NIL(char)) {
        GetMainFrameSize(TopLevel, (app_resources.geometry));
@@ -141,16 +128,17 @@ int main(argc, argv)
     XRNState |= XRN_NEWS_UP;
 
     /* set up the text window, mode buttons, and question */
-    determineMode(True);
+    determineMode();
 
     xrnUnbusyCursor();
+    addTimeOut();
 
     if (app_resources.version == 0) {
 	mesgPane(XRN_SERIOUS, 0, NO_APP_DEFAULTS_MSG);
-    } else if (strcmp(app_resources.version, PACKAGE_VERSION) != 0) {
+    } else if (strcmp(app_resources.version, XRN_VERSION) != 0) {
 	mesgPane(XRN_SERIOUS, 0, NO_APP_DEFAULTS_MSG);
 	mesgPane(XRN_SERIOUS | XRN_APPEND, 0, VERSIONS_MSG, app_resources.version,
-		 PACKAGE_VERSION);
+		 XRN_VERSION);
     }
 
     XtAppAddInput(TopContext,
@@ -208,7 +196,7 @@ static void AddPathToSearchPath(path)
 #endif
 
 #if XtSpecificationRelease < 6
-static XEvent last_event;
+static XEvent last_event = {0};
 
 XEvent *XtLastEventProcessed(display)
      Display *display;

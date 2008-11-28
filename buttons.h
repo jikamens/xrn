@@ -6,7 +6,7 @@
 #include "utils.h"
 
 /*
- * $Id: buttons.h,v 1.16 1997-06-29 17:30:14 jik Exp $
+ * $Id: buttons.h,v 1.15 1997-03-02 17:59:38 jik Exp $
  */
 
 /*
@@ -49,7 +49,7 @@ typedef struct buttonList {
 #define TOP	0
 #define BOTTOM	1
 
-extern void determineMode _ARGUMENTS((Boolean));
+extern void determineMode _ARGUMENTS((void));
 extern Boolean watchingGroup _ARGUMENTS((char *));
 extern void doTheRightThing _ARGUMENTS((Widget, XEvent *, String *,
 					Cardinal *));

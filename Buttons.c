@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: Buttons.c,v 1.6 1999-11-23 00:36:37 jik Exp $";
+static char XRNrcsid[] = "$Id: Buttons.c,v 1.3 1997-03-30 17:49:44 jik Exp $";
 #endif
 
 /*
@@ -293,8 +293,6 @@ void doButtons(resource, box, buttonList, size, infoLine)
     int j, i = 0;
     Widget button;
 
-    ButtonBoxEmpty(box);
-
     if (resource) {
 	ptr = resource;
 
@@ -305,13 +303,11 @@ void doButtons(resource, box, buttonList, size, infoLine)
 		  if (buttonList[j].active) {
 		    button = ButtonBoxAddButton(buttonList[j].name,
 						buttonList[j].callbacks, box);
-		    if (buttonList[j].message) {
-		      if (infoLine == TOP) {
+		    if (infoLine == TOP) {
 			setTopInfoLineHandler(button, buttonList[j].message);
-		      } else {
+		    } else {
 			setBottomInfoLineHandler(button,
 						 buttonList[j].message);
-		      }
 		    }
 		    i++;
 		  }
@@ -330,12 +326,10 @@ void doButtons(resource, box, buttonList, size, infoLine)
 	  if (buttonList[i].active) {
 	    button = ButtonBoxAddButton(buttonList[i].name,
 					buttonList[i].callbacks, box);
-	    if (buttonList[i].message) {
-	      if (infoLine == TOP) {
+	    if (infoLine == TOP) {
 		setTopInfoLineHandler(button, buttonList[i].message);
-	      } else {
+	    } else {
 		setBottomInfoLineHandler(button, buttonList[i].message);
-	      }
 	    }
 	  }
 	}
@@ -704,17 +698,14 @@ void confirmBox(message, mode, flag, handler)
 }
 
 
+void determineMode()
 /*
  * determine the initial mode and set up Text, TopButtonBox, and Question
  */
-void determineMode(
-		   _ANSIDECL(Boolean,	do_newgroups)
-		   )
-     _KNRDECL(Boolean,	do_newgroups)
 {
     String string;
 
-    if (do_newgroups && (string = newGroups())) {
+    if ((string = newGroups())) {
 	switchToAddMode(string);
 	FREE(string);
     }
