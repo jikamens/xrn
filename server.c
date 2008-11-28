@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: server.c,v 1.181 2006-01-03 16:38:46 jik Exp $";
+static char XRNrcsid[] = "$Id: server.c,v 1.169 2001-09-03 21:22:15 jik Exp $";
 #endif
 
 /*
@@ -33,10 +33,14 @@ static char XRNrcsid[] = "$Id: server.c,v 1.181 2006-01-03 16:38:46 jik Exp $";
  *
  */
 
+#ifdef INN
 #include <stdio.h>
 #include <netinet/in.h>
 #include <netdb.h>
-
+#include <configdata.h>
+#include <clibrary.h>
+#include <libinn.h>
+#endif
 #include "copyright.h"
 #include "config.h"
 #include "utils.h"
@@ -180,11 +184,6 @@ static int wants_user_pass_authentication()
 }
 
 /*
-  Cache the password so the user only has to be prompted once.
-*/
-static char *authinfo_password = NULL;
-
-/*
   This function assumes that wants_user_pass_authentication() has
   already been called and returned True.  I.e., don't call this
   function if you don't already know that the authenticator resource
@@ -260,12 +259,7 @@ static int user_pass_authentication()
     user = XtNewString(user);
 
   if (! pass)
-    if (authinfo_password)
-      pass = XtNewString(authinfo_password);
-    else {
-      if ((pass = PasswordBox(TopLevel, NNTP_PASSWORD_MSG)))
-	authinfo_password = XtNewString(pass);
-    }
+    pass = PasswordBox(TopLevel, NNTP_PASSWORD_MSG);
   else
     pass = XtNewString(pass);
 
@@ -286,13 +280,7 @@ static int user_pass_authentication()
   put_server(cmdbuf);
   response = get_data_from_server(True);
   if (*response != CHAR_OK) {
-    if (authinfo_password) {
-      XtFree(authinfo_password);
-      authinfo_password = NULL;
-      retval = 1;
-    }
-    else
-      retval = -1;
+    retval = -1;
     goto done;
   }
 
@@ -306,12 +294,6 @@ done:
 }
 
 
-/*
-  Returns 0 on successful authentication, <0 if authentication failed
-  and can't be retried, or >0 if authentication failed and can be
-  retried.
-*/
-  
 static int authenticate _ARGUMENTS((void));
 
 static int
@@ -365,34 +347,19 @@ authenticate() {
 
     sprintf(cmdbuf, app_resources.authenticatorCommand,
 	    app_resources.authenticator);
-    /* We have to assume that authentication can't be retried if this
-       fails, because there's no way for the authenticator command to
-       communicate to us whether it's safe to retry. */
-    return (system(cmdbuf) ? -1 : 0);
+    return (system(cmdbuf));
 }
 
 static int check_authentication _ARGUMENTS((char *, char **));
-
-Boolean authentication_failure = False;
 
 static int
 check_authentication(command, response)
     char *command;   /* command to resend           */
     char **response; /* response from the command   */
 {
-  int ret;
-
-  authentication_failure = False;
   if (STREQN(*response, "480 ", 4)) {
-    if (((ret = authenticate()) < 0) ||
-	((ret > 0) && ! ehErrorRetryXRN(AUTH_FAILED_RETRY_MSG, False))) {
-      if (atoi(*response) != 502)
-	*response = "502 Authentication failed";
-      authentication_failure = True;
-    }
-    else if (ret > 0) {
-      ServerDown = True;
-      return(0);
+    if (authenticate()) {
+      *response = "502 Authentication failed";
     } else {
       put_server(command);
       *response = get_data_from_server(True);
@@ -528,6 +495,17 @@ static int get_base_article(
 
   start_time = time(0);
 
+  (void) sprintf(command, "ARTICLE %ld", artnum);
+  put_server(command);
+  message = get_data_from_server(True);
+
+  check_server_response(command, &message);
+
+  if (*message != CHAR_OK) {
+    artStructSet(newsgroup, &art);
+    return 0;
+  }
+
   cache_file = (file_cache_file *) XtMalloc(sizeof(*cache_file));
 
   if (! (fp = file_cache_file_open(FileCache, cache_file))) {
@@ -540,19 +518,6 @@ static int get_base_article(
   }
 
   do_chmod(fp, file_cache_file_name(FileCache, *cache_file), 0600);
-
-  (void) sprintf(command, "ARTICLE %ld", artnum);
-  put_server(command);
-  message = get_data_from_server(True);
-
-  check_server_response(command, &message);
-
-  if (*message != CHAR_OK) {
-    artStructSet(newsgroup, &art);
-    file_cache_file_destroy(FileCache, *cache_file);
-    FREE(cache_file);
-    return 0;
-  }
 
   while (1) {
     line = get_data_from_server(False);
@@ -883,37 +848,28 @@ int getgroup(
 	check_server_response(command, &message);
     
 	if (*message != CHAR_OK) {
-	  int code = atoi(message);
-
-	  if ((code == ERR_ACCESS) && ! authentication_failure) {
+	    if (atoi(message) != ERR_NOGROUP) {
+	      char *mybuf = XtMalloc(strlen(ERROR_REQUEST_FAILED_MSG) +
+				     strlen(command) +
+				     strlen(message));
+	      (void) sprintf(mybuf, ERROR_REQUEST_FAILED_MSG,
+			     command, message);
+	      ehErrorExitXRN(mybuf);
+	    }
 	    if (display_error)
-	      mesgPane(XRN_SERIOUS, 0, GROUP_ACCESS_DENIED_MSG,
-		       newsgroup->name);
-	  }
-	  else if (code == ERR_NOGROUP) {
-	    if (display_error)
-	      mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_DELETED_MSG,
-		       newsgroup->name);
-	  }
-	  else {
-	    char *mybuf = XtMalloc(strlen(ERROR_REQUEST_FAILED_MSG) +
-				   strlen(command) +
-				   strlen(message));
-	    (void) sprintf(mybuf, ERROR_REQUEST_FAILED_MSG,
-			   command, message);
-	    ehErrorExitXRN(mybuf);
-	  }
+		mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_DELETED_MSG,
+			 newsgroup->name);
 
-	  /* remove the group from active use ??? */
+	    /* remove the group from active use ??? */
 
-	  if (number)
-	    *number = 0;
-	  if (first)
-	    *first = 0;
-	  if (last)
-	    *last = 0;
+	    if (number)
+	      *number = 0;
+	    if (first)
+	      *first = 0;
+	    if (last)
+	      *last = 0;
 
-	  return(NO_GROUP);
+	    return(NO_GROUP);
 	}
 
 	currentNewsgroup = newsgroup;
@@ -1413,7 +1369,7 @@ void getactive(
     else
       active_read++;
 
-    CHECKNEWSRCSIZE(ActiveGroupsCount);
+    checkNewsrcSize(ActiveGroupsCount);
 #ifndef FIXED_ACTIVE_FILE
     badActiveFileCheck();
 #endif
@@ -1465,6 +1421,30 @@ void badActiveFileCheck()
 }
 #endif
 
+#ifdef INN
+/* It sucks that I have to do this rather than asking the INN library
+   to pick the default port, but alas, the Wise Sages who implemented
+   the new and improved INN clientlib.c made it require that the
+   client specify a port number, thus forcing every News reader in the
+   world to duplicate the same code that could have been all in one
+   place, at least as of INN 2.2.2. Sigh. */
+static int get_nntp_port()
+{
+  struct servent *sp;
+
+  /* We shouldn't have to do this, but as of INN 2.2.2, we do, because
+     the INN implementation of server_init doesn't, and therefore
+     coredumps.  INN sucks.  Grr. */
+  ReadInnConf();
+
+  if (app_resources.nntpPort && *app_resources.nntpPort)
+    return(atoi(app_resources.nntpPort));
+  if ((sp = getservbyname("nntp", "tcp")))
+    return(ntohs(sp->s_port));
+  return(119);
+}
+#endif /* INN */
+
 /*
  * initiate a connection to the news server
  *
@@ -1486,7 +1466,9 @@ void start_server()
 
     if (! server) {
       server = nntpServer();
+#ifndef INN
       nntp_port = app_resources.nntpPort;
+#endif
     }
 
     if (! server)
@@ -1496,8 +1478,11 @@ void start_server()
     infoNow(buf);
 
     while (1) {
-      response = server_init(server);
-
+      response = server_init(server
+#ifdef INN
+			     , get_nntp_port()
+#endif
+			     );
       if (response == OK_NOPOST)
 	PostingAllowed = False;
       else if (response >= 0)
@@ -1534,12 +1519,7 @@ void stop_server()
 
 
 /* Which header fields can't be fetched with XHDR? */
-#ifdef NO_XHDR_NEWSGROUPS
-static fetch_flag_t no_xhdr_fields = FETCH_NEWSGROUPS;
-#else
 static fetch_flag_t no_xhdr_fields = 0;
-#endif
-
 /* Which header fields *can* be fetched with XHDR? */
 static fetch_flag_t xhdr_fields = 0;
 
@@ -2469,7 +2449,11 @@ int postArticle(article, mode, ErrMsg)
 	struct stat buf;
 	char temp[1024];
 
+#ifndef INN	
 	(void) sprintf(temp, "\n\ninews exit value: %d\n", exitstatus);
+#else
+	temp[0] = '\0';
+#endif /* INN */	
 	if ((filefp = fopen(tempfile, "r")) != NULL) {
 	    if (fstat(fileno(filefp), &buf) != -1) {
 		p = XtMalloc(buf.st_size + utStrlen(temp) + 10);
@@ -2505,18 +2489,12 @@ int postArticle(article, mode, ErrMsg)
 /*
  * get XHDR information for a single article
  */
-static char *xhdr_single _ARGUMENTS((struct newsgroup *, char *, long *, Boolean));
+static char *xhdr_single _ARGUMENTS((struct newsgroup *, char *, long *));
 
-static char *xhdr_single(
-			 _ANSIDECL(struct newsgroup *,	newsgroup),
-			 _ANSIDECL(char *,		buffer),
-			 _ANSIDECL(long *,		error_code),
-			 _ANSIDECL(Boolean,		silent_error)
-			 )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(char *,		buffer)
-     _KNRDECL(long *,		error_code)
-     _KNRDECL(Boolean,		silent_error)
+static char *xhdr_single(newsgroup, buffer, error_code)
+    struct newsgroup *newsgroup;
+    char *buffer;
+    long *error_code;
 {
     char *message, *ptr;
 
@@ -2533,10 +2511,8 @@ static char *xhdr_single(
     /* check for errors */
     if (*message != CHAR_OK) {
       if ((*error_code = atol(message)) != ERR_NOART) {
-	if (! silent_error) {
-	  fprintf(stderr, "NNTP error: %s\n", message);
-	  mesgPane(XRN_SERIOUS, 0, XHDR_ERROR_MSG);
-	}
+	fprintf(stderr, "NNTP error: %s\n", message);
+	mesgPane(XRN_SERIOUS, 0, XHDR_ERROR_MSG);
       }
       return NULL;
     }
@@ -2779,15 +2755,14 @@ void xhdr(newsgroup, article, field, string)
     long error_code;
 
     (void) sprintf(buffer, "XHDR %s %ld", field, article);
-    *string = xhdr_single(newsgroup, buffer, &error_code, False);
+    *string = xhdr_single(newsgroup, buffer, &error_code);
     return;
 }
 
 #endif
 
 /* Get XHDR information using an article's message ID.  The returned
-   data is allocated and should be freed by the caller.  Fails
-   silently if the NNTP server doesn't support XHDR by message ID. */
+   data is allocated and should be freed by the caller. */
   
 char *xhdr_id(newsgroup, id, field, error_code)
      struct newsgroup *newsgroup;
@@ -2798,7 +2773,7 @@ char *xhdr_id(newsgroup, id, field, error_code)
   char buffer[BUFFER_SIZE];
 
   (void) sprintf(buffer, "XHDR %s %s", field, id);
-  return xhdr_single(newsgroup, buffer, error_code, True);
+  return xhdr_single(newsgroup, buffer, error_code);
 }
 
 #ifndef POPEN_USES_INEXPENSIVE_FORK
