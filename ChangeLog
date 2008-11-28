@@ -1,42 +1,7 @@
-2002-05-15  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+2002-05-13  Jonathan Kamens  <jik@kamens.brookline.ma.us>
 
-	* internals.c: Fix a bug which might in rare cases temporarily
-	prevent (until the next rescan) XRN from entering a newsgroup that
-	had been unsubscribed when the user attempted to enter and
-	subscribe to it.
-
-	* internals.c: When attempting to enter and subscribe to an
-	unsubscribed newsgroup, don't mark the group subscribed until
-	we've confirmed that it is an OK group.
-
-	* mesg_strings.c, server.c: When authentication fails and the user
-	had been prompted for a password, offer the user the opportunity
-	to retry the authentication.
-
-	* mesg_strings.c: Change "Newsgroup `%s' does not exist." to
-	"Newsgroup `%s' does not exist or you can't access it." because
-	the problem may be that the group appears in the newsgroup list
-	but the user does not have permission to read it.
-
-	* server.c: If the user is prompted for an authentication
-	password, cache it so the user doesn't have to be prompted again
-	when reconnecting to the server.
-
-2002-05-14  Jonathan Kamens  <jik@kamens.brookline.ma.us>
-
-	* server.c, server.h: We need to distinguish between ERR_ACCESS
-	when the user isn't allowed to enter a particular newsgroup and
-	ERR_ACCESS when the user hasn't authenticated successfully to the
-	server at all.
-
-	* allMode.c, internals.c, internals.h, ngMode.c: Notice when the
-	server refuses access to a newsgroup when the user attempts to
-	subscribe to it, and abort the subscribe operation.
-
-	* mesg_strings.c, server.c: When an attempt to enter a newsgroup
-	failed because the server denied access to the newsgroup, display
-	a message to that effect and continue, treating the newsgroup as a
-	bad group, rather than aborting the program.
+	* XRn.src, patchlevel.h, xrn-man.src: Update version number for
+	9.03-beta-15.
 
 2002-05-13  Jonathan Kamens  <jik@kamens.brookline.ma.us>
 
@@ -1677,4 +1642,4 @@ Tue Nov  8 18:30:03 1994  Jonathan I. Kamens  <jik@cam.ov.com>
 	Always include article text when calling an external editor
 	command.  Fix from per@erix.ericsson.se (Per Hedeland).
 
-# $Id: ChangeLog,v 1.151 2002-05-15 14:13:29 jik Exp $
+# $Id: ChangeLog,v 1.149 2002-05-13 04:24:07 jik Exp $

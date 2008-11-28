@@ -2365,10 +2365,6 @@ void artListOldHandler(widget, client_data, call_data)
       }
     }
 
-    if (GotoArticleBox) {
-      PopDownDialog(GotoArticleBox);
-      GotoArticleBox = 0;
-    }
     abortClear();
     cancelCreate("CancelListOld");
 
@@ -2414,6 +2410,10 @@ void artListOldHandler(widget, client_data, call_data)
     }
 
 finishedl:
+    if (GotoArticleBox) {
+      PopDownDialog(GotoArticleBox);
+      GotoArticleBox = 0;
+    }
     xrnUnbusyCursor();
     cancelDestroy();
     inCommand = 0;
@@ -2550,31 +2550,36 @@ static void gotoArticleHandler(widget, client_data, call_data)
     inCommand = 1;
     xrnBusyCursor();
     TextUnsetSelection(SubjectText);
-    numberstr = GetDialogValue(GotoArticleBox);
-    PopDownDialog(GotoArticleBox);
-    GotoArticleBox = 0;
     if ((int) client_data == XRNgotoArticle_ABORT) {
-      goto finished;
+	PopDownDialog(GotoArticleBox);
+	GotoArticleBox = 0;
+	xrnUnbusyCursor();
+	inCommand = 0;
+	return;
     }
-    abortClear();
-    cancelCreate("CancelGotoArticle");
+    numberstr = GetDialogValue(GotoArticleBox);
     if (! (numberstr && *numberstr)) {
 	mesgPane(XRN_INFO, 0, NO_ART_NUM_MSG);
-	goto finished;
+	PopDownDialog(GotoArticleBox);
+	GotoArticleBox = 0;
+	xrnUnbusyCursor();
+	inCommand = 0;
+	return;
     }
 
     artNum = atol(numberstr);
     if (artNum == 0) {
 	mesgPane(XRN_SERIOUS, 0, BAD_ART_NUM_MSG, numberstr);
-	goto finished;
+	PopDownDialog(GotoArticleBox);
+	GotoArticleBox = 0;
+	xrnUnbusyCursor();
+	inCommand = 0;
+	return;
     }
 
     status = moveToArticle(CurrentGroup, artNum, &file, &question);
 
     switch (status) {
-
-    case ABORT:
-      break;
 
     case NOMATCH:
     case ERROR:
@@ -2609,10 +2614,10 @@ static void gotoArticleHandler(widget, client_data, call_data)
 	break;
     }
 
- finished:
+    PopDownDialog(GotoArticleBox);
+    GotoArticleBox = 0;
     xrnUnbusyCursor();
     inCommand = 0;
-    cancelDestroy();
     return;
 }
 

@@ -2,7 +2,7 @@
 #define NEWS_H
 
 /*
- * $Id: news.h,v 1.35 2006-01-03 16:38:38 jik Exp $
+ * $Id: news.h,v 1.34 2001-10-14 11:22:19 jik Exp $
  */
 
 /*
@@ -41,7 +41,7 @@
 #include "xrn.h"
 
 typedef long art_num;  /* easy way to pick out variables refering to articles */
-typedef unsigned int ng_num;   /* easy way to pick out newsgroup variables            */
+typedef unsigned short ng_num;   /* easy way to pick out newsgroup variables            */
 typedef unsigned char fetch_flag_t;
 
 extern avl_tree *NewsGroupTable;

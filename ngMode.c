@@ -435,14 +435,12 @@ static void subscribeHandler(widget, client_data, call_data)
 		goto done;
 	    }
 	    else if (ret == GOOD_GROUP) {
-	      if (subscribe()) {
+		subscribe();
 		CurrentIndexGroup = XtRealloc(CurrentIndexGroup,
 					      strlen(LastGroup) + 1);
 		(void) strcpy(CurrentIndexGroup, LastGroup);
 		updateNewsgroupMode(True, False);
 		exitNewsgroup();
-	      }
-	      
 	    }
 	    else {
 		mesgPane(XRN_SERIOUS, 0, UNKNOWN_FUNC_RESPONSE_MSG, ret,

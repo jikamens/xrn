@@ -2,7 +2,7 @@
 #define INTERNALS_H
 
 /*
- * $Id: internals.h,v 1.54 2002-05-14 19:54:43 jik Exp $
+ * $Id: internals.h,v 1.53 2002-05-03 17:44:56 jik Exp $
  */
 
 /*
@@ -86,7 +86,7 @@ extern int enterNewsgroup _ARGUMENTS((char *name, int flags));
 extern void exitNewsgroup _ARGUMENTS((void));
 
 /* subscribe to the current newsgroup */
-extern Boolean subscribe _ARGUMENTS((void));
+extern void subscribe _ARGUMENTS((void));
 /* unsubscribe to the current newsgroup */
 extern void unsubscribe _ARGUMENTS((void));
 

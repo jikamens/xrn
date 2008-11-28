@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: mesg_strings.c,v 1.94 2002-05-15 14:06:06 jik Exp $";
+static char XRNrcsid[] = "$Id: mesg_strings.c,v 1.92 2002-03-18 15:23:41 jik Exp $";
 #endif
 
 /*
@@ -273,10 +273,6 @@ char *message_strings[] = {
     "XRN error: bad button name `%s'.", /* button name */
 /* < NO_SUCH_NG_DELETED > */
     "Newsgroup `%s' does not exist.\n\tIt may have been deleted.", /* newsgroup name */
-/* < GROUP_ACCESS_DENIED > */
-    "Access to newsgroup `%s' denied by server.", /* newsgroup name */
-/* < AUTH_FAILED_RETRY > */
-    "Authentication failed.  Retry?",
 /* < UNKNOWN_FUNC_RESPONSE > */
     "Internal XRN error: unknown response %d from %s in %s.", /* return value, called function, calling function */
 /* < DISPLAYING_LAST_UNREAD > */
@@ -290,7 +286,7 @@ char *message_strings[] = {
 /* < NO_NG_SPECIFIED > */
     "No newsgroup name specified.",
 /* < NO_SUCH_NG > */
-    "Newsgroup `%s' does not exist or you can't access it.", /* newsgroup name */
+    "Newsgroup `%s' does not exist.", /* newsgroup name */
 /* < NO_PREV_NG > */
     "No previous newsgroup.",
 /* < NO_GROUPS_SELECTED > */
@@ -796,10 +792,6 @@ char *message_strings[] = {
     "Erreur XRN : nom de bouton incorrect `%s'.", /* button name */
 /* < NO_SUCH_NG_DELETED > */
     "Le groupe de news `%s' n'existe pas.\n\tIl peut avoir été supprimé.", /* newsgroup name */
-/* < GROUP_ACCESS_DENIED > */
-    "Access to newsgroup `%s' denied by server.", /* newsgroup name */
-/* < AUTH_FAILED_RETRY > */
-    "Authentication failed.  Retry?",
 /* < UNKNOWN_FUNC_RESPONSE > */
     "Internal XRN error: unknown response %d from %s in %s.", /* return value, called function, calling function */
 /* < DISPLAYING_LAST_UNREAD > */
@@ -813,7 +805,7 @@ char *message_strings[] = {
 /* < NO_NG_SPECIFIED > */
     "Pas de nom de groupe de news spécifié.",
 /* < NO_SUCH_NG > */
-    "Newsgroup `%s' does not exist or you can't access it.", /* newsgroup name */
+    "Le groupe de news `%s' n'existe pas.", /* newsgroup name */
 /* < NO_PREV_NG > */
     "Pas de groupe de news précédent",
 /* < NO_GROUPS_SELECTED > */
@@ -1338,10 +1330,6 @@ char *message_strings[] = {
     "XRN Fehler: Falscher Knopf-Name `%s'.", /* button Name */
 /* < NO_SUCH_NG_DELETED > */
     "Newsgruppe `%s' existiert nicht.\n\tM\366glicherweise wurde sie entfernt.", /* Newsgruppe Name */
-/* < GROUP_ACCESS_DENIED > */
-    "Access to newsgroup `%s' denied by server.", /* newsgroup name */
-/* < AUTH_FAILED_RETRY > */
-    "Authentication failed.  Retry?",
 /* < UNKNOWN_FUNC_RESPONSE > */
     "Interner XRN Fehler: unbekannte R\374ckmeldung %d von %s in %s.", /* return value, called function, calling function */
 /* < DISPLAYING_LAST_UNREAD > */
@@ -1355,7 +1343,7 @@ char *message_strings[] = {
 /* < NO_NG_SPECIFIED > */
     "Keine Newsgruppe angegeben.",
 /* < NO_SUCH_NG > */
-    "Newsgroup `%s' does not exist or you can't access it.", /* newsgroup name */
+    "Newsgruppe `%s' existiert nicht.", /* Newsgruppe Name */
 /* < NO_PREV_NG > */
     "Keine vorhergehende Newsgruppe.",
 /* < NO_GROUPS_SELECTED > */
