@@ -2,7 +2,7 @@
 #define MODES_H
 
 /*
- * $Id: modes.h,v 1.4 1995-01-25 03:17:52 jik Exp $
+ * $Id: modes.h,v 1.3 1994-11-23 01:48:08 jik Exp $
  */
 
 /*
@@ -51,8 +51,5 @@
 
 #define BACK 0
 #define FORWARD 1
-
-extern int CurrentMode;
-extern int PreviousMode;
 
 #endif /* MODES_H */

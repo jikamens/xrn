@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: utils.c,v 1.36 2006-01-03 16:16:39 jik Exp $";
+static char XRNrcsid[] = "$Id: utils.c,v 1.9 1994-11-23 01:49:32 jik Exp $";
 #endif
 
 /*
@@ -36,23 +36,24 @@ static char XRNrcsid[] = "$Id: utils.c,v 1.36 2006-01-03 16:16:39 jik Exp $";
 #include "utils.h"
 #include <X11/Xos.h>
 #include <ctype.h>
+#ifndef VMS
 #include <pwd.h>
-#include <assert.h>
+#endif
 #ifdef aiws
 struct passwd *getpwuid();
 struct passwd *getpwnam();
 #endif /* aiws */
+#if defined(sun)
+#include <string.h>
+#endif
 #if defined(apollo)
 #include <sys/time.h>
 #endif
 #ifdef SOLARIS
 #include <time.h>
 #endif
-#include "news.h"
-#include "server.h"
-#include "resources.h"
 
-extern time_t get_date _ARGUMENTS((char *));
+#include "resources.h"
 
 #define USER_NAME_SIZE 32
 
@@ -125,11 +126,15 @@ char * utTildeExpand(filename)
 	char *home;
 	
 	if ((home = getenv("HOME")) == NIL(char)) {
+#ifndef VMS
 	    /* fall back on /etc/passwd */
 	    if ((pw = getpwuid(getuid())) == NIL(struct passwd)) {
 		return(NIL(char));
 	    }
 	    (void) sprintf(dummy, "%s%s", pw->pw_dir, &filename[1]);
+#else
+	    return (NIL(char));
+#endif
 	} else {
 	    (void) sprintf(dummy, "%s%s", home, &filename[1]);
 	}
@@ -141,10 +146,14 @@ char * utTildeExpand(filename)
 	}
 	(void) strncpy(username, &filename[1], loc - &filename[1]);
 	username[loc - &filename[1]] = '\0';
+#ifndef VMS
 	if ((pw = getpwnam(username)) == NIL(struct passwd)) {
 	    return(NIL(char));
 	}
 	(void) sprintf(dummy, "%s%s", pw->pw_dir, loc);
+#else
+	return(getenv("USER"));
+#endif
     }
     return(dummy);
 }
@@ -210,12 +219,56 @@ void utDowncase(string)
     register char *string;
 {
     for ( ; *string != '\0'; string++) {
-	if (isupper((unsigned char)*string)) {
+	if (isupper(*string)) {
 	    *string = tolower(*string);
 	}
     }
     return;
 }
+
+#ifdef VMS    
+int utGroupToVmsFilename(filename,group)
+    char *filename;
+    char *group;
+{
+    char *ptr;
+    int i=0;
+
+    for (ptr = group; *ptr != 0; ptr++)
+    {
+	if (isalnum(*ptr))
+	{
+	    filename[i++] = *ptr;
+	}
+	else
+	{
+	    switch (*ptr)
+	    {
+		case '.' :
+		    filename[i++] = '_';
+		    break;
+		case '-' :
+		    filename[i++] = '-';
+		    break;
+		default :
+		    i = i + sprintf(&filename[i], "$X%X$", *ptr);
+		    break;
+	    }
+	}
+    }
+    filename[i] = 0;
+    return (i);
+}
+#endif
+
+#ifdef VMS    
+extern int delete();
+int unlink(foo)
+    char *foo;
+{
+    return(delete(foo));
+}
+#endif /* VMS */
 
 /* case insensitive, 24 character max, comparision for subjects */
 
@@ -235,12 +288,12 @@ int utSubjectCompare(str1, str2)
 	if (!*str2) {
 	    return 1;
 	}
-	if (isupper((unsigned char)*str1)) {
+	if (isupper(*str1)) {
 	    c1 = tolower(*str1);
 	} else {
 	    c1 = *str1;
 	}
-	if (isupper((unsigned char)*str2)) {
+	if (isupper(*str2)) {
 	    c2 = tolower(*str2);
 	} else {
 	    c2 = *str2;
@@ -341,32 +394,296 @@ int strncasecmp(s1, s2, n)
 
 #endif /* NEED_STRCASECMP */
 
-void tconvert(dest, source)
+#ifdef REALLY_USE_LOCALTIME
+static int days[] = { 31,28,31,30,31,30,31,31,30,31,30,31};
+
+/**********************************************************************
+This function performs the function of mktime as declared in time.h,
+but which has no definition.  It's the inverse of gmtime.
+**********************************************************************/
+
+static time_t makeTime _ARGUMENTS((struct tm *));
+
+static time_t makeTime(tmp)
+    struct tm *tmp;
+{
+  time_t ret;
+  int i;
+
+  if (tmp->tm_year < 70) return 0;
+  ret = ((tmp->tm_year-70) / 4)*(366+365+365+365);
+  switch ((tmp->tm_year-70) % 4) {
+  case 1:
+    ret += 365;
+    break;
+  case 2:
+    ret += 365+365;
+    if (tmp->tm_mon > 1) {
+      ret += 1;
+    }
+    break;
+  case 3:
+    ret += 365+366+365;
+  }
+  for (i=0; i<tmp->tm_mon; i++) {
+    ret += days[i];
+  }
+  ret += tmp->tm_mday-1;
+  ret = ret*24+tmp->tm_hour;
+  if (tmp->tm_isdst) {
+    ret -= 1;
+  }
+  ret = ret*60+tmp->tm_min;
+  ret = ret*60+tmp->tm_sec;
+  return ret;
+}
+
+#ifdef ultrix
+static char *getzonename _ARGUMENTS((int));
+#endif
+
+/**********************************************************************
+This (ugly) function takes a source of the form "31 Aug 90 16:47:06 GMT"
+and writes into dest the equivalent in local time.  If an invalid
+source is given, the dest is a copy of the source.
+
+Optionally, there may be a "XXX, " prepending the source where XXX is
+a weekday name.
+**********************************************************************/
+
+int tconvert(dest, source)
     char *dest, *source;
 {
-  time_t converted = get_date(source);
-  char buf[30] /* ctime only takes 26, but who knows if it'll change? */;
+  char *p, *fmt;
+  int h, m, s, day, mon, year;
+  struct tm *tmp, t;
+  time_t then;
+  int doWeekDay;
+#if defined(apollo)
+  int daylight;
+#endif
 
-  if (converted == (time_t)-1) {
-    if (dest != source)
-      strcpy(dest, source);
+  strcpy(dest, source);
+
+  /* Parse date */
+  p = source;
+  if (!strncasecmp(p, "mon, ", 5) ||
+      !strncasecmp(p, "tue, ", 5) ||
+      !strncasecmp(p, "wed, ", 5) ||
+      !strncasecmp(p, "thu, ", 5) ||
+      !strncasecmp(p, "fri, ", 5) ||
+      !strncasecmp(p, "sat, ", 5) ||
+      !strncasecmp(p, "sun, ", 5)) {
+    p += 5;
+    doWeekDay = 1;
+  } else {
+/*    doWeekDay = 0; */
+    doWeekDay = 1;		/* Let's put the weekday in all postings */
   }
-  else {
-    strcpy(buf, ctime(&converted));
-    /* RFC 822 requires a comma after the day, but ctime doesn't
-       provide one, so we'll have to insert it.  We check explicitly
-       to make sure the date begins with three alphabetics and a
-       space, in case the ctime format changes out from under us. */
-    if (isalpha(buf[0]) && isalpha(buf[1]) && isalpha(buf[2]) &&
-	isspace(buf[3])) {
-      strncpy(dest, buf, 3);
-      dest[3] = ',';
-      strcpy(dest + 4, buf + 3);
+  while (*p == ' ') {
+    p++;
+  }
+  if (!sscanf(p, "%d", &day)) {
+    return;
+  }
+  while (*p != ' ' && *p != '\0') {
+    p++;
+  }
+  if (*p == '\0') {
+    return;
+  }
+  while (*p == ' ' && *p != '\0') {
+    p++;
+  }
+  if (*p == '\0') {
+    return;
+  }
+  if (!strncasecmp(p, "jan", 3)) {
+    mon = 0;
+  } else if (!strncasecmp(p, "feb", 3)) {
+    mon = 1;
+  } else if (!strncasecmp(p, "mar", 3)) {
+    mon = 2;
+  } else if (!strncasecmp(p, "apr", 3)) {
+    mon = 3;
+  } else if (!strncasecmp(p, "may", 3)) {
+    mon = 4;
+  } else if (!strncasecmp(p, "jun", 3)) {
+    mon = 5;
+  } else if (!strncasecmp(p, "jul", 3)) {
+    mon = 6;
+  } else if (!strncasecmp(p, "aug", 3)) {
+    mon = 7;
+  } else if (!strncasecmp(p, "sep", 3)) {
+    mon = 8;
+  } else if (!strncasecmp(p, "oct", 3)) {
+    mon = 9;
+  } else if (!strncasecmp(p, "nov", 3)) {
+    mon = 10;
+  } else if (!strncasecmp(p, "dec", 3)) {
+    mon = 11;
+  } else {
+    return;
+  }
+  while (*p != ' ' && *p != '\0') {
+    p++;
+  }
+  if (*p == '\0') {
+    return;
+  }
+  if (!sscanf(p, "%d", &year)) {
+    return;
+  }
+  year = year % 100;
+
+  /* Parse time */
+  p = strrchr(source, ':');
+  if (!p) {
+    return;
+  }
+  p--;
+  while (p > source && *p != ':') {
+    p--;
+  }
+  while (p > source && *p != ' ') {
+    p--;
+  }
+  if (!p) {
+    return;
+  }
+  sscanf(p, "%d", &h);
+  p = strchr(p, ':');
+  if (!p++) {
+    return;
+  }
+  sscanf(p, "%d", &m);
+  p = strchr(p, ':');
+  if (!p++) {
+    return;
+  }
+  sscanf(p, "%d", &s);
+  p = strchr(p, ' ');
+  if (!p++) {
+    return;
+  }
+
+  /* Confirm GMT */
+  if (strcmp(p, "GMT")) {
+    return;
+  }
+
+  t.tm_sec = s;
+  t.tm_min = m;
+  t.tm_hour = h;
+  t.tm_mday = day;
+  t.tm_mon = mon;
+  t.tm_year = year;
+  t.tm_isdst = 0;
+  then = makeTime(&t);
+  tmp = localtime(&then);
+  
+/* ascftime is non-standard, sigh.
+  ascftime(dest, "%e %b %y %H:%M:%S %Z", tmp);
+*/
+  fmt = asctime(tmp);
+  /* Make this look like the original format */
+  p = dest;
+  if (doWeekDay) {
+    switch (tmp->tm_wday) {
+    case 0:
+      strcpy(dest, "Sun, ");
+      break;
+    case 1:
+      strcpy(dest, "Mon, ");
+      break;
+    case 2:
+      strcpy(dest, "Tue, ");
+      break;
+    case 3:
+      strcpy(dest, "Wed, ");
+      break;
+    case 4:
+      strcpy(dest, "Thu, ");
+      break;
+    case 5:
+      strcpy(dest, "Fri, ");
+      break;
+    case 6:
+      strcpy(dest, "Sat, ");
+      break;
     }
-    else
-      strcpy(dest, buf);
+    p += 5;
+  }
+  if (*(fmt+8) == ' ') {
+    strncpy(p, fmt+9, 2);
+    p += 2;
+  } else {
+    strncpy(p, fmt+8, 3);
+    p += 3;
+  }
+  strncpy(p, fmt+4, 4);
+  p += 4;
+  if ((tmp->tm_year % 100) < 10) {
+    sprintf(p, "0%d", tmp->tm_year % 100);
+  } else {
+    sprintf(p, "%d", tmp->tm_year % 100);
+  }
+  strcat(dest, fmt+10);
+  p = strrchr(dest, ' ');
+
+#if defined(sun) && !defined(SOLARIS)
+  (void) strcpy(p+1, tmp->tm_zone);
+#endif
+  
+#ifdef ultrix
+  (void) strcpy(p+1, getzonename(tmp->tm_isdst));
+#endif
+
+#if defined(apollo)
+  daylight = tmp->tm_isdst;
+#endif
+
+#if defined(apllo) || defined(SOLARIS)
+  if (daylight) {
+    strcpy(p+1, tzname[1]);
+  } else {
+    strcpy(p+1, tzname[0]);
+  }
+#endif
+
+  if (*dest == ' ') {
+    p = dest;
+    while (*p != '\0') {
+      *p = *(p+1);
+      p++;
+    }
   }
 }
+
+#ifdef ultrix
+
+extern char *timezone();
+
+static char * getzonename(isdst)
+    int isdst;
+{
+	static char *name[2];
+	struct timezone tz;
+
+	if (isdst)
+		isdst = 1;
+
+	if (name[isdst] != NULL)
+		return name[isdst];
+
+	gettimeofday(NULL, &tz);
+	name[isdst] = XtNewString(timezone(tz.tz_minuteswest, isdst));
+	return name[isdst];
+}
+
+#endif /* ultrix */
+
+#endif /* REALLY_USE_LOCALTIME */
 
 #ifdef XLATE
 
@@ -415,160 +732,3 @@ char *s;
     } while(*++s);
 }
 #endif /* XLATE */
-
-/*
-  To ensure that a file's modes are correct, this function should be
-  called twice for the file.  The first time should be when the file
-  is still open, and fp should be the FILE * and name should be null.
-  If fchmod is supported, it will be used to change the modes of the
-  file.  The second time should be immediately after closing the file,
-  anddd fp should be null and name should be the name of the file.  If
-  fchmod *isn't* supported, then chmod will be used to change the
-  modes of the file.
-
-  If you want to do either the chmod or the fchmod right away, then
-  you can pass in non-null fp and name, and one or the other of the
-  two operations will be done.
-  */
-void do_chmod(fp, name, mode)
-    FILE *fp;
-    char *name;
-    int mode;
-{
-#ifdef NO_FCHMOD
-    if (name)
-	(void) chmod(name, mode);
-#else
-    if (fp)
-	(void) fchmod(fileno(fp), mode);
-#endif
-    return;
-}
-
-    
-/*
-  Return the correct NNTP server to use, or null if it can't be
-  determined.
-
-  Order in which things are checked:
-
-  * -nntpServer command-line option
-  * NNTPSERVER environment variable
-  * nntpServer X resource
-  * SERVER_FILE, if it's defined
-  */
-char *nntpServer()
-{
-    char *server;
-
-    if (app_resources.cmdLineNntpServer)
-	return(app_resources.cmdLineNntpServer);
-    else if ((server = getenv("NNTPSERVER")))
-	return(server);
-    else if (app_resources.nntpServer)
-	return(app_resources.nntpServer);
-#ifdef SERVER_FILE
-    else if ((server = getserverbyfile(SERVER_FILE)))
-	return(server);
-#endif /* SERVER_FILE */
-    else
-	return(0);
-}
-
-char *findServerFile(
-		     _ANSIDECL(char *,		basename),
-		     _ANSIDECL(Boolean,		prefer_long),
-		     _ANSIDECL(Boolean *,	returned_long)
-		     )
-     _KNRDECL(char *,		basename)
-     _KNRDECL(Boolean,		prefer_long)
-     _KNRDECL(Boolean *,	returned_long)
-{
-  char *server_name = nntpServer();
-  char *long_name = 0, *expanded;
-
-  if (! (expanded = utNameExpand(basename)))
-    return 0;
-
-  if (server_name) {
-    long_name = XtMalloc(strlen(expanded) + strlen(server_name) + 2);
-    (void) sprintf(long_name, "%s-%s", expanded, server_name);
-    if (! access(long_name, R_OK)) {
-      if (returned_long)
-	*returned_long = True;
-      return(long_name);
-    }
-  }
-
-  if ((! access(expanded, R_OK)) || (! prefer_long) || (! long_name)) {
-    XtFree(long_name);
-    if (returned_long)
-      *returned_long = False;
-    return(XtNewString(expanded));
-  }
-
-  if (returned_long)
-    *returned_long = True;
-  return(long_name);
-}
-
-
-/*
-  Creates a temporary file in the same directory as the file passed
-  into it, so that the temporary file can be rename()d to be the file
-  name passed in, when it's done being created.
-
-  This is different from tempnam() or utTempnam(), which might put
-  the file in $TMPDIR instead of the specified directory.
-
-  The file name returned is allocated and should be freed when it is
-  no longer needed.
-  */
-char *utTempFile(orig_name)
-char *orig_name;
-{
-  static char new_name[MAXPATHLEN];
-  char *ptr;
-  static int instance = 0;
-
-  ptr = strrchr(orig_name, '/');
-
-  if (ptr) {
-    *ptr = '\0';
-    assert(strlen(orig_name) < MAXPATHLEN-2);
-    (void) sprintf(new_name, "%s/", orig_name);
-    *ptr++ = '/';
-  }
-  else {
-    (void) strcpy(new_name, "./");
-    ptr = orig_name;
-  }
-
-  /* The 20 here is arbitrary; I'm assuming it's enough space to
-     contain a period, an instance number, a hyphen, a PID, and
-     another hyphen. */
-  assert(strlen(new_name) + strlen(ptr) + 20 < MAXPATHLEN);
-
-  (void) sprintf(&new_name[strlen(new_name)], ".%d-%d-%s", instance++,
-		 getpid(), ptr);
-
-  return XtNewString(new_name);
-}
-
-/*
- * Calculate the number of digits in an integer.  Sure, I could use a
- * logarithm function, but that would require relying on a sane math
- * library on all systems.  The technique used in this function is
- * gross, but what the heck, it works.
- */
-
-int utDigits(num)
-    long int num;
-{
-    char int_buf[20]; /* An article number longer than twenty digits?
-			 I'll be dead by then! */
-
-    (void) sprintf(int_buf, "%ld", num);
-    return(strlen(int_buf));
-}
-
