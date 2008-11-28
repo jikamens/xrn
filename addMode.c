@@ -1,14 +1,4 @@
 #include <X11/Intrinsic.h>
-#ifdef MOTIF
-# include <Xm/PanedW.h>
-#else
-# include <X11/Xaw/Paned.h>
-#endif
-/*
-#include <X11/Xaw/Box.h>
-*/
-
-#include "config.h"
 #include "buttons.h"
 #include "butdefs.h"
 #include "addMode.h"
@@ -16,50 +6,44 @@
 #include "butexpl.h"
 #include "news.h"
 #include "Text.h"
-#include "InfoLine.h"
-#include "ButtonBox.h"
 #include "cursor.h"
 #include "internals.h"
 #include "modes.h"
 #include "dialogs.h"
 #include "mesg_strings.h"
-#include "resources.h"
 
 static String AddString;
-static Widget AddFrame;
-static Widget AddText, AddInfoLine, AddButtonBox;
 
 BUTTON(addQuit,quit);
-BUTTON(addIgnoreRest,ignore rest);
 BUTTON(addFirst,add first);
 BUTTON(addLast,add last);
 BUTTON(addAfter,add after group);
 BUTTON(addUnsub,add unsubscribed);
-BUTTON(addIgnore,ignore);
 
 XtActionsRec AddActions[] = {
     {"addQuit",		addQuitAction},
-    {"addIgnoreRest",	addIgnoreRestAction},
     {"addFirst",	addFirstAction},
     {"addLast",		addLastAction},
     {"addAfter",	addAfterAction},
     {"addUnsub",	addUnsubAction},
-    {"addIgnore",	addIgnoreAction},
 };
 
 int AddActionsCount = XtNumber(AddActions);
 
-static ButtonList AddButtonList[] = {
-  {"addQuit",	    addQuitCallbacks,	    ADDQUIT_EXSTR,	  True},
-  {"addIgnoreRest", addIgnoreRestCallbacks, ADDIGNORE_REST_EXSTR, True},
-  {"addFirst",	    addFirstCallbacks,	    ADDFIRST_EXSTR,	  True},
-  {"addLast",	    addLastCallbacks,	    ADDLAST_EXSTR,	  True},
-  {"addAfter",	    addAfterCallbacks,	    ADDAFTER_EXSTR,	  True},
-  {"addUnsub",	    addUnsubCallbacks,	    ADDUNSUB_EXSTR,	  True},
-  {"addIgnore",	    addIgnoreCallbacks,	    ADDIGNORE_EXSTR,	  True},
+ButtonList AddButtonList[] = {
+    {addQuitArgs, XtNumber(addQuitArgs),
+    ADDQUIT_EXSTR},
+    {addFirstArgs, XtNumber(addFirstArgs),
+    ADDFIRST_EXSTR},
+    {addLastArgs, XtNumber(addLastArgs),
+    ADDLAST_EXSTR},
+    {addAfterArgs, XtNumber(addAfterArgs),
+    ADDAFTER_EXSTR},
+    {addUnsubArgs, XtNumber(addUnsubArgs),
+    ADDUNSUB_EXSTR},
 };
 
-static int AddButtonListCount = XtNumber(AddButtonList);
+int AddButtonListCount = XtNumber(AddButtonList);
 
 /*
  * release storage associated with add mode and go to newsgroup mode
@@ -82,19 +66,21 @@ void redrawAddTextWidget(string, insertPoint)
     if (CurrentMode != ADD_MODE)
 	return;
 
-    TextDisableRedisplay(AddText);
+    TextDisableRedisplay(Text);
 
     if (!AddString || strcmp(AddString, string)) {
 	FREE(AddString);
 	AddString = XtNewString(string);
-	TextSetString(AddText, AddString);
+	TextSetString(Text, AddString);
     }
 
     (void) setCursorCurrent(string, &insertPoint);
 
-    TextSetInsertionPoint(AddText, insertPoint);
+    TextSetInsertionPoint(Text, insertPoint);
 
-    TextEnableRedisplay(AddText);
+    adjustMinMaxLines(AddString);
+
+    TextEnableRedisplay(Text);
 
     for (left = 0; string[left]; left = right + 1) {
 	for (right = left; string[right] != '\n'; right++) /* empty */;
@@ -128,66 +114,46 @@ static void addFunction(first, newsgroup, status)
     String newsgroup;
     int status;
 {
-    String oldGroup = 0, newGroup = 0;
+    String newGroup;
+    char *oldGroup = 0;
     int oldGroupSize = 0;
-    long left, right;
+    long AddPosition;
+    int len;
 
     if (CurrentMode != ADD_MODE) {
 	return;
     }
 
-    if (! TextGetSelectedOrCurrentLines(AddText, &left, &right))
-	return;
+    TextDisableRedisplay(Text);
 
-    TextDisableRedisplay(AddText);
-
-    while (left < right) {
-	int add_ret, len;
-
-	currentGroup(CurrentMode, AddString, &newGroup, left);
-	if (! *newGroup)
-	    break;
-
-	clearNew(newGroup);
-	if (status == IGNORE)
-	    add_ret = ignoreGroup(newGroup);
-	else if (oldGroup)
-	    add_ret = addToNewsrcAfterGroup(newGroup, oldGroup, status);
-	else if (newsgroup)
-	    add_ret = addToNewsrcAfterGroup(newGroup, newsgroup, status);
-	else if (first)
-	    add_ret = addToNewsrcBeginning(newGroup, status);
-	else
-	    add_ret = addToNewsrcEnd(newGroup, status);
-
-	if (add_ret == GOOD_GROUP) {
-	    long new_position = left;
-	    moveCursor(FORWARD, AddString, &new_position);
-	    right -= (new_position - left);
-	    removeLine(AddString, &left);
-	    TextRemoveLine(AddText, left);
-
+    if (newsgroupIterator(AddString, True, True, &AddPosition)) {
+	while ((newGroup = newsgroupIterator(AddString, False, True,
+					     &AddPosition))) {
+	    if (oldGroup)
+		(void) addToNewsrcAfterGroup(newGroup, oldGroup, status);
+	    else if (newsgroup)
+		(void) addToNewsrcAfterGroup(newGroup, newsgroup, status);
+	    else if (first)
+		(void) addToNewsrcBeginning(newGroup, status);
+	    else
+		(void) addToNewsrcEnd(newGroup, status);
 	    if (oldGroupSize < (len = (strlen(newGroup) + 1))) {
 		oldGroupSize = len;
 		oldGroup = XtRealloc(oldGroup, oldGroupSize);
 	    }
 	    (void) strcpy(oldGroup, newGroup);
 	}
-	else
-	    break;
-    }
-
-    if (setCursorCurrent(AddString, &left)) {
-	TextSetInsertionPoint(AddText, left);
-    }
-    else {
-	exitAddMode();
+	if (setCursorCurrent(AddString, &AddPosition)) {
+	    TextSetInsertionPoint(Text, AddPosition);
+	    adjustMinMaxLines(AddString);
+	}
+	else {
+	    exitAddMode();
+	}
     }
 
     XtFree(oldGroup);
-    XtFree(newGroup);
-
-    TextEnableRedisplay(AddText);
+    TextEnableRedisplay(Text);
 }
 
 
@@ -205,39 +171,12 @@ void addQuitFunction(widget, event, string, count)
 	return;
     }
 
-    TextDisableRedisplay(AddText);
+    TextDisableRedisplay(Text);
 
-    TextSelectAll(AddText);
+    TextSelectAll(Text);
     addFunction(False, 0, UNSUBSCRIBE);
 
-    TextEnableRedisplay(AddText);
-}
-
-/*
- * ignore the remaining groups and exit add mode
- */
-/*ARGSUSED*/
-void addIgnoreRestFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    if (CurrentMode != ADD_MODE) {
-	return;
-    }
-
-    if (app_resources.fullNewsrc) {
-	addQuitFunction(widget, event, string, count);
-	return;
-    }
-
-    TextDisableRedisplay(AddText);
-
-    TextSelectAll(AddText);
-    addFunction(False, 0, IGNORE);
-
-    TextEnableRedisplay(AddText);
+    TextEnableRedisplay(Text);
 }
 
 /*
@@ -290,14 +229,14 @@ static void addHandler(widget, client_data, call_data)
 	return;
     }
     inCommand = 1;
-    xrnBusyCursor();
+    busyCursor();
 
     if ((int) client_data != XRN_CB_ABORT)
 	addFunction(False, GetDialogValue(AddBox), SUBSCRIBE);
 
     PopDownDialog(AddBox);
     AddBox = 0;
-    xrnUnbusyCursor();
+    unbusyCursor();
     inCommand = 0;
     return;
 }
@@ -342,24 +281,6 @@ void addUnsubFunction(widget, event, string, count)
     addFunction(False, 0, UNSUBSCRIBE);
 }
 
-/*
- * ignore group(s)
- */
-/*ARGSUSED*/
-void addIgnoreFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    if (app_resources.fullNewsrc) {
-	addUnsubFunction(widget, event, string, count);
-	return;
-    }
-
-    addFunction(False, 0, IGNORE);
-}
-
 void switchToAddMode(groups)
     String groups;
 {
@@ -373,77 +294,4 @@ void switchToAddMode(groups)
 
     FREE(AddString);
     AddString = XtNewString(groups);
-}
-
-void displayAddWidgets()
-{
-    if (! AddFrame) {
-	AddFrame = XtCreateManagedWidget("addFrame",
-#ifdef MOTIF
-                                         xmPanedWindowWidgetClass,
-#else
-                                         panedWidgetClass,
-#endif
-					 TopLevel, 0, 0);
-
-#ifndef MOTIF
-	XawPanedSetRefigureMode(AddFrame, False);
-#endif /* MOTIF */
-
-	if (app_resources.fullNewsrc) {
-	  setButtonActive(AddButtonList, "addIgnoreRest", False);
-	  setButtonActive(AddButtonList, "addIgnore", False);
-	}
-
-#define BUTTON_BOX() {\
-	  AddButtonBox = ButtonBoxCreate("buttons", AddFrame);\
-	  doButtons(app_resources.addButtonList, AddButtonBox,\
-		    AddButtonList, &AddButtonListCount, TOP);\
-	}
-	
-#define INFO_LINE() {\
-	  AddInfoLine = InfoLineCreate("info", 0, AddFrame);\
-	}
-	
-	if (app_resources.buttonsOnTop) {
-	  BUTTON_BOX();
-	  INFO_LINE();
-	}
-
-	AddText = TextCreate("list", True, AddFrame);
-
-	if (! app_resources.buttonsOnTop) {
-	  INFO_LINE();
-	  BUTTON_BOX();
-	}
-
-#undef BUTTON_BOX
-#undef INFO_LINE
-
-	TextSetLineSelections(AddText);
-	TextDisableWordWrap(AddText);
-
-	TopInfoLine = AddInfoLine;
-
-	if (app_resources.fullNewsrc) {
-	    setButtonSensitive(AddButtonBox, "addIgnoreRest", False);
-	    setButtonSensitive(AddButtonBox, "addIgnore", False);
-	}
-
-#ifdef MOTIF
-        XmProcessTraversal(AddFrame, XmTRAVERSE_CURRENT);
-#else
-	XawPanedSetRefigureMode(AddFrame, True);
-	XtSetKeyboardFocus(AddFrame, AddText);
-#endif
-    }
-    else {
-	TopInfoLine = AddInfoLine;
-	XtManageChild(AddFrame);
-    }
-}
-
-void hideAddWidgets()
-{
-    XtUnmanageChild(AddFrame);
 }

@@ -1,9 +1,6 @@
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
-#include <X11/Xaw/Box.h>
-#include <X11/Xaw/Paned.h>
 
-#include "config.h"
 #include "ngMode.h"
 #include "butdefs.h"
 #include "xrn.h"
@@ -17,8 +14,6 @@
 #include "news.h"
 #include "internals.h"
 #include "Text.h"
-#include "InfoLine.h"
-#include "ButtonBox.h"
 #include "mesg.h"
 #include "cursor.h"
 #include "dialogs.h"
@@ -28,23 +23,15 @@
 #include "allMode.h"
 
 static String NewsGroupsString;
-static Widget NewsgroupFrame, NewsgroupText, NewsgroupInfoLine;
-static Widget NewsgroupButtonBox;
 
 static char *GotoNewsgroupString = 0;
-static long First, Last;
-
 /*
   The group we're currently positioned on in the newsgroup index.
   */
 char *CurrentIndexGroup = 0;
 char *LastGroup = 0;
 int NewsgroupDisplayMode = 0;	/* 0 for unread groups, 1 for all sub */
-
-#define NG_ENTRY_JUMP 0
-#define NG_ENTRY_GOTO 1
-
-static int NewsgroupEntryMode = NG_ENTRY_GOTO;
+int NewsgroupEntryMode = NG_ENTRY_GOTO;
 
 BUTTON(ngExit,exit);
 BUTTON(ngQuit,quit);
@@ -58,20 +45,16 @@ BUTTON(ngGoto,goto newsgroup);
 BUTTON(ngListOld,sub groups);
 BUTTON(ngAllGroups,all groups);
 BUTTON(ngRescan,rescan);
-BUTTON(ngGetList,get list);
 BUTTON(ngPrevGroup,prev group);
 BUTTON(ngSelect,select groups);
 BUTTON(ngMove,move);
 BUTTON(ngCheckPoint,checkpoint);
 BUTTON(ngPost,post);
-BUTTON(ngPostAndMail,post and mail);
-BUTTON(ngMail,mail);
 BUTTON(ngGripe,gripe);
 BUTTON(ngScroll,scroll forward);
 BUTTON(ngScrollBack,scroll backward);
 
 XtActionsRec NgActions[] = {
-    {"ngExit",		ngExitAction},
     {"ngQuit",		ngQuitAction},
     {"ngRead",		ngReadAction},
     {"ngNext",		ngNextAction},
@@ -80,61 +63,87 @@ XtActionsRec NgActions[] = {
     {"ngSubscribe",	ngSubscribeAction},
     {"ngUnsub",		ngUnsubAction},
     {"ngGoto",		ngGotoAction},
-    {"ngListOld",	ngListOldAction},
-    {"ngAllGroups",	ngAllGroupsAction},
     {"ngRescan",	ngRescanAction},
-    {"ngGetList",	ngGetListAction},
+    {"ngAllGroups",	ngAllGroupsAction},
+    {"ngToggleGroups",	ngListOldAction},
     {"ngPrevGroup",	ngPrevGroupAction},
     {"ngSelect",	ngSelectAction},
     {"ngMove",		ngMoveAction},
-    {"ngCheckPoint",	ngCheckPointAction},
-    {"ngPost",		ngPostAction},
-    {"ngPostAndMail",	ngPostAndMailAction},
-    {"ngMail",		ngMailAction},
+    {"ngExit",		ngExitAction},
     {"ngGripe",		ngGripeAction},
+    {"ngPost",		ngPostAction},
+    {"ngCheckPoint",	ngCheckPointAction},
     {"ngScroll",	ngScrollAction},
     {"ngScrollBack",	ngScrollBackAction},
 };    
 
 int NgActionsCount = XtNumber(NgActions);
 
-static ButtonList NewsgroupButtonList[] = {
-    {"ngQuit",		ngQuitCallbacks,	NGQUIT_EXSTR,		True},
-    {"ngRead",		ngReadCallbacks,	NGREAD_EXSTR,		True},
-    {"ngNext",		ngNextCallbacks,	NGNEXT_EXSTR,		True},
-    {"ngPrev",		ngPrevCallbacks,	NGPREV_EXSTR,		True},
-    {"ngScroll",	ngScrollCallbacks,	NGSCROLL_EXSTR,		True},
-    {"ngScrollBack",	ngScrollBackCallbacks,	NGSCROLLBACK_EXSTR,	True},
-    {"ngCatchUp",	ngCatchUpCallbacks,	NGCATCHUP_EXSTR,	True},
-    {"ngSubscribe",	ngSubscribeCallbacks,	NGSUBSCRIBE_EXSTR,	True},
-    {"ngUnsub",		ngUnsubCallbacks,	NGUNSUB_EXSTR,		True},
-    {"ngGoto",		ngGotoCallbacks,	NGGOTO_EXSTR,		True},
-    {"ngAllGroups",	ngAllGroupsCallbacks,	NGALLGROUPS_EXSTR,	True},
-    {"ngRescan",	ngRescanCallbacks,	NGRESCAN_EXSTR,		True},
-    {"ngGetList",	ngGetListCallbacks,	NGGETLIST_EXSTR,	True},
-    {"ngPrevGroup",	ngPrevGroupCallbacks,	NGPREVGROUP_EXSTR,	True},
-    {"ngListOld",	ngListOldCallbacks,	NGLISTOLD_EXSTR,	True},
-    {"ngSelect",	ngSelectCallbacks,	NGSELECT_EXSTR,		True},
-    {"ngMove",		ngMoveCallbacks,	NGMOVE_EXSTR,		True},
-    {"ngExit",		ngExitCallbacks,	NGEXIT_EXSTR,		True},
-    {"ngCheckPoint",	ngCheckPointCallbacks,	NGCHECKPOINT_EXSTR,	True},
-    {"ngGripe",		ngGripeCallbacks,	NGGRIPE_EXSTR,		True},
-    {"ngPost",		ngPostCallbacks,	NGPOST_EXSTR,		True},
-    {"ngPostAndMail",	ngPostAndMailCallbacks,	NGPOST_AND_MAIL_EXSTR,	True},
-    {"ngMail",		ngMailCallbacks,	MAIL_EXSTR,		True},
+ButtonList NgButtonList[] = {
+    {ngQuitArgs, XtNumber(ngQuitArgs),
+    NGQUIT_EXSTR},
+    {ngReadArgs, XtNumber(ngReadArgs),
+    NGREAD_EXSTR},
+    {ngNextArgs, XtNumber(ngNextArgs),
+    NGNEXT_EXSTR},
+    {ngPrevArgs, XtNumber(ngPrevArgs),
+    NGPREV_EXSTR},
+    {ngCatchUpArgs, XtNumber(ngCatchUpArgs),
+    NGCATCHUP_EXSTR},
+    {ngSubscribeArgs, XtNumber(ngSubscribeArgs),
+    NGSUBSCRIBE_EXSTR},
+    {ngUnsubArgs, XtNumber(ngUnsubArgs),
+    NGUNSUB_EXSTR},
+    {ngGotoArgs, XtNumber(ngGotoArgs),
+    NGGOTO_EXSTR},
+    {ngAllGroupsArgs, XtNumber(ngAllGroupsArgs),
+    NGALLGROUPS_EXSTR},
+    {ngListOldArgs, XtNumber(ngListOldArgs),
+    NGLISTOLD_EXSTR},
+    {ngRescanArgs, XtNumber(ngRescanArgs),
+    NGRESCAN_EXSTR},
+    {ngPrevGroupArgs, XtNumber(ngPrevGroupArgs),
+    NGPREVGROUP_EXSTR},
+    {ngSelectArgs, XtNumber(ngSelectArgs),
+    NGSELECT_EXSTR},
+    {ngMoveArgs, XtNumber(ngMoveArgs),
+    NGMOVE_EXSTR},
+    {ngExitArgs, XtNumber(ngExitArgs),
+    NGEXIT_EXSTR},
+    {ngCheckPointArgs, XtNumber(ngCheckPointArgs),
+    NGCHECKPOINT_EXSTR},
+    {ngGripeArgs, XtNumber(ngGripeArgs),
+    NGGRIPE_EXSTR},
+    {ngPostArgs, XtNumber(ngPostArgs),
+    NGPOST_EXSTR},
+    {ngScrollArgs, XtNumber(ngScrollArgs),
+    NGSCROLL_EXSTR},
+    {ngScrollBackArgs, XtNumber(ngScrollBackArgs),
+    NGSCROLLBACK_EXSTR},
 };
 
-static int NewsgroupButtonListCount = XtNumber(NewsgroupButtonList);
+int NgButtonListCount = XtNumber(NgButtonList);
 
 /*
   Set the current insertion point in the newsgroup widget, saving the
   current display position first (since setting the insertion point
   causes the window to scroll so that the cursor is visible).
   */
-static void setNewsgroupPosition(position)
+static void setNewsgroupPosition(position, adjust_top)
     long position;
+    Boolean adjust_top;
 {
-    TextSetInsertionPoint(NewsgroupText, position);
+    long top = TextGetTopPosition(Text);
+
+    TextDisableRedisplay(Text);
+
+    TextSetInsertionPoint(Text, position);
+    if (adjust_top)
+	adjustMinMaxLines(NewsGroupsString);
+    else
+	TextSetTopPosition(Text, top);
+
+    TextEnableRedisplay(Text);
 }
 
 
@@ -151,34 +160,7 @@ void ngQuitFunction(widget, event, string, count)
     String *string;
     Cardinal *count;
 {
-    if (pendingCompositionP()) {
-	mesgPane(XRN_SERIOUS, 0, PENDING_COMPOSITION_MSG);
-	XBell(XtDisplay(TopLevel), 0);
-	return;
-    }
     confirmBox(ARE_YOU_SURE_MSG, NEWSGROUP_MODE, NG_QUIT, ehCleanExitXRN);
-}
-
-static String newsgroupNewsgroupIterator(start, out_left)
-    Boolean start;
-    long *out_left;
-{
-    return anyIterator(NewsgroupText, NewsGroupsString, True, start, False,
-		       out_left);
-}
-
-static void resetSelection()
-/*
- * Reset First and Last to zero, so the user doesn't accidentally
- * move groups
- */
-{
-    First = 0;
-    Last = 0;
-
-    setButtonSensitive(NewsgroupButtonBox, "ngMove", False);
-
-    return;
 }
 
 
@@ -202,8 +184,10 @@ void ngReadFunction(widget, event, string, count)
 	return;
     }
 
-    if (newsgroupNewsgroupIterator(True, 0) &&
-	(name = newsgroupNewsgroupIterator(False, 0))) {
+    resetSelection();
+
+    if (newsgroupIterator(NewsGroupsString, True, False, 0) &&
+	(name = newsgroupIterator(NewsGroupsString, False, False, 0))) {
 	CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(name) + 1);
 	(void) strcpy(CurrentIndexGroup, name);
 	status = enterNewsgroup(name, ENTER_SETUP |
@@ -221,7 +205,6 @@ void ngReadFunction(widget, event, string, count)
 	    switchToArticleMode();
 	}
 	else {
-	    exitNewsgroup();
 	    if (status == XRN_NOUNREAD)
 		mesgPane(XRN_INFO, 0, PROBABLY_KILLED_MSG, name);
 	    else if (status == BAD_GROUP)
@@ -230,8 +213,8 @@ void ngReadFunction(widget, event, string, count)
 		mesgPane(XRN_SERIOUS, 0, NewsgroupDisplayMode ? NO_ARTICLES_MSG :
 			 PROBABLY_EXPIRED_MSG, name);
 	    else
-		mesgPane(XRN_SERIOUS, 0, UNKNOWN_FUNC_RESPONSE_MSG, status,
-			 "enterNewsgroup", "ngReadFunction");
+		mesgPane(XRN_SERIOUS, 0, UNKNOWN_ENTER_NG_RESPONSE_MSG, status,
+			 "ngReadFunction");
 	    updateNewsgroupMode(True, False);
 	    return;
 	}
@@ -257,8 +240,9 @@ void ngNextFunction(widget, event, string, count)
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
+    resetSelection();
 
-    (void) newsgroupNewsgroupIterator(True, &left);
+    (void) newsgroupIterator(NewsGroupsString, True, False, &left);
     (void) moveUpWrap(NewsGroupsString, &left);
     /*
       Optimization -- XawTextSetInsertionPoint always redisplays the
@@ -268,10 +252,10 @@ void ngNextFunction(widget, event, string, count)
       insertion point in the right place, and a redraw won't be
       necessary.
       */
-    TextMoveLine(NewsgroupText, FORWARD);
+    TextMoveLine(Text, FORWARD);
     currentGroup(CurrentMode, NewsGroupsString, &CurrentIndexGroup, left);
     left = getNearbyNewsgroup(NewsGroupsString, &CurrentIndexGroup);
-    setNewsgroupPosition(left);
+    setNewsgroupPosition(left, True);
 }
 
 
@@ -294,13 +278,14 @@ void ngPrevFunction(widget, event, string, count)
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
+    resetSelection();
 
-    (void) newsgroupNewsgroupIterator(True, &left);
+    (void) newsgroupIterator(NewsGroupsString, True, False, &left);
     (void) moveCursor(BACK, NewsGroupsString, &left);
-    TextMoveLine(NewsgroupText, BACK);
+    TextMoveLine(Text, BACK);
     currentGroup(CurrentMode, NewsGroupsString, &CurrentIndexGroup, left);
     left = getNearbyNewsgroup(NewsGroupsString, &CurrentIndexGroup);
-    setNewsgroupPosition(left);
+    setNewsgroupPosition(left, True);
 }
 
 
@@ -313,21 +298,20 @@ static void catchUpNG()
     String name;
     int ret;
 
-    if (newsgroupNewsgroupIterator(True, 0)) {
-	while ((name = newsgroupNewsgroupIterator(False, 0))) {
+    if (newsgroupIterator(NewsGroupsString, True, False, 0)) {
+	while ((name = newsgroupIterator(NewsGroupsString, False, False, 0))) {
 	    CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(name) + 1);
 	    (void) strcpy(CurrentIndexGroup, name);
 	    if ((ret = enterNewsgroup(name, ENTER_UNSUBBED))
 		== GOOD_GROUP) {
 		catchUp();
-		exitNewsgroup();
 	    }
 	    else if (ret == BAD_GROUP) {
 		 mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_DELETED_MSG, name);
 	    }
 	    else {
-		 mesgPane(XRN_SERIOUS, 0, UNKNOWN_FUNC_RESPONSE_MSG, ret,
-			  "enterNewsgroup", "catchUpNG");
+		 mesgPane(XRN_SERIOUS, 0, UNKNOWN_ENTER_NG_RESPONSE_MSG, ret,
+			  "catchUpNG");
 	    }
 	}
 	updateNewsgroupMode(True, False);
@@ -343,21 +327,20 @@ static void unsubscribeNG()
     String name;
     int ret;
 
-    if (newsgroupNewsgroupIterator(True, 0)) {
-	while ((name = newsgroupNewsgroupIterator(False, 0))) {
+    if (newsgroupIterator(NewsGroupsString, True, False, 0)) {
+	while ((name = newsgroupIterator(NewsGroupsString, False, False, 0))) {
 	    CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(name) + 1);
 	    (void) strcpy(CurrentIndexGroup, name);
 	    if ((ret = enterNewsgroup(name, ENTER_UNSUBBED))
 		== GOOD_GROUP) {
 		unsubscribe();
-		exitNewsgroup();
 	    }
 	    else if (ret == BAD_GROUP) {
 		 mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_DELETED_MSG, name);
 	    }
 	    else {
-		mesgPane(XRN_SERIOUS, 0, UNKNOWN_FUNC_RESPONSE_MSG, ret,
-			 "enterNewsgroup", "unsubscribeNG");
+		mesgPane(XRN_SERIOUS, 0, UNKNOWN_ENTER_NG_RESPONSE_MSG, ret,
+			 "unsubscribeNG");
 	    }
 	}
 	updateNewsgroupMode(True, False);
@@ -422,9 +405,9 @@ static void subscribeHandler(widget, client_data, call_data)
 	return;
     }
     inCommand = 1;
-    xrnBusyCursor();
+    busyCursor();
 
-    TextDisableRedisplay(NewsgroupText);
+    TextDisableRedisplay(Text);
 
     switch ((int) client_data) {
     case XRNsub_LASTGROUP:
@@ -435,18 +418,15 @@ static void subscribeHandler(widget, client_data, call_data)
 		goto done;
 	    }
 	    else if (ret == GOOD_GROUP) {
-	      if (subscribe()) {
+		subscribe();
 		CurrentIndexGroup = XtRealloc(CurrentIndexGroup,
 					      strlen(LastGroup) + 1);
 		(void) strcpy(CurrentIndexGroup, LastGroup);
 		updateNewsgroupMode(True, False);
-		exitNewsgroup();
-	      }
-	      
 	    }
 	    else {
-		mesgPane(XRN_SERIOUS, 0, UNKNOWN_FUNC_RESPONSE_MSG, ret,
-			 "enterNewsgroup", "subscribeHandler");
+		mesgPane(XRN_SERIOUS, 0, UNKNOWN_ENTER_NG_RESPONSE_MSG, ret,
+			 "subscribeHandler");
 	    }
 	}
 	break;
@@ -470,7 +450,7 @@ static void subscribeHandler(widget, client_data, call_data)
 	break;
 
     case XRNsub_CURRENT:
-	insertion = TextGetInsertionPoint(NewsgroupText);
+	insertion = TextGetInsertionPoint(Text);
 
 	if (! NewsGroupsString[insertion]) {
 	    if (addToNewsrcEnd(group = GetDialogValue(SubscribeBox),
@@ -483,7 +463,7 @@ static void subscribeHandler(widget, client_data, call_data)
 	} else {
 	    /* don't need to check for the null group here, it would have */
 	    /* been already handled above */
-	    (void) newsgroupNewsgroupIterator(True, &left);
+	    (void) newsgroupIterator(NewsGroupsString, True, False, &left);
 	    if (left == 0) {
 	        if (addToNewsrcBeginning(group = GetDialogValue(SubscribeBox),
 					 status) == GOOD_GROUP) {
@@ -507,10 +487,10 @@ static void subscribeHandler(widget, client_data, call_data)
     }
 
   done:
-    TextEnableRedisplay(NewsgroupText);
+    TextEnableRedisplay(Text);
     PopDownDialog(SubscribeBox);
     SubscribeBox = 0;
-    xrnUnbusyCursor();
+    unbusyCursor();
     inCommand = 0;
     XtFree(name);
     return;
@@ -538,6 +518,7 @@ void ngSubscribeFunction(widget, event, string, count)
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
+    resetSelection();
     
     if (SubscribeBox == (Widget) 0) {
       SubscribeBox = CreateDialog(TopLevel, GROUP_SUB_TO_MSG,
@@ -568,8 +549,8 @@ static void gotoHandler(widget, client_data, call_data)
 	return;
     }
     inCommand = 1;
-    xrnBusyCursor();
-    TextUnsetSelection(NewsgroupText);
+    busyCursor();
+    TextUnsetSelection(Text);
     if ((int) client_data == XRNgoto_GOTO) {
 	name = GetDialogValue(GotoNewsgroupBox);
 	if (name[0] == '\0') {
@@ -601,12 +582,11 @@ static void gotoHandler(widget, client_data, call_data)
 		  mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_MSG, name);
 	     }
 	     else if (ret == XRN_NOMORE) {
-		  exitNewsgroup();
 		  mesgPane(XRN_SERIOUS, 0, NO_ARTICLES_MSG, name);
 	     }
 	     else {
-		  mesgPane(XRN_SERIOUS, 0, UNKNOWN_FUNC_RESPONSE_MSG, ret,
-			   "enterNewsgroup", "gotoHandler");
+		  mesgPane(XRN_SERIOUS, 0, UNKNOWN_ENTER_NG_RESPONSE_MSG, ret,
+			   "gotoHandler");
 	     }
 	}
 	XtFree(GotoNewsgroupString);
@@ -615,7 +595,7 @@ static void gotoHandler(widget, client_data, call_data)
     }
     PopDownDialog(GotoNewsgroupBox);
     GotoNewsgroupBox = 0;
-    xrnUnbusyCursor();
+    unbusyCursor();
     inCommand = 0;
     return;
 }
@@ -640,7 +620,7 @@ void ngGotoFunction(widget, event, string, count)
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
-
+    resetSelection();
     if (GotoNewsgroupBox == (Widget) 0) {
       GotoNewsgroupBox = CreateDialog(TopLevel, GROUP_TO_GO_MSG,
 				    GotoNewsgroupString == NULL ?
@@ -662,7 +642,7 @@ void ngListOldFunction(widget, event, string, count)
 	return;
     }
     NewsgroupDisplayMode = (NewsgroupDisplayMode == 0) ? 1 : 0;
-    redrawNewsgroupTextWidget(0, False);
+    redrawNewsgroupTextWidget(0, False, True);
     return;
 }
 
@@ -682,6 +662,7 @@ void ngAllGroupsFunction(widget, event, string, count)
 	return;
     }
     cancelPrefetch();
+    resetSelection();
     switchToAllMode();
 }
 
@@ -695,39 +676,14 @@ void ngRescanFunction(widget, event, string, count)
     String *string;
     Cardinal *count;
 {
-    Boolean newgroups = True;
-
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
-
-    if (count && *count && !strcasecmp(string[0], "nonewgroups"))
-      newgroups = False;
-
-    rescanServer(False);
-    determineMode(newgroups);
+    resetSelection();
+    rescanServer();
+    determineMode();
     
     return;
-}
-
-/*
- * query the server to see if there are any new articles and groups, by
- * fetching the active list even if cacheActive is true.
- */
-
-static void getListNG()
-{
-  rescanServer(True);
-  determineMode(True);
-}
-
-void ngGetListFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-  confirmBox(OK_GETLIST_MSG, NEWSGROUP_MODE, NG_GETLIST, getListNG);
 }
 
 /*
@@ -745,6 +701,7 @@ void ngPrevGroupFunction(widget, event, string, count)
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
+    resetSelection();
     if (LastGroup && *LastGroup) {
 	ret = enterNewsgroup(LastGroup, ENTER_SETUP | ENTER_UNSUBBED |
 			     ENTER_SUBSCRIBE);
@@ -759,12 +716,11 @@ void ngPrevGroupFunction(widget, event, string, count)
 	    mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_DELETED_MSG, LastGroup);
 	}
 	else if (ret == XRN_NOMORE) {
-	    exitNewsgroup();
 	    mesgPane(XRN_SERIOUS, 0, NO_ARTICLES_MSG, LastGroup);
 	}
 	else {
-	    mesgPane(XRN_SERIOUS, 0, UNKNOWN_FUNC_RESPONSE_MSG, ret,
-		     "enterNewsgroup", "ngPrevGroupFunction");
+	    mesgPane(XRN_SERIOUS, 0, UNKNOWN_ENTER_NG_RESPONSE_MSG, ret,
+		     "ngPrevGroupFunction");
 	}
     }
     else {
@@ -788,10 +744,10 @@ void ngSelectFunction(widget, event, string, count)
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
-    if (TextGetSelectedOrCurrentLines(NewsgroupText, &First, &Last))
-	TextUnsetSelection(NewsgroupText);
+    if (TextGetSelectedOrCurrentLines(Text, &First, &Last))
+	TextUnsetSelection(Text);
 
-    setButtonSensitive(NewsgroupButtonBox, "ngMove", First != Last);
+    setButtonSensitive("ngMove", First != Last);
 
     return;
 }
@@ -825,10 +781,10 @@ void ngMoveFunction(widget, event, string, count)
     }
     buildString(&newString, First, Last, NewsGroupsString);
     stringPoint = 0;
-    (void) newsgroupNewsgroupIterator(True, &left);
+    (void) newsgroupIterator(NewsGroupsString, True, False, &left);
     if ((left >= First) && (left <= Last+1)) {
 	mesgPane(XRN_SERIOUS, 0, NG_NOT_MOVED_MSG);
-	XtFree(newString);
+	resetSelection();
 	return;
     }
     cursorSpot = left;
@@ -857,12 +813,10 @@ void ngMoveFunction(widget, event, string, count)
 	    break;
 	}
     }
-    XtFree(newString);
-    XtFree(oldGroup);
-    XtFree(newGroup);
     CurrentIndexGroup = XtRealloc(CurrentIndexGroup, strlen(newGroup) + 1);
     (void) strcpy(CurrentIndexGroup, newGroup);
     updateNewsgroupMode(True, False);
+    resetSelection();
 }
 
 /*
@@ -876,11 +830,6 @@ void ngExitFunction(widget, event, string, count)
     String *string;
     Cardinal *count;
 {
-    if (pendingCompositionP()) {
-	mesgPane(XRN_SERIOUS, 0, PENDING_COMPOSITION_MSG);
-	XBell(XtDisplay(TopLevel), 0);
-	return;
-    }
     confirmBox(ARE_YOU_SURE_MSG, NEWSGROUP_MODE, NG_EXIT, ehNoUpdateExitXRN);
 }
 
@@ -934,43 +883,7 @@ void ngPostFunction(widget, event, string, count)
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
-    post(False);
-    
-    return;
-}
-
-/*
- * allow user to post an article and mail it
- */
-/*ARGSUSED*/
-void ngPostAndMailFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    if (CurrentMode != NEWSGROUP_MODE) {
-	return;
-    }
-    post_and_mail(False);
-    
-    return;
-}
-
-/*
- * allow user to mail a message
- */
-/*ARGSUSED*/
-void ngMailFunction(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    if (CurrentMode != NEWSGROUP_MODE) {
-	return;
-    }
-    mail();
+    post(0);
     
     return;
 }
@@ -988,9 +901,7 @@ void ngScrollFunction(widget, event, string, count)
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
-    TextScrollPage(NewsgroupText, FORWARD);
-    currentGroup(CurrentMode, NewsGroupsString, &CurrentIndexGroup,
-		 TextGetInsertionPoint(NewsgroupText));
+    TextScrollPage(Text, FORWARD);
     return;
 }
 
@@ -1007,9 +918,7 @@ void ngScrollBackFunction(widget, event, string, count)
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
-    TextScrollPage(NewsgroupText, BACK);
-    currentGroup(CurrentMode, NewsGroupsString, &CurrentIndexGroup,
-		 TextGetInsertionPoint(NewsgroupText));
+    TextScrollPage(Text, BACK);
     return;
 }
 
@@ -1022,12 +931,9 @@ void ngScrollBackFunction(widget, event, string, count)
 
   If it's not there, or if newsgroup is null, replace the whole list.
   */
-void redrawNewsgroupTextWidget(
-			       _ANSIDECL(String,	newsgroup),
-			       _ANSIDECL(Boolean,	skip_last)
-			       )
-     _KNRDECL(String,	newsgroup)
-     _KNRDECL(Boolean,	skip_last)
+void redrawNewsgroupTextWidget(newsgroup, skip_last, adjust_list)
+    String newsgroup;
+    Boolean skip_last, adjust_list;
 {
     long GroupPosition, NewPosition;
     String new;
@@ -1037,9 +943,9 @@ void redrawNewsgroupTextWidget(
 	return;
     }
 
-    TextDisableRedisplay(NewsgroupText);
+    TextDisableRedisplay(Text);
 
-    new = unreadGroups(TextGetColumns(NewsgroupText), NewsgroupDisplayMode);
+    new = unreadGroups(NewsgroupDisplayMode);
 
     if (newsgroup && NewsGroupsString) {
 	old_name = XtNewString(newsgroup);
@@ -1055,12 +961,11 @@ void redrawNewsgroupTextWidget(
 					       GroupPosition, '\n') -
 					 NewsGroupsString) + 1;
 		if (strncmp(str, NewsGroupsString + GroupPosition, len))
-		    TextReplace(NewsgroupText, str, len, left, right);
+		    TextReplace(Text, str, len, left, right);
 		strncpy(NewsGroupsString + GroupPosition, str, len);
 	    }
 	    else {
-		resetSelection();
-		TextRemoveLine(NewsgroupText, GroupPosition);
+		TextRemoveLine(Text, GroupPosition);
 		removeLine(NewsGroupsString, &GroupPosition);
 	    }
 	    FREE(new);
@@ -1069,10 +974,9 @@ void redrawNewsgroupTextWidget(
 
     if (new) {
 	if (!NewsGroupsString || strcmp(NewsGroupsString, new)) {
-	    resetSelection();
 	    FREE(NewsGroupsString);
 	    NewsGroupsString = new;
-	    TextSetString(NewsgroupText, NewsGroupsString);
+	    TextSetString(Text, NewsGroupsString);
 	}
 	else {
 	    FREE(new);
@@ -1086,7 +990,6 @@ void redrawNewsgroupTextWidget(
 	if (XtIsRealized(TopLevel))
 	    xmSetIconAndName(ReadIcon);
     } else {
-	setTopInfoLine(OPEARATION_APPLY_CURSOR_MSG);
 	if (XtIsRealized(TopLevel)) {
 	    if (unreadNews())
 		xmSetIconAndName(UnreadIcon);
@@ -1103,28 +1006,27 @@ void redrawNewsgroupTextWidget(
 		     GroupPosition);
     }
 
-    setNewsgroupPosition(GroupPosition);
+    setNewsgroupPosition(GroupPosition, adjust_list);
 
     XtFree(old_name);
     XtFree(new_name);
-    TextEnableRedisplay(NewsgroupText);
+    TextEnableRedisplay(Text);
 }
 
 
 /*
  * update the info line and update the newsgroup text window
  */
-void updateNewsgroupMode(
-			 _ANSIDECL(Boolean,	prefetch),
-			 _ANSIDECL(Boolean,	skip_last)
-			 )
-     _KNRDECL(Boolean,	prefetch)
-     _KNRDECL(Boolean,	skip_last)
+void updateNewsgroupMode(prefetch, skip_last)
+    Boolean prefetch, skip_last;
 {
     if (CurrentMode != NEWSGROUP_MODE)
 	return;
 
-    redrawNewsgroupTextWidget(0, skip_last);
+    if (PreviousMode != NEWSGROUP_MODE) {
+	setTopInfoLine(OPEARATION_APPLY_CURSOR_MSG);
+    }
+    redrawNewsgroupTextWidget(0, skip_last, True);
     if (prefetch && CurrentIndexGroup && *CurrentIndexGroup)
 	prefetchGroup(CurrentIndexGroup);
 
@@ -1136,27 +1038,25 @@ void updateNewsgroupMode(
  * install the newsgroup mode buttons (and the delete the previous mode buttons)
  * and then go to newsgroup mode
  */
-void switchToNewsgroupMode(
-			   _ANSIDECL(Boolean,	skip_last)
-			   )
-     _KNRDECL(Boolean,	skip_last)
+void switchToNewsgroupMode(skip_last)
+    Boolean skip_last;
 {
     PreviousMode = CurrentMode;
     CurrentMode = NEWSGROUP_MODE;
+
+    resetSelection();
 
     /* switch buttons */
     swapMode();
 
     FREE(NewsGroupsString);
 
-    setButtonSensitive(NewsgroupButtonBox, "ngPrevGroup", LastGroup && *LastGroup);
+    setButtonSensitive("ngPrevGroup", LastGroup && *LastGroup);
+    setButtonSensitive("ngPost", PostingAllowed);
 
     /* update the newsgroup mode windows */
     updateNewsgroupMode(True, skip_last);
-
-    /* Set up the rescan timer, if automatic rescanning is configured. */
-    addTimeOut();
-
+    
     return;
 }
 
@@ -1179,10 +1079,8 @@ void doPrefetch(widget, event, string, count)
     if (CurrentMode != NEWSGROUP_MODE)
 	return;
 
-    if (! TextGetSelectedOrCurrentLines(NewsgroupText, &left, &right)) {
-	cancelPrefetch();
+    if (! TextGetSelectedOrCurrentLines(Text, &left, &right))
 	return;
-    }
 
     currentGroup(CurrentMode, NewsGroupsString, &CurrentIndexGroup, left);
 
@@ -1199,10 +1097,6 @@ static void autoRescan _ARGUMENTS((XtPointer, XtIntervalId *));
 
 void addTimeOut()
 {
-#ifdef DEBUG
-  fprintf(stderr, "addTimeOut()\n");
-#endif
-
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
@@ -1215,6 +1109,8 @@ void addTimeOut()
     if (TimeOut) {
 	return;
     }
+    /* handle race conditions??? */
+    TimeOut = 1;
 
     TimeOut = XtAppAddTimeOut(TopContext,
 			      app_resources.rescanTime * 1000, autoRescan, 0);
@@ -1224,18 +1120,19 @@ void addTimeOut()
 
 void removeTimeOut()
 {
-#ifdef DEBUG
-    fprintf(stderr, "removeTimeOut()\n");
-#endif
+    XtIntervalId temp;
 
     if (CurrentMode != NEWSGROUP_MODE) {
 	return;
     }
 
+    /* handle race conditions??? */
+    temp = TimeOut;
+    TimeOut = 0;
+
     /* do not allow recursive timeouts */
-    if (TimeOut) {
-	XtRemoveTimeOut(TimeOut);
-	TimeOut = 0;
+    if (temp) {
+	XtRemoveTimeOut(temp);
     }
     return;
 }
@@ -1245,15 +1142,6 @@ static void autoRescan(data, id)
     XtPointer data;
     XtIntervalId *id;
 {
-    String params[1];
-    Cardinal num_params = 1;
-
-#ifdef DEBUG
-    fprintf(stderr, "autoRescan(...)\n");
-#endif
-
-    params[0] = "nonewgroups";
-
     if (CurrentMode != NEWSGROUP_MODE) {
 	TimeOut = 0;
 	return;
@@ -1263,112 +1151,13 @@ static void autoRescan(data, id)
 	return;
     }
     TimeOut = 0;
-    xrnBusyCursor();
+    busyCursor();
     infoNow(AUTOMATIC_RESCAN_MSG);
-    ngRescanFunction(NULL, NULL, params, &num_params);
+    ngRescanFunction(NULL, NULL, NULL, NULL);
     infoNow("");
-    xrnUnbusyCursor();
+    unbusyCursor();
     addTimeOut();
 
     return;
 }
 
-static void resizeNewsgroupText _ARGUMENTS((Widget, XtPointer, XEvent *,
-					    Boolean *));
-     
-static void resizeNewsgroupText(widget, client_data, event,
-				continue_to_dispatch)
-     Widget widget;
-     XtPointer client_data;
-     XEvent *event;
-     Boolean *continue_to_dispatch;
-{
-  if (event->type == ConfigureNotify) {
-    redrawNewsgroupTextWidget(0, False);
-  }
-}
-
-void displayNewsgroupWidgets()
-{
-    if (! NewsgroupFrame) {
-	NewsgroupFrame = XtCreateManagedWidget("ngFrame",
-					       panedWidgetClass,
-					       TopLevel, 0, 0);
-
-	XawPanedSetRefigureMode(NewsgroupFrame, False);
-
-	setButtonActive(NewsgroupButtonList, "ngPost", PostingAllowed);
-	setButtonActive(NewsgroupButtonList, "ngPostAndMail", PostingAllowed);
-
-	/*
-	  The Box widget is managed only after
-	  its children have been placed in them because there is a
-	  bug in the Xaw Box widget (as of 05/06/95).
-	  */
-#define BUTTON_BOX() {\
-	  NewsgroupButtonBox = ButtonBoxCreate("buttons", NewsgroupFrame);\
-	  doButtons(app_resources.ngButtonList, NewsgroupButtonBox,\
-		    NewsgroupButtonList, &NewsgroupButtonListCount, TOP);\
-	}
-
-#define INFO_LINE() {\
-	  NewsgroupInfoLine = InfoLineCreate("info", 0, NewsgroupFrame);\
-	}
-
-	if (app_resources.buttonsOnTop) {
-	  BUTTON_BOX();
-	  INFO_LINE();
-	}
-
-	NewsgroupText = TextCreate("newsgroups", True, NewsgroupFrame);
-
-	if (! app_resources.buttonsOnTop) {
-	  INFO_LINE();
-	  BUTTON_BOX();
-	}
-
-#undef BUTTON_BOX
-#undef INFO_LINE
-
-	TextSetLineSelections(NewsgroupText);
-	TextDisableWordWrap(NewsgroupText);
-
-	TopInfoLine = NewsgroupInfoLine;
-
-	XawPanedSetRefigureMode(NewsgroupFrame, True);
-
-	XtSetKeyboardFocus(NewsgroupFrame, NewsgroupText);
-
-	XtAddEventHandler(NewsgroupText, StructureNotifyMask, FALSE,
-			  resizeNewsgroupText, NULL);
-    }
-    else {
-	TopInfoLine = NewsgroupInfoLine;
-	XtManageChild(NewsgroupFrame);
-    }
-}
-
-void hideNewsgroupWidgets()
-{
-    XtUnmanageChild(NewsgroupFrame);
-}
-
-String getNewsgroupString()
-{
-    if (NewsGroupsString)
-	return XtNewString(NewsGroupsString);
-    else
-	return(0);
-}
-
-void ngDoTheRightThing(widget, event, string, count)
-    Widget widget;
-    XEvent *event;
-    String *string;
-    Cardinal *count;
-{
-    if (count && *count == 1 && strcmp(string[0], "jump") == 0) {
-	NewsgroupEntryMode = NG_ENTRY_JUMP;
-    }
-    ngReadFunction(widget, event, string, count);
-}
