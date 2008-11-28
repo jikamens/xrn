@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: xthelper.c,v 1.19 1997-04-07 02:07:46 jik Exp $";
+static char XRNrcsid[] = "$Header: /d/src/cvsroot/xrn/xthelper.c,v 1.6 1994-11-18 14:39:48 jik Exp $";
 #endif
 
 /*
@@ -101,26 +101,12 @@ void xthCenterWidgetOverCursor(widget)
 void xthHandleAllPendingEvents()
 {
     XEvent ev;
-#ifdef DEBUG
-    char *type, intbuf[5];
-#endif
+    XtAppContext app = XtWidgetToApplicationContext(TopLevel);
 
     XSync(XtDisplay(TopLevel), False);
-    while (XtAppPending(TopContext)) {
-	XtAppNextEvent(TopContext, &ev);
-#ifdef DEBUG
-	switch (ev.type) {
-	case Expose: type = "Expose"; break;
-	case MapNotify: type = "MapNotify"; break;
-	case ConfigureNotify: type = "ConfigureNotify"; break;
-	case ReparentNotify: type = "ReparentNotify"; break;
-	default:
-	    (void) sprintf(intbuf, "%d", ev.type);
-	    type = intbuf;
-	}
-	fprintf(stderr, "xthHandleAllPendingEvents: %s event\n", type);
-#endif
-	MyDispatchEvent(&ev);
+    while (XtAppPending(app)) {
+	XtAppNextEvent(app, &ev);
+	XtDispatchEvent(&ev);
     }
     return;
 }
@@ -128,106 +114,13 @@ void xthHandleAllPendingEvents()
 void xthHandlePendingExposeEvents()
 {
     XEvent ev;
+    XtAppContext app = XtWidgetToApplicationContext(TopLevel);
     
     XSync(XtDisplay(TopLevel), False);
-    while (XtAppPending(TopContext) && XtAppPeekEvent(TopContext, &ev)) {
-	switch (ev.type) {
-	case KeyPress:
-	case KeyRelease:
-	case ButtonPress:
-	case ButtonRelease:
-	    return;
-	default:
-	    XtAppNextEvent(TopContext, &ev);
-	    MyDispatchEvent(&ev);
-	}
+    while (XtAppPending(app) && XtAppPeekEvent(app, &ev) &&
+	   (ev.type == Expose)) {
+	XtAppNextEvent(app, &ev);
+	XtDispatchEvent(&ev);
     }
-    return;
-}
-
-static void map_handler(widget, closure, event, continue_to_dispatch)
-    Widget widget;
-    XtPointer closure;
-    XEvent *event;
-    Boolean *continue_to_dispatch;
-{
-    if (event->type == MapNotify)
-	*(Boolean *)closure = True;
-    return;
-}
-
-static void expose_handler(widget, closure, event, continue_to_dispatch)
-    Widget widget;
-    XtPointer closure;
-    XEvent *event;
-    Boolean *continue_to_dispatch;
-{
-    if (event->type == Expose)
-	*(Boolean *)closure = True;
-    return;
-}
-
-void xthWaitForMapped(
-		      _ANSIDECL(Widget,		w),
-		      _ANSIDECL(Boolean,	expose_too)
-		      )
-     _KNRDECL(Widget,	w)
-     _KNRDECL(Boolean,	expose_too)
-{
-    Boolean mapped = False, exposed = False;
-    Status ret;
-    XWindowAttributes attributes;
-    XEvent ev;
-    XWMHints *hints;
-#ifdef DEBUG
-    char *type, intbuf[5];
-#endif
-
-    hints = XGetWMHints(XtDisplay(w), XtWindow(w));
-    if (hints) {
-      if (hints->initial_state != NormalState)
-	mapped = True;
-      XFree((void *) hints);
-    }
-    if (mapped && !expose_too)
-	return;
-
-    XtAddEventHandler(w, StructureNotifyMask, False, map_handler,
-		      (XtPointer) &mapped);
-    if (expose_too)
-	XtAddEventHandler(w, ExposureMask, False, expose_handler,
-			  (XtPointer) &exposed);
-	
-    if (! (ret = XGetWindowAttributes(XtDisplay(w), XtWindow(w), &attributes)))
-	/* bail! */
-	goto done;
-
-    if ((attributes.map_state != IsUnmapped) && !expose_too)
-	goto done;
-
-    while ((! mapped) && (expose_too && !exposed)) {
-	XtAppNextEvent(TopContext, &ev);
-#ifdef DEBUG
-	switch (ev.type) {
-	case Expose: type = "Expose"; break;
-	case MapNotify: type = "MapNotify"; break;
-	case ConfigureNotify: type = "ConfigureNotify"; break;
-	case ReparentNotify: type = "ReparentNotify"; break;
-	default:
-	    (void) sprintf(intbuf, "%d", ev.type);
-	    type = intbuf;
-	}
-	fprintf(stderr, "xthWaitForMapped: %s event\n", type);
-#endif
-	MyDispatchEvent(&ev);
-    }
-
-  done:
-    XtRemoveEventHandler(w, StructureNotifyMask, False, map_handler,
-			 (XtPointer) &mapped);
-    if (expose_too)
-	XtRemoveEventHandler(w, ExposureMask, False, expose_handler,
-			     (XtPointer) &exposed);
-	
     return;
 }

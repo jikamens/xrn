@@ -5,8 +5,13 @@
 #include "config.h"
 #ifdef NEED_TEMPNAM
 
-#include "utils.h"
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/file.h>
+#if defined(SVR4) || defined(_POSIX_SOURCE)
+#include <unistd.h>
+#endif
+#include "utils.h"
 
 #ifndef P_tmpdir
 #define P_tmpdir	"/usr/tmp/"
@@ -41,15 +46,18 @@ char *utTempnam(dir, pfx)
      char addslash = 0;
      
      /*
-      * Check TMPDIR first.  If that fails, then check the directory
-      * (if any) that is passed in.  If that fails, check the
-      * predefined constant P_tmpdir.  If that fails set, use "/tmp/".
+      * If a directory is passed in, verify that it exists and is a
+      * directory and is writeable by this process.  If no directory
+      * is passed in, or if the directory that is passed in does not
+      * exist, check the environment variable TMPDIR.  If it isn't
+      * set, check the predefined constant P_tmpdir.  If that isn't
+      * set, use "/tmp/".
       */
 
-     if ((env = getenv("TMPDIR")) && check_directory(env))
-       tmpdir = env;
-     else if (dir && check_directory(dir))
+     if (dir && check_directory(dir))
 	  tmpdir = dir;
+     else if ((env = getenv("TMPDIR")) && check_directory(env))
+	  tmpdir = env;
 #ifdef P_tmpdir
      else if (check_directory(P_tmpdir))
 	  tmpdir = P_tmpdir;

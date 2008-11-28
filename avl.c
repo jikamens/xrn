@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: avl.c,v 1.9 1994-12-15 15:47:15 jik Exp $";
+static char XRNrcsid[] = "$Header: /d/src/cvsroot/xrn/avl.c,v 1.7 1994-11-18 14:19:49 jik Exp $";
 #endif
 
 /*
@@ -30,6 +30,7 @@ static char XRNrcsid[] = "$Id: avl.c,v 1.9 1994-12-15 15:47:15 jik Exp $";
 
 #include "copyright.h"
 #include "config.h"
+#include <sys/types.h>
 #include "utils.h"
 #include "avl.h"
 

@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: Xmisc.c,v 1.2 1997-03-30 15:33:56 jik Exp $";
+static char XRNrcsid[] = "$Header: /d/src/cvsroot/xrn/xmisc.c,v 1.8 1994-11-18 14:36:12 jik Exp $";
 #endif
 
 /*
@@ -41,14 +41,19 @@ static char XRNrcsid[] = "$Id: Xmisc.c,v 1.2 1997-03-30 15:33:56 jik Exp $";
 #include <X11/StringDefs.h>
 #include <X11/Shell.h>
 #include <X11/cursorfont.h>
+#ifdef MOTIF
+#include <Xm/Text.h>
+#else
+#include <X11/Xaw/Text.h>
+#include <X11/Xaw/TextSink.h>
 #include <X11/Xaw/Command.h>
+#endif
 #include "news.h"
 #include "xthelper.h"
 #include "resources.h"
 #include "internals.h"
 #include "xrn.h"
 #include "xmisc.h"
-#include "busyCursor.h"
 
 /* XRN icon */
 
@@ -61,7 +66,7 @@ static Pixmap
 getpm()
 {
     unsigned int width, height;
-    unsigned char *bits;
+    char *bits;
 
 #if SUPPORT_SILLY_CALVIN_ICON
     if (app_resources.calvin) {
@@ -78,7 +83,7 @@ getpm()
 #endif
 
     return XCreateBitmapFromData(XtDisplay(TopLevel), XtScreen(TopLevel)->root,
-				 (char *) bits, width, height);
+				 bits, width, height);
 }
 
 
@@ -88,8 +93,8 @@ IconType it;
 {
     static char       *PrevName = NULL, *OldName = NULL;
     static Pixmap     PrevPm = None, OldPm = None;
-    char      *name WALL(= 0);
-    Pixmap    pm WALL(= 0);
+    char      *name;
+    Pixmap    pm;
     Arg               arg;
 
     if (OldPm == None) {
@@ -175,17 +180,73 @@ xmIconCreate()
  * create the normal and busy xrn cursors
  */
 
-void xrnBusyCursor()
+void busyCursor()
 {
-    BusyCursor(TopLevel, True);
+    static Cursor busyCursor = (Cursor) 0;
+    
+    /* define an appropriate busy cursor */
+    if (busyCursor == (Cursor) 0) {
+	XColor colors[2];
+
+	colors[0].pixel = app_resources.pointer_foreground;
+	colors[1].pixel = app_resources.pointer_background;
+	XQueryColors(XtDisplay(TopLevel),
+		     DefaultColormap(XtDisplay(TopLevel),
+				     DefaultScreen(XtDisplay(TopLevel))),
+		     colors, 2);
+	busyCursor = XCreateFontCursor(XtDisplay(TopLevel), XC_watch);
+	XRecolorCursor(XtDisplay(TopLevel), busyCursor,
+		       &colors[0], &colors[1]);
+    }
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(TopLevel), busyCursor);
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(Text), busyCursor);
+#ifndef MOTIF
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(ArticleText), busyCursor);
+#else
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(ArticleTextText), busyCursor);
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(ArticleTextList), busyCursor);
+#endif
+    XFlush(XtDisplay(TopLevel));
+    
+    /* change icon */
     xmSetIconAndName(BusyIcon);
 
     return;
 }
 
-void xrnUnbusyCursor()
+void unbusyCursor()
 {
-    UnbusyCursor(TopLevel, True);
+    static Cursor unBusyCursor = (Cursor) 0;
+    static Cursor textCursor = (Cursor) 0;
+
+    if (unBusyCursor == (Cursor) 0) {
+	XColor colors[2];
+
+	colors[0].pixel = app_resources.pointer_foreground;
+	colors[1].pixel = app_resources.pointer_background;
+	XQueryColors(XtDisplay(TopLevel),
+		     DefaultColormap(XtDisplay(TopLevel),
+				     DefaultScreen(XtDisplay(TopLevel))),
+		     colors, 2);
+	unBusyCursor = XCreateFontCursor(XtDisplay(TopLevel), XC_left_ptr);
+	XRecolorCursor(XtDisplay(TopLevel), unBusyCursor,
+		       &colors[0], &colors[1]);
+	textCursor = XCreateFontCursor(XtDisplay(TopLevel), XC_xterm);
+	XRecolorCursor(XtDisplay(TopLevel), textCursor,
+		       &colors[0], &colors[1]);
+    }
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(TopLevel), unBusyCursor);
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(Text), unBusyCursor);
+#ifndef MOTIF
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(ArticleText), textCursor);
+#else
+/* Use a pointer cursor for the Motif list box */
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(ArticleTextText), textCursor);
+    XDefineCursor(XtDisplay(TopLevel), XtWindow(ArticleTextList), unBusyCursor);
+#endif
+    XFlush(XtDisplay(TopLevel));
+    
+    /* change icon */
     xmSetIconAndName(PrevIcon);
 
     return;
@@ -197,7 +258,7 @@ void CBbusyCursor(widget, client_data, call_data)
     XtPointer client_data;
     XtPointer call_data;
 {
-    xrnBusyCursor();
+    busyCursor();
     return;
 }
 
@@ -207,19 +268,55 @@ void CBunbusyCursor(widget, client_data, call_data)
     XtPointer client_data;
     XtPointer call_data;
 {
-    xrnUnbusyCursor();
+    unbusyCursor();
     return;
 }
 
+/* 
+ * find out the number of lines in the article display
+ */
+
+int articleLines()
+{
+#ifndef MOTIF
+    static Dimension previousHeight = 0;
+    static int lines;
+    Dimension height;
+    Widget sink;
+#endif
+
+#ifndef MOTIF
+    XtVaGetValues(ArticleText,
+		  XtNheight, &height,
+		  XtNtextSink, &sink,
+		  NULL);
+    if (height != previousHeight) {
+	previousHeight = height;
+	lines = XawTextSinkMaxLines(sink, height);
+    }
+    return(lines);
+#else
+    short rows;
+
+    XtVaGetValues(ArticleText,
+                XmNrows, &rows,
+                NULL);
+    return (rows);
+#endif
+}
+
 /*
-  A Command widget is passed in.  Its border width/shadow and related
-  stuff is grown so that it's larger than other buttons (so that it is
-  visibly the default button).
+  A Command (or PushButton, for Motif) widget is passed in.  Its
+  border width/shadow and related stuff is grown so that it's larger
+  than other buttons (so that it is visibly the default button).
   */
 
 void makeDefaultButton(widget)
     Widget widget;
 {
+#ifdef MOTIF
+    XtVaSetValues(widget, XmNshowAsDefault, (XtArgVal) (Dimension) 1, 0);
+#else
     Dimension border_width, highlight_thickness;
 
     XtVaGetValues(widget,
@@ -234,4 +331,5 @@ void makeDefaultButton(widget)
 		  XtNborderWidth, (XtArgVal) border_width,
 		  XtNhighlightThickness, (XtArgVal) highlight_thickness,
 		  0);
+#endif
 }

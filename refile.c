@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: refile.c,v 1.17 2001-01-12 16:57:36 jik Exp $";
+static char XRNrcsid[] = "$Header: /d/src/cvsroot/xrn/refile.c,v 1.7 1994-11-18 14:33:49 jik Exp $";
 #endif
 
 /*
@@ -37,7 +37,9 @@ static char XRNrcsid[] = "$Id: refile.c,v 1.17 2001-01-12 16:57:36 jik Exp $";
 #include "config.h"
 #include "utils.h"
 #include <ctype.h>
-#if defined(SYSV) || defined(SVR4)
+#include <sys/types.h>
+#include <sys/stat.h>
+#ifdef SYSV
 #include <fcntl.h>
 #else
 #include <sys/file.h>
@@ -48,6 +50,9 @@ static char XRNrcsid[] = "$Id: refile.c,v 1.17 2001-01-12 16:57:36 jik Exp $";
     char *getenv();
 #endif
 #include <errno.h>
+#ifdef _POSIX_SOURCE
+#include <unistd.h>
+#endif
 
 #include "xrn.h"
 #include "dialogs.h"
@@ -56,6 +61,8 @@ static char XRNrcsid[] = "$Id: refile.c,v 1.17 2001-01-12 16:57:36 jik Exp $";
 #include "error_hnds.h"
 #include "mesg_strings.h"
 #include "refile.h"
+
+extern char *strpbrk();
 
 #ifndef S_ISDIR
 #define S_ISDIR(mode) (((mode) & S_IFMT) == S_IFDIR)
@@ -142,13 +149,13 @@ int MHrefile(folder, artfile)
 	    (void) sprintf(fullpath, "%s/%s", p, userpath);
     }
     if((stat(fullpath,&st) == -1) || !S_ISDIR(st.st_mode)) {
-	mesgPane(XRN_SERIOUS, 0, NO_MAIL_DIR_MSG, fullpath);      
+	mesgPane(XRN_SERIOUS, NO_MAIL_DIR_MSG, fullpath);      
 	return 0;
     }
     (void) sprintf(fullpath2, "%s/%s", fullpath, (folder+1));
     if (stat(fullpath2,&st) == -1 && errno == ENOENT) {
-	(void) sprintf(msg,NO_SUCH_MAIL_DIR_MSG ,fullpath2);
-	if (ConfirmationBox(TopLevel, msg, 0, 0, False)  == XRN_CB_ABORT) {
+	(void) sprintf(msg,"No such folder `%s'; Create it?",fullpath2);
+	if (ConfirmationBox(TopLevel, msg, 0, 0)  == XRN_CB_ABORT) {
 	    return 0;
 	}
 	(void) strcpy(newfolders, (folder+1));
@@ -160,18 +167,18 @@ int MHrefile(folder, artfile)
 	        if(errno == ENOENT){
 		    mkdir(fullpath, 0777);
 	        } else {
-		    mesgPane(XRN_SERIOUS, 0, CANT_STAT_MAIL_DIR_MSG, fullpath,
+		    mesgPane(XRN_SERIOUS, CANT_STAT_MAIL_DIR_MSG, fullpath,
 			     errmsg(errno));
 		    return 0;
 	        }
 	     } else if (!S_ISDIR(st.st_mode)) {
-		 mesgPane(XRN_SERIOUS, 0, MAIL_DIR_NOT_DIR_MSG, fullpath);
+		 mesgPane(XRN_SERIOUS, MAIL_DIR_NOT_DIR_MSG, fullpath);
 		 return 0;
 	    }
 	    q = strtok(0, "/");
         }
     } else if (!S_ISDIR(st.st_mode)) {
-        mesgPane(XRN_SERIOUS, 0, FOLDER_NOT_DIR_MSG, fullpath2);
+        mesgPane(XRN_SERIOUS, FOLDER_NOT_DIR_MSG, fullpath2);
         return 0;
     }
     if (stat(artfile, &st) == -1) {
@@ -205,17 +212,17 @@ int RMAILrefile(fullpath, folder, artfile, pos)
     int artfd, rv, n;
 
     if (stat(fullpath,&st) == -1 && errno == ENOENT) {
-	(void) sprintf(msg, NO_SUCH_RMAIL_MSG, fullpath);
-	if (ConfirmationBox (TopLevel, msg, 0, 0, False)  == XRN_CB_ABORT) {
+	(void) sprintf(msg,"No such RMAIL file `%s'; Create it?", fullpath);
+	if (ConfirmationBox (TopLevel, msg, 0, 0)  == XRN_CB_ABORT) {
 	    return 0;
 	}
 	if ((fp = fopen (fullpath, "w")) == NULL) {
-	    mesgPane(XRN_SERIOUS, 0, CANT_OPEN_RMAIL_MSG, fullpath,
+	    mesgPane(XRN_SERIOUS, CANT_OPEN_RMAIL_MSG, fullpath,
 		     errmsg(errno));
 	    return 0;
 	}
 	/* Produce the header */
-	fprintf (fp, "BABYL OPTIONS: -*- rmail -*-\n");
+	fprintf (fp, "BABYL OPTIONS:\n");
 	fprintf (fp, "Version: 5\n");
 	fprintf (fp, "Labels:\n");
 	fprintf (fp, "Note: This is RMAIL file produced by XRN:\n");
@@ -223,22 +230,22 @@ int RMAILrefile(fullpath, folder, artfile, pos)
 	fprintf (fp, "Note: has no messages in it.\n\037");
     } else {
 	if ((fp = fopen (fullpath, "a")) == NULL) {
-	    mesgPane(XRN_SERIOUS, 0, CANT_OPEN_RMAIL_MSG, fullpath,
+	    mesgPane(XRN_SERIOUS, CANT_OPEN_RMAIL_MSG, fullpath,
 		     errmsg(errno));
 	    return 0;
 	}
     }
     if ((artfd = open(artfile, 0)) < 0) {
-	mesgPane(XRN_SERIOUS, 0, CANT_OPEN_TEMP_MSG, artfile, errmsg(errno));
+	mesgPane(XRN_SERIOUS, CANT_OPEN_TEMP_MSG, artfile, errmsg(errno));
 	return(0);
     }
     /* Format the header */
-    fprintf (fp, "\f\n1,,\n");
+    fprintf (fp, "\014\n1,,\n");
     /* insert from 0 to pos (from getarticle) for the header */
     n = 0;
     while ((rv = read (artfd, msg, n + 512 > pos ? pos - n : 512)) > 0) {
 	if (! fwrite (msg, n+512 > pos ? pos - n : 512, 1, fp)) {
-	    mesgPane(XRN_SERIOUS, 0, CANT_WRITE_RMAIL_MSG, fullpath,
+	    mesgPane(XRN_SERIOUS, CANT_WRITE_RMAIL_MSG, fullpath,
 		     errmsg(errno));
 	    break;
 	}
@@ -247,7 +254,7 @@ int RMAILrefile(fullpath, folder, artfile, pos)
     /* reseek start of file */
     lseek (artfd, (off_t) 0, 0);
     if (fprintf (fp, "\n*** EOOH ***\n") == EOF) {
-	mesgPane(XRN_SERIOUS, 0, CANT_WRITE_RMAIL_MSG, fullpath, errmsg(errno));
+	mesgPane(XRN_SERIOUS, CANT_WRITE_RMAIL_MSG, fullpath, errmsg(errno));
 	(void) close(artfd);
 	(void) fclose(fp);
 	return(0);
@@ -255,7 +262,7 @@ int RMAILrefile(fullpath, folder, artfile, pos)
     /* insert the article */
     while ((rv = read (artfd, msg, 512)) > 0) {
 	if (! fwrite (msg, rv, 1, fp)) {
-	    mesgPane(XRN_SERIOUS, 0, CANT_WRITE_RMAIL_MSG, fullpath,
+	    mesgPane(XRN_SERIOUS, CANT_WRITE_RMAIL_MSG, fullpath,
 		     errmsg(errno));
 	    (void) close(artfd);
 	    (void) fclose(fp);
@@ -265,12 +272,12 @@ int RMAILrefile(fullpath, folder, artfile, pos)
     (void) close (artfd);
     /* insert the article end mark */
     if (fprintf (fp, "\037") == EOF) {
-	mesgPane(XRN_SERIOUS, 0, CANT_WRITE_RMAIL_MSG, fullpath, errmsg(errno));
+	mesgPane(XRN_SERIOUS, CANT_WRITE_RMAIL_MSG, fullpath, errmsg(errno));
 	(void) fclose(fp);
 	return(0);
     }
     if (fclose(fp) == EOF) {
-	mesgPane(XRN_SERIOUS, 0, CANT_WRITE_RMAIL_MSG, fullpath, errmsg(errno));
+	mesgPane(XRN_SERIOUS, CANT_WRITE_RMAIL_MSG, fullpath, errmsg(errno));
 	return(0);
     }
     return 1;

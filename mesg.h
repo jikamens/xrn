@@ -1,10 +1,8 @@
 #ifndef MESG_H
 #define MESG_H
 
-#include "butdefs.h"
-
 /*
- * $Id: mesg.h,v 1.15 1997-01-12 03:41:22 jik Exp $
+ * $Header: /d/src/cvsroot/xrn/mesg.h,v 1.7 1994-11-18 14:33:17 jik Exp $
  */
 
 /*
@@ -37,22 +35,15 @@
  *
  */
 
-#define XRN_INFO 	(1<<0)
-#define XRN_SERIOUS 	(1<<1)
-#define XRN_APPEND	(1<<2)
-#define XRN_SAME_LINE	(1<<3)
-#define XRN_WARNING	(1<<4)
+#define XRN_INFO 	1<<0
+#define XRN_SERIOUS 	1<<1
+#define XRN_APPEND	1<<2
+#define XRN_SAME_LINE	1<<3
 
-extern void _info _ARGUMENTS((char *, Boolean));
-#define INFO(msg) _info((msg), False)
-#define infoNow(msg) _info((msg), True)
-
-extern void mesgPane _VARARGUMENTS((int, int, char *, ...));
-extern int newMesgPaneName _ARGUMENTS((void));
+extern void info _ARGUMENTS((char *));
+extern void infoNow _ARGUMENTS((char *));
+extern void mesgPane _VARARGUMENTS((int, char *, ...));
 
 extern char error_buffer[2048];
-
-BUTDECL(mesgDismiss);
-BUTDECL(mesgClear);
 
 #endif /* MESG_H */
