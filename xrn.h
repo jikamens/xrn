@@ -1,10 +1,8 @@
 #ifndef XRN_H
 #define XRN_H
 
-#include "file_cache.h"
-
 /*
- * $Id: xrn.h,v 1.30 1997-06-30 02:52:46 jik Exp $
+ * $Id: xrn.h,v 1.29 1997-04-07 02:46:46 jik Exp $
  */
 
 /*
@@ -49,8 +47,6 @@ extern Widget BottomInfoLine;   /* bottom button info line                   */
 extern int XRNState;
 
 extern int inCommand, inSubCommand;	/* executing a button function	     */
-
-extern file_cache FileCache;
 
 #define XRN_X_UP    0x01
 #define XRN_NEWS_UP 0x10
