@@ -1,7 +1,5 @@
-LAST_REL =		LAST_REL
-CURRENT_REL =		CURRENT_REL
-TAR_FILE =		xrn-$(NEW_VERSION).tgz
-PATCH_FILE =		xrn-$(OLD_VERSION)-$(NEW_VERSION).patch
+TAR_FILE =		xrn.tgz
+PATCH_FILE =		xrn.patch
 RCS_FILES = 		$(shell find . -name '*,v' -print)
 ifeq ($(shell uname),Linux)
 TAR =			tar
@@ -9,24 +7,26 @@ else
 TAR =			gtar
 endif
 CHECKED_OUT_FILES =	$(shell rlog -R -L $(RCS_FILES))
-LIST_TAR =		$(TAR) --list --gzip --file $(TAR_FILE) | \
-			sed -e '/\/$$/d' -e 's,^[^/]*/,,'
+LIST_TAR =		$(TAR) --list --gzip --file $(TAR_FILE) | sed '/\/$$/d'
 LIST_SHAR_FILES =	$(TAR) --list --gzip --file $(TAR_FILE) | \
 				sed -e '/^\.\/$$/d' -e 's/\/$$//'
 SHAR_PARTS =		$(shell ls part?? | tail -1 | sed 's/part//')
 MAKEKIT =		makekit
 PATCH_H =		patchlevel.h
-VERSION_FILES =		XRn.src patchlevel.h xrn-man.src
-SED_VERS_STRING=	sed -n -e 's/.*"\([^ ]*\)"$$/\1/p'
-OLD_VERSION=		$(shell co -p$(LAST_REL) patchlevel.h 2>/dev/null | \
-			$(SED_VERS_STRING))
-NEW_VERSION=		$(shell $(SED_VERS_STRING) patchlevel.h)
+VERSION_FILES = XRn.src patchlevel.h xrn-man.src
+ifdef NEW_VERSION
 ifndef RCS_LABEL
 RCS_LABEL =		$(shell echo $(NEW_VERSION) | sed -e 's/[. ]/_/')
 endif
+endif
+ifdef OLD_VERSION
 ifndef OLD_RCS_LABEL
 OLD_RCS_LABEL =		$(shell echo $(OLD_VERSION) | sed -e 's/[. ]/_/')
 endif
+endif
+
+LAST_REL =		LAST_REL
+CURRENT_REL =		CURRENT_REL
 
 all-checked-in:
 	@if [ -n "$(CHECKED_OUT_FILES)" ]; then \
@@ -37,55 +37,71 @@ all-checked-in:
 	fi
 
 $(PATCH_FILE) patch: $(TAR_FILE) all-checked-in Makefile
+ifdef OLD_VERSION
 	echo "Prereq: \"$(OLD_VERSION)\"" > $(PATCH_FILE)
 	rcsdiff -u -r$(LAST_REL) -r$(CURRENT_REL) $(PATCH_H) >> $(PATCH_FILE); \
 	if [ \( $$? -eq 0 \) -o \( $$? -eq 1 \) ]; then exit 0; else exit 1; fi
 	rcsdiff -u -r$(LAST_REL) -r$(CURRENT_REL) \
 		`$(LIST_TAR) | fgrep -v $(PATCH_H)` >> $(PATCH_FILE); \
-	if [ \( $$? -eq 0 \) -o \( $$? -eq 1 \) ]; then exit 0; else exit $$?; fi
+	if [ \( $$? -eq 0 \) -o \( $$? -eq 1 \) ]; then exit 0; else exit 1; fi
+else
+	@echo "You must set OLD_VERSION!"; exit 1
+endif
 
 tar: $(TAR_FILE)
 
-SRCTMP=/tmp/xrn-$(NEW_VERSION)
-
 $(TAR_FILE): all-checked-in Makefile
-ifndef NEW_VERSION
-	@echo "You must set NEW_VERSION!"; exit 1
-endif
-	-rm -rf $(SRCTMP)
-	mkdir $(SRCTMP)
 	$(TAR) --create --exclude Attic --exclude RCS --exclude '*~' \
 		--exclude '.#*' --exclude '*/.#*' --exclude TAGS \
-		--exclude '*.tgz' --exclude '*.patch' --exclude '*.patch.gz' \
-		--exclude '*.orig' \
+		--exclude $(TAR_FILE) \
+		--exclude $(PATCH_FILE) --exclude '*.orig' \
 		--exclude '*.rej' --exclude Makefile.dist \
 		--exclude .purify --exclude xrn-linux.lsm \
-		--exclude 'part*' --exclude shar --exclude .gdbinit \
-		--exclude gnksa-logos \
-		--exclude xrn.spec \
-		--verbose . | $(TAR) --directory=$(SRCTMP) --extract
-	tar --directory=$(dir $(SRCTMP)) --create --gzip \
-		--file=$(notdir $(SRCTMP)).tgz $(notdir $(SRCTMP))
-	-rm -rf $(SRCTMP)
+		--exclude 'part*' --exclude shar \
+		--verbose --file - . | gzip --best > $(TAR_FILE)
 
 label: all-checked-in Makefile
+ifdef RCS_LABEL
 	rcs -NLAST_REL:CURRENT_REL -n$(RCS_LABEL): \
 		-NCURRENT_REL:$(RCS_LABEL) $(RCS_FILES) >/dev/null
+else
+	@echo "You must set RCS_LABEL!"; exit 1
+endif
 
 unlabel: all-checked-in Makefile
+ifdef OLD_RCS_LABEL
 	rcs -NCURRENT_REL:$(OLD_RCS_LABEL) -NLAST_REL:CURRENT_REL \
 		-n$(RCS_LABEL) $(RCS_FILES) >/dev/null
+else
+	@echo "You must set OLD_RCS_LABEL!"; exit 1
+endif
 
 upversion:
+ifdef OLD_VERSION
+ifdef NEW_VERSION
 	co -l $(VERSION_FILES)
 	perl -pi -e 's/$(OLD_VERSION)/$(NEW_VERSION)/' $(VERSION_FILES)
 	ci -u -m'Update version number for $(NEW_VERSION).' $(VERSION_FILES)
+else
+	@echo "You must set NEW_VERSION!"; exit 1
+endif
+else
+	@echo "You must set OLD_VERSION!"; exit 1
+endif
 
 downversion:
+ifdef OLD_VERSION
+ifdef NEW_VERSION
 	co -l $(VERSION_FILES)
 	perl -pi -e 's/$(NEW_VERSION)/$(OLD_VERSION)/' $(VERSION_FILES)
 	ci -u -m'Back out version number to $(OLD_VERSION).' $(VERSION_FILES)
 	rcs -N$(CURRENT_REL):$(OLD_RCS_LABEL) -n$(RCS_LABEL) $(RCS_FILES)
+else
+	@echo "You must set NEW_VERSION!"; exit 1
+endif
+else
+	@echo "You must set OLD_VERSION!"; exit 1
+endif
 
 Makefile: Imakefile
 	rcs -l Makefile
@@ -93,7 +109,7 @@ Makefile: Imakefile
 	xmkmf
 	ci -u -m"Updated on `date`." Makefile
 
-.PHONY: all-checked-in tar
+.PHONY: all-checked-in
 
 xrn-linux.tgz: xrn xrn.man
 	-rm -rf linux-dist
@@ -104,11 +120,29 @@ xrn-linux.tgz: xrn xrn.man
 	mkdir -p linux-dist/usr/doc/xrn
 	cp README COMMON-PROBLMS linux-dist/usr/doc/xrn/.
 	-rm -f xrn-linux.tgz.tmp
-	cd linux-dist; tar --create --gzip --file=../xrn-linux.tgz.tmp \
-		--owner=root --group=root .
+	cd linux-dist; tar -czf ../xrn-linux.tgz.tmp `find . -type f -print`
 	mv xrn-linux.tgz.tmp xrn-linux.tgz
 
 shar: $(TAR_FILE)
 	-rm -f shar part??
 	$(MAKEKIT) -s90k -npart `$(LIST_SHAR_FILES)`
 	touch shar
+
+ifdef NEW_VERSION
+csx: shar
+	-rm -f part??.msg
+	for file in part??; do \
+		echo "Subject: XRN: X News Reader, version $(NEW_VERSION), $$file/$(SHAR_PARTS)" > \
+			$$file.msg; \
+		echo "Newsgroups: comp.sources.x" >> $$file.msg; \
+		echo "" >> $$file.msg; \
+		echo "Submitted-by: jik@cam.ov.com" >> $$file.msg; \
+		echo "Archive-name: xrn/$$file" >> $$file.msg; \
+		echo "" >> $$file.msg; \
+		cat $$file >> $$file.msg; \
+	done
+else
+csx:
+	@echo You must set NEW_VERSION! 1>&2
+	@false
+endif
