@@ -1,11 +1,60 @@
-#if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: xrn.c,v 1.15 1994-11-23 01:49:57 jik Exp $";
+Return-Path: sun!osf.org!dbrooks
+Return-Path: <sun!osf.org!dbrooks>
+Received: by objy27. (5.57/SMI-4.0)
+	id AA10966; Thu, 19 Mar 92 10:31:51 -0800
+Received: from sun.UUCP by objy.com (4.1/SMI-4.0)
+	id AA23277; Thu, 19 Mar 92 10:32:25 PST
+From: sun!osf.org!dbrooks
+Received: from Sun.COM (sun-barr) by sun.Eng.Sun.COM (4.1/SMI-4.1)
+	id AA24789; Thu, 19 Mar 92 09:44:14 PST
+Received: from postman.osf.org by Sun.COM (4.1/SMI-4.1)
+	id AA27813; Thu, 19 Mar 92 09:44:08 PST
+Received: from penge.osf.org by postman.osf.org (5.64+/OSF 1.0)
+	id AA25953; Thu, 19 Mar 92 12:44:03 -0500
+Message-Id: <9203191744.AA25953@postman.osf.org>
+To: "Rick L. Spickelmier" <sun!objy!objy27!ricks>
+Cc: xrn@ic.berkeley.edu, mikey@eukanuba.wpd.sgi.com
+Subject: Re: Motif changes to xrn 6.17 
+Date: Thu, 19 Mar 92 12:44:02 -0500
+
+> I've had a bit of trouble patching xrn.c with your diffs.  Here is
+> what I think xrn.c is after your diffs....  do you agree?
+
+I'm sorry it was a problem; that was possibly because you were patching a
+version a little post-6.17 (I have version 1.18; you have 1.22).  The change to
+enable editres looks good.
+
+However, I took out the attempt to calculate and set the size of the XmList
+widget (called Text) based on the font metrics because as far as I can see,
+that is unnecessary.  Both Motifs 1.1 and 1.2 get the layout right to begin
+with, based only on the main geometry and the topLines parameter.  That's why I
+left out the stuff around line 310 and omitted the declaration of textFontList.
+
+I just rebuilt with the precise source you sent me, and my list area, the
+"Text" widget, has grown to take over the entire article display area...
+
+First off, topMargin and bottomMargin should be Dimension (= ushort), not
+Position (=short) (compare Xaw, where the equivalent values *are* Position). 
+But that doesn't explain it; the GetValues results for the margins seem to be
+inexplicable.  I may have uncovered a bug in the 1.2 beta.
+
+In any case, here is *my* version of *your* version, which does work with both
+1.2 and 1.1.x.
+
+David Brooks
+Systems Engineering
+Open Software Foundation
+
+
+
+#if !defined(lint) && !defined(SABER)
+static char XRNrcsid[] = "$Id: motif,v 1.2 1994-11-24 16:00:19 jik Exp $";
 #endif
 
 /*
  * xrn - an X-based NNTP news reader
  *
- * Copyright (c) 1988-1993, Ellen M. Sentovich and Rick L. Spickelmier.
+ * Copyright (c) 1988, 1989, 1990, 1991, Ellen M. Sentovich and Rick L. Spickelmier.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted, provided
@@ -33,9 +82,9 @@ static char XRNrcsid[] = "$Id: xrn.c,v 1.15 1994-11-23 01:49:57 jik Exp $";
  */
 
 #include "copyright.h"
+#include <X11/Xos.h>
 #include "config.h"
 #include "utils.h"
-#include <X11/Xos.h>
 #include <X11/Intrinsic.h>
 #include <X11/Xutil.h>
 #include <X11/StringDefs.h>
@@ -47,6 +96,7 @@ static char XRNrcsid[] = "$Id: xrn.c,v 1.15 1994-11-23 01:49:57 jik Exp $";
 #include <X11/Xaw/Box.h>
 #include <X11/Xaw/AsciiText.h>
 #else
+#include <stdio.h>
 #include <Xm/PanedW.h>
 #include <Xm/Label.h>
 #include <Xm/RowColumn.h>
@@ -54,9 +104,9 @@ static char XRNrcsid[] = "$Id: xrn.c,v 1.15 1994-11-23 01:49:57 jik Exp $";
 #include <Xm/List.h>
 #include <Xm/ScrolledW.h>
 #include <Xm/Separator.h>
+#include "MotifXawHack.h"
 #endif
 
-#include "news.h"
 #include "xthelper.h"
 #include "xmisc.h"
 #include "resources.h"
@@ -65,15 +115,10 @@ static char XRNrcsid[] = "$Id: xrn.c,v 1.15 1994-11-23 01:49:57 jik Exp $";
 #include "buttons.h"
 #include "mesg.h"
 #include "xrn.h"
-#include "compose.h"
-#include "mesg_strings.h"
 
-#ifdef MOTIF
-#include "MotifXawHack.h"
-#endif
 
 #ifdef XFILESEARCHPATH
-static void AddPathToSearchPath _ARGUMENTS((char *));
+static void AddPathToSearchPath();
 #endif
 
 /* global variables that represent the widgets that are dynamically changed */
@@ -100,10 +145,11 @@ int XRNState;            /* XRN status: news and x                    */
 int inchannel, outchannel;
 
 /*ARGSUSED*/
-int main(argc, argv)
-    int argc;
-    char **argv;
+main(argc, argv)
+int argc;
+char **argv;
 {
+    XtWidgetGeometry intended, return_geometry;
     static Arg frameArgs[] = {			/* main window description */
 	{XtNx, (XtArgVal) 10},
 	{XtNy, (XtArgVal) 10},
@@ -114,9 +160,9 @@ int main(argc, argv)
     Widget titlebar;
     static Arg labelArgs[] = {
 #ifndef MOTIF
-	{XtNlabel, (XtArgVal) 0},
+	{XtNlabel, (XtArgVal) NULL},
 #else
-	{XmNlabelString, (XtArgVal) 0},
+	{XmNlabelString, (XtArgVal) NULL},
 	{XmNrecomputeSize, (XtArgVal) False},
 	{XmNskipAdjust, (XtArgVal) True},
 	{XmNallowResize, (XtArgVal) False},
@@ -127,7 +173,7 @@ int main(argc, argv)
 #ifndef MOTIF
 	{XtNskipAdjust, (XtArgVal) True}, /* skipAdjust DOESN'T REALLY EXIST */
 #else
-	{XmNlabelString, (XtArgVal) 0},
+	{XmNlabelString, (XtArgVal) NULL},
 	{XmNrecomputeSize, (XtArgVal) False},
 	{XmNskipAdjust, (XtArgVal) True},
 	{XmNallowResize, (XtArgVal) False},
@@ -160,12 +206,10 @@ int main(argc, argv)
     };
 #endif
 
-#if 0
-    /* See below for why these are disabled. */
-    XtWidgetGeometry intended, return_geometry;
-    Arg sizeArgs[2];
+    Arg sizeArgs[2], fontArgs[1];
+#ifdef R3
+    int fontHeight;
 #endif
-    Arg fontArgs[1];
 
 #ifndef MOTIF
     static Arg articleTextArgs[] = {	/* article/all text window */
@@ -175,9 +219,6 @@ int main(argc, argv)
 	{XtNeditType,  (XtArgVal) XawtextRead},
 	{XtNuseStringInPlace,  (XtArgVal) True},
     };
-    XFontStruct *textFont;
-    Position topMargin;
-    Position bottomMargin;
 #else
     static Arg articleTextArgs[] = {
         {XmNskipAdjust, (XtArgVal) False},
@@ -205,8 +246,11 @@ int main(argc, argv)
     };
 
 #endif
+    XFontStruct *textFont;
+    Position topMargin;
+    Position bottomMargin;
+    void processMessage();
     int sv[2];
-    Dimension height;
 
     pipe (sv);
     inchannel = sv[0];
@@ -287,16 +331,30 @@ int main(argc, argv)
     XtSetArg(listArgs[0], XmNvisibleItemCount, app_resources.topLines);
     Text = XmCreateScrolledList(Frame, "index", listArgs, XtNumber(listArgs));
     XtManageChild(Text);
-    XtAddCallback(Text, XmNdefaultActionCallback, TextListSelection, (XtPointer) 0);
-    XtAddCallback(Text, XmNextendedSelectionCallback, TextListSelection, (XtPointer) 0);
+    XtAddCallback(Text, XmNdefaultActionCallback, TextListSelection, NULL);
+    XtAddCallback(Text, XmNextendedSelectionCallback, TextListSelection, NULL);
 #endif
 
 #ifndef MOTIF
+#ifdef R3
+    XtSetArg(fontArgs[0], XtNheight, 0);
+    XtGetValues(Text, fontArgs, XtNumber(fontArgs));
+
+    /* 6 = 2 * yMargin + 2 */
+    fontHeight = (int) fontArgs[0].value - 6;
+
+    XtSetArg(sizeArgs[0], XtNheight,
+	     app_resources.topLines * fontHeight + 4);
+    XtSetValues(Text, sizeArgs, 1);
+#else
+    /* I have this ifdef'd for R3 because I don't feel like figuring */
+    /* out how to do it properly for R3.  It's easier in R4.	     */
+
     XtVaGetValues(Text,
 		  XtNbottomMargin, &bottomMargin,
 		  XtNtopMargin, &topMargin,
 		  XtNfont, &textFont,
-		  0);
+		  NULL);
 
     XtVaSetValues(Text, XtNheight,
 		  (XtArgVal) ((Dimension)
@@ -304,7 +362,8 @@ int main(argc, argv)
 			       app_resources.topLines *
 			       (textFont->max_bounds.ascent +
 				textFont->max_bounds.descent))),
-		  0);
+		  NULL);
+#endif
 #endif
     
 #ifndef MOTIF
@@ -366,52 +425,60 @@ int main(argc, argv)
     XtManageChild(BottomButtonBox);
 #endif
 
-    createButtons();
+    /* initialize the news system, read the newsrc file */
+    initializeNews();
+    XRNState |= XRN_NEWS_UP;
+
+    /* set up the text window, mode buttons, and question */
+    determineMode();
 
     /* create the icon */
     xmIconCreate();
 
 #ifdef TITLEBAR
-    XtSetArg(fontArgs[0], XtNheight, (XtPointer) &height);
+    XtSetArg(fontArgs[0], XtNheight, 0);
     XtGetValues(titlebar, fontArgs, XtNumber(fontArgs));
 #ifndef MOTIF
-    XawPanedSetMinMax(titlebar, (int) height, (int) height);
+    XawPanedSetMinMax(titlebar,
+		     (int) fontArgs[0].value, (int) fontArgs[0].value);
 #else
     {
       Arg args[2];
 
-      XtSetArg(args[0], XmNpaneMaximum, height);
-      XtSetArg(args[1], XmNpaneMinimum, height);
+      XtSetArg(args[0], XmNpaneMaximum, fontArgs[0].value);
+      XtSetArg(args[1], XmNpaneMinimum, fontArgs[0].value);
       XtSetValues(titlebar, args, 2);
     }
 #endif
 #endif    
 
-    XtSetArg(fontArgs[0], XtNheight, &height);
+    XtSetArg(fontArgs[0], XtNheight, 0);
     XtGetValues(TopInfoLine, fontArgs, XtNumber(fontArgs));
 #ifndef MOTIF
-    XawPanedSetMinMax(TopInfoLine, (int) height, (int) height);
+    XawPanedSetMinMax(TopInfoLine,
+		     (int) fontArgs[0].value, (int) fontArgs[0].value);
 #else
     {
       Arg args[2];
 
-      XtSetArg(args[0], XmNpaneMaximum, height);
-      XtSetArg(args[1], XmNpaneMinimum, height);
+      XtSetArg(args[0], XmNpaneMaximum, fontArgs[0].value);
+      XtSetArg(args[1], XmNpaneMinimum, fontArgs[0].value);
       XtSetValues(TopInfoLine, args, 2);
     }
 #endif
     
-    XtSetArg(fontArgs[0], XtNheight, &height);
+    XtSetArg(fontArgs[0], XtNheight, 0);
     XtGetValues(BottomInfoLine, fontArgs, XtNumber(fontArgs));
 #ifndef MOTIF
-    XawPanedSetMinMax(BottomInfoLine, (int) height, (int) height);
+    XawPanedSetMinMax(BottomInfoLine,
+		     (int) fontArgs[0].value, (int) fontArgs[0].value);
     XtSetKeyboardFocus(Frame, ArticleText);	/* mikey */
 #else
     {
       Arg args[2];
 
-      XtSetArg(args[0], XmNpaneMaximum, height);
-      XtSetArg(args[1], XmNpaneMinimum, height);
+      XtSetArg(args[0], XmNpaneMaximum, fontArgs[0].value);
+      XtSetArg(args[1], XmNpaneMinimum, fontArgs[0].value);
       XtSetValues(BottomInfoLine, args, 2);
     }
 #endif
@@ -431,31 +498,19 @@ int main(argc, argv)
      */
     XtInstallAccelerators(ArticleText, Text);
 
-#if defined(MOTIF) && defined(EDITRES) && (XtSpecificationRelease > 4)
+#if defined(MOTIF) && defined(EDITRES) && XtSpecificationRelease == 5
     /* Enable editres interaction (needs X11R5 Xmu; Xaw already has this) */
     {
       extern void _XEditResCheckMessages();
 
       XtAddEventHandler(TopLevel, (EventMask)0, True,
-			_XEditResCheckMessages, (XtPointer) 0);
+			_XEditResCheckMessages, (XtPointer) NULL);
     }
 #endif
     
-#if XtSpecificationRelease > 5
-    XtAddCallback(TopLevel, XtNsaveCallback, saveNewsrcCB, NULL);
-    XtAddCallback(TopLevel, XtNdieCallback, ehDieCB, NULL);
-#endif /* X11R6 or greater */
+    XtRealizeWidget(TopLevel);
 
 #ifndef MOTIF
-    /*
-      I'm #if 0'ing this code out, because as far as I can tell, now
-      that I've moved things around so that initializeNews() and
-      determineMode() get called after the main window is already
-      realized, this code is no longer necessary.  Disabling it causes
-      no problems under X11R6; if it causes problems for you under
-      X11R5 or X11R4, let me know. -- jik 11/13/94
-      */
-#if 0
     /* Get the top button box to start out the right size. This is a */
     /* somewhat gross hack, but it does do the job.		     */
     intended.request_mode = CWWidth | XtCWQueryOnly;
@@ -470,7 +525,6 @@ int main(argc, argv)
     XtQueryGeometry(BottomButtonBox, &intended, &return_geometry);
     XtSetArg(sizeArgs[0], XtNheight, return_geometry.height);
     XtSetValues(BottomButtonBox, sizeArgs, 1);
-#endif
 #else
 #if XmVersion >= 1001
     XmProcessTraversal(ArticleText, XmTRAVERSE_CURRENT);
@@ -479,49 +533,36 @@ int main(argc, argv)
 #endif
 #endif
     
-    XtRealizeWidget(TopLevel);
-    XRNState |= XRN_X_UP;
-
-    /* initialize the news system, read the newsrc file */
-    initializeNews();
-    XRNState |= XRN_NEWS_UP;
-
-    /* set up the text window, mode buttons, and question */
-    determineMode();
-
     unbusyCursor();
     addTimeOut();
-
-    if (app_resources.version == 0) {
-	mesgPane(XRN_SERIOUS, NO_APP_DEFAULTS_MSG,
-#ifdef MOTIF
-		 "XRnMotif", "XRnMotif"
-#else
-		 "XRn", "XRn"
-#endif
-	    );
+    XRNState |= XRN_X_UP;
+    if (app_resources.version == NULL) {
+	mesgPane(XRN_SERIOUS,
+"Current XRN Application Defaults file is not installed.\n\
+Some XRN functionality may be missing.");
     } else if (strcmp(app_resources.version, XRN_VERSION) != 0) {
-	mesgPane(XRN_SERIOUS, NO_APP_DEFAULTS_MSG,
-#ifdef MOTIF
-		 "XRnMotif", "XRnMotif"
-#else
-		 "XRn", "XRn"
-#endif
-	    );
-	mesgPane(XRN_SERIOUS | XRN_APPEND, VERSIONS_MSG, app_resources.version,
-		 XRN_VERSION);
+	mesgPane(XRN_SERIOUS,
+"Current XRN Application Defaults file is not installed.\n\
+Some XRN functionality may be missing.\nApplication defaults version: %s\n\
+XRN version: %s", app_resources.version, XRN_VERSION);
     }
 
+    if (unreadNews() > 0) {
+        XSetIconName(XtDisplay(TopLevel), XtWindow(TopLevel),
+		     app_resources.unreadIconName);
+    }
     XtAppAddInput(XtWidgetToApplicationContext(TopLevel),
-                inchannel, (XtPointer) XtInputReadMask, processMessage, (XtPointer) 0);
+                inchannel, (XtPointer) XtInputReadMask, processMessage, NULL);
 
-    XtAppMainLoop(XtWidgetToApplicationContext(TopLevel));
+    XtMainLoop();
     exit(0);
 }       
 
+
 #ifdef XFILESEARCHPATH
-static void AddPathToSearchPath(path)
-    char *path;
+static void
+AddPathToSearchPath(path)
+char *path;
 {
      char *old, *new;
 
@@ -561,4 +602,3 @@ static void AddPathToSearchPath(path)
      }
 }
 #endif
-
