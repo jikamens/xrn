@@ -1,10 +1,8 @@
 #ifndef MESG_H
 #define MESG_H
 
-#include "butdefs.h"
-
 /*
- * $Id: mesg.h,v 1.15 1997-01-12 03:41:22 jik Exp $
+ * $Header: /d/src/cvsroot/xrn/mesg.h,v 1.3 1994-10-17 15:28:05 jik Exp $
  */
 
 /*
@@ -37,22 +35,23 @@
  *
  */
 
-#define XRN_INFO 	(1<<0)
-#define XRN_SERIOUS 	(1<<1)
-#define XRN_APPEND	(1<<2)
-#define XRN_SAME_LINE	(1<<3)
-#define XRN_WARNING	(1<<4)
+#define XRN_INFO 	1<<0
+#define XRN_SERIOUS 	1<<1
+#define XRN_APPEND	1<<2
 
-extern void _info _ARGUMENTS((char *, Boolean));
-#define INFO(msg) _info((msg), False)
-#define infoNow(msg) _info((msg), True)
-
-extern void mesgPane _VARARGUMENTS((int, int, char *, ...));
-extern int newMesgPaneName _ARGUMENTS((void));
+extern void info _ARGUMENTS((char *));
+extern void infoNow _ARGUMENTS((char *));
+#if defined(__STDC__) && !defined(NOSTDHDRS)
+extern void mesgPane _ARGUMENTS((int, char *, ...));
+#else
+extern void mesgPane();	/* can't have a prototype here because we */
+			/* can't know the type of "va_alist"      */
+#endif
+extern void mesgDisableRedisplay _ARGUMENTS((void));
+extern void mesgEnableRedisplay _ARGUMENTS((void));
+extern void mesgDisableAppend _ARGUMENTS((void));
+extern void mesgEnableAppend _ARGUMENTS((void));
 
 extern char error_buffer[2048];
-
-BUTDECL(mesgDismiss);
-BUTDECL(mesgClear);
 
 #endif /* MESG_H */

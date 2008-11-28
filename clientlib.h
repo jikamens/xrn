@@ -2,7 +2,7 @@
 #define CLIENTLIB_H
 
 /*
- * $Id: clientlib.h,v 1.3 1997-01-02 23:14:15 jik Exp $
+ * $Header: /d/src/cvsroot/xrn/clientlib.h,v 1.1 1994-10-10 17:23:47 jik Exp $
  */
 
 /*
@@ -35,7 +35,5 @@
  */
 
 extern int handle_server_response _ARGUMENTS((int, char *));
-
-extern char *nntp_port;
 
 #endif /* CLIENTLIB_H */
