@@ -2,7 +2,7 @@
 #define XTHELPER_H
 
 /*
- * $Id: xthelper.h,v 1.6 1997-01-12 03:41:22 jik Exp $
+ * $Id: xthelper.h,v 1.4 1994-12-15 18:34:50 jik Exp $
  */
 
 /*
@@ -39,6 +39,6 @@ void xthCenterWidgetOverCursor _ARGUMENTS((Widget));
 void xthCenterWidget _ARGUMENTS((Widget, int, int));
 void xthHandleAllPendingEvents _ARGUMENTS((void));
 void xthHandlePendingExposeEvents _ARGUMENTS((void));
-void xthWaitForMapped _ARGUMENTS((Widget, Boolean));
+void xthWaitForMapped _ARGUMENTS((Widget));
 
 #endif /* XTHELPER_H */
