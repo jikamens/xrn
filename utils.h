@@ -2,7 +2,7 @@
 #define UTILS_H
 
 /*
- * $Id: utils.h,v 1.58 1998-07-10 21:56:21 jik Exp $
+ * $Id: utils.h,v 1.56 1997-10-20 02:11:55 jik Exp $
  */
 
 /*
@@ -160,15 +160,11 @@ extern char *tempnam();
 #define SIG_RET_T int
 #endif
 
-#ifdef sgi
-typedef SIG_RET_T (*SIG_PF0) _ARGUMENTS((void));
-#else /* ! sgi */
-# if defined(_ANSI_C_SOURCE) || defined(linux) || defined(__bsdi__) || defined(SOLARIS) || defined(__hpux)
+#if defined(_ANSI_C_SOURCE) || defined(linux) || defined(__bsdi__) || defined(SOLARIS) || defined(__hpux)
 typedef SIG_RET_T	(*SIG_PF0) _ARGUMENTS((int));
-# else /* ! _ANSI_C_SOURCE */
+#else /* ! _ANSI_C_SOURCE */
 typedef SIG_RET_T	(*SIG_PF0) _VARARGUMENTS((int, ...));
-# endif /* _ANSI_C_SOURCE */
-#endif /* sgi */
+#endif /* _ANSI_C_SOURCE */
 
 #undef SIG_RET_T
 
@@ -304,7 +300,7 @@ char *nntpServer _ARGUMENTS((void));
 #define WALL(a)
 #endif
 
-char *findServerFile _ARGUMENTS((char *, Boolean, Boolean *));
+char *findServerFile _ARGUMENTS((char *, Boolean));
 
 #if defined(__osf__) || defined(_POSIX_SOURCE) || defined(SOLARIS) \
 	|| defined(sun)

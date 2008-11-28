@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: refile.c,v 1.17 2001-01-12 16:57:36 jik Exp $";
+static char XRNrcsid[] = "$Id: refile.c,v 1.15 1997-07-04 17:30:10 jik Exp $";
 #endif
 
 /*
@@ -56,6 +56,8 @@ static char XRNrcsid[] = "$Id: refile.c,v 1.17 2001-01-12 16:57:36 jik Exp $";
 #include "error_hnds.h"
 #include "mesg_strings.h"
 #include "refile.h"
+
+extern char *strpbrk();
 
 #ifndef S_ISDIR
 #define S_ISDIR(mode) (((mode) & S_IFMT) == S_IFDIR)
@@ -233,7 +235,7 @@ int RMAILrefile(fullpath, folder, artfile, pos)
 	return(0);
     }
     /* Format the header */
-    fprintf (fp, "\f\n1,,\n");
+    fprintf (fp, "\014\n1,,\n");
     /* insert from 0 to pos (from getarticle) for the header */
     n = 0;
     while ((rv = read (artfd, msg, n + 512 > pos ? pos - n : 512)) > 0) {

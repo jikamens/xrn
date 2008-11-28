@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $";
+static char XRNrcsid[] = "$Id: resources.c,v 1.62 1998-03-23 03:16:54 jik Exp $";
 #endif
 
 /*
@@ -48,6 +48,7 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #include "xthelper.h"
 #include "mesg.h"
 #include "xrn.h"
+#include "patchlevel.h"
 #include "resources.h"
 #include "error_hnds.h"
 #include "internals.h"
@@ -71,8 +72,6 @@ static char XRNrcsid[] = "$Id: resources.c,v 1.64 2005-12-01 08:49:23 jik Exp $"
 #define XtCArtButtonList        "ArtButtonList"
 #define XtNartSpecButtonList    "artSpecButtonList"
 #define XtCArtSpecButtonList    "ArtSpecButtonList"
-#define XtNauthenticateOnConnect "authenticateOnConnect"
-#define XtCAuthenticateOnConnect "AuthenticateOnConnect"
 #define XtNauthenticator        "authenticator"
 #define XtCAuthenticator        "Authenticator"
 #define XtNauthenticatorCommand "authenticatorCommand"
@@ -361,8 +360,6 @@ static XtResource resources[] = {
      XtOffset(app_res,artButtonList), XtRString, (XtPointer) NULL},
     {XtNartSpecButtonList, XtCArtSpecButtonList, XtRString, sizeof(char *),
      XtOffset(app_res,artSpecButtonList), XtRString, (XtPointer) NULL},
-    {XtNauthenticateOnConnect, XtCAuthenticateOnConnect, XtRBoolean, sizeof(Boolean),
-     XtOffset(app_res,authenticateOnConnect), XtRBoolean, (XtPointer) &defaultFalse},
     {XtNauthenticator, XtCAuthenticator, XtRString, sizeof(char *),
      XtOffset(app_res,authenticator), XtRString, (XtPointer) NULL},
     {XtNauthenticatorCommand, XtCAuthenticatorCommand, XtRString, sizeof(char *),
@@ -852,10 +849,10 @@ Widget Initialize(argc, argv)
 
 #if defined(__DATE__) && defined(WANT_DATE)
     (void) sprintf(title, "xrn - version %s (compiled on %s)",
-		   PACKAGE_VERSION, __DATE__);
+		   XRN_VERSION, __DATE__);
 #else
     (void) sprintf(title, "xrn - version %s",
-		   PACKAGE_VERSION);
+		   XRN_VERSION);
 #endif
 
     /* get the resources needed by xrn itself */
