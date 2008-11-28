@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: utils.c,v 1.36 2006-01-03 16:16:39 jik Exp $";
+static char XRNrcsid[] = "$Id: utils.c,v 1.24 1996-06-06 18:16:33 jik Exp $";
 #endif
 
 /*
@@ -51,8 +51,7 @@ struct passwd *getpwnam();
 #include "news.h"
 #include "server.h"
 #include "resources.h"
-
-extern time_t get_date _ARGUMENTS((char *));
+#include "getdate.h"
 
 #define USER_NAME_SIZE 32
 
@@ -210,7 +209,7 @@ void utDowncase(string)
     register char *string;
 {
     for ( ; *string != '\0'; string++) {
-	if (isupper((unsigned char)*string)) {
+	if (isupper(*string)) {
 	    *string = tolower(*string);
 	}
     }
@@ -235,12 +234,12 @@ int utSubjectCompare(str1, str2)
 	if (!*str2) {
 	    return 1;
 	}
-	if (isupper((unsigned char)*str1)) {
+	if (isupper(*str1)) {
 	    c1 = tolower(*str1);
 	} else {
 	    c1 = *str1;
 	}
-	if (isupper((unsigned char)*str2)) {
+	if (isupper(*str2)) {
 	    c2 = tolower(*str2);
 	} else {
 	    c2 = *str2;
@@ -345,26 +344,14 @@ void tconvert(dest, source)
     char *dest, *source;
 {
   time_t converted = get_date(source);
-  char buf[30] /* ctime only takes 26, but who knows if it'll change? */;
+  char *ptr;
 
-  if (converted == (time_t)-1) {
-    if (dest != source)
-      strcpy(dest, source);
-  }
+  if (! converted)
+    strcpy(dest, source);
   else {
-    strcpy(buf, ctime(&converted));
-    /* RFC 822 requires a comma after the day, but ctime doesn't
-       provide one, so we'll have to insert it.  We check explicitly
-       to make sure the date begins with three alphabetics and a
-       space, in case the ctime format changes out from under us. */
-    if (isalpha(buf[0]) && isalpha(buf[1]) && isalpha(buf[2]) &&
-	isspace(buf[3])) {
-      strncpy(dest, buf, 3);
-      dest[3] = ',';
-      strcpy(dest + 4, buf + 3);
-    }
-    else
-      strcpy(dest, buf);
+    strcpy(dest, ctime(&converted));
+    if ((ptr = strchr(dest, '\n')))
+      *ptr = '\0';
   }
 }
 
@@ -455,7 +442,8 @@ void do_chmod(fp, name, mode)
   * -nntpServer command-line option
   * NNTPSERVER environment variable
   * nntpServer X resource
-  * SERVER_FILE, if it's defined
+  * Server configured into INN, if INN is being used, or SERVER_FILE,
+    if it's defined and INN isn't being used. 
   */
 char *nntpServer()
 {
@@ -467,22 +455,22 @@ char *nntpServer()
 	return(server);
     else if (app_resources.nntpServer)
 	return(app_resources.nntpServer);
-#ifdef SERVER_FILE
+#ifdef INN
+    else if ((server = getserverbyfile("")))
+	return(server);
+#else
+# ifdef SERVER_FILE
     else if ((server = getserverbyfile(SERVER_FILE)))
 	return(server);
-#endif /* SERVER_FILE */
+# endif /* SERVER_FILE */
+#endif /* INN */
     else
 	return(0);
 }
 
-char *findServerFile(
-		     _ANSIDECL(char *,		basename),
-		     _ANSIDECL(Boolean,		prefer_long),
-		     _ANSIDECL(Boolean *,	returned_long)
-		     )
-     _KNRDECL(char *,		basename)
-     _KNRDECL(Boolean,		prefer_long)
-     _KNRDECL(Boolean *,	returned_long)
+char *findServerFile(basename, prefer_long)
+char *basename;
+Boolean prefer_long;
 {
   char *server_name = nntpServer();
   char *long_name = 0, *expanded;
@@ -493,22 +481,15 @@ char *findServerFile(
   if (server_name) {
     long_name = XtMalloc(strlen(expanded) + strlen(server_name) + 2);
     (void) sprintf(long_name, "%s-%s", expanded, server_name);
-    if (! access(long_name, R_OK)) {
-      if (returned_long)
-	*returned_long = True;
+    if (! access(long_name, R_OK))
       return(long_name);
-    }
   }
 
   if ((! access(expanded, R_OK)) || (! prefer_long) || (! long_name)) {
     XtFree(long_name);
-    if (returned_long)
-      *returned_long = False;
     return(XtNewString(expanded));
   }
 
-  if (returned_long)
-    *returned_long = True;
   return(long_name);
 }
 
@@ -521,8 +502,8 @@ char *findServerFile(
   This is different from tempnam() or utTempnam(), which might put
   the file in $TMPDIR instead of the specified directory.
 
-  The file name returned is allocated and should be freed when it is
-  no longer needed.
+  The file name returned is static and should be copied (if it needs
+  to be saved) before the next call to this function.
   */
 char *utTempFile(orig_name)
 char *orig_name;
@@ -552,7 +533,7 @@ char *orig_name;
   (void) sprintf(&new_name[strlen(new_name)], ".%d-%d-%s", instance++,
 		 getpid(), ptr);
 
-  return XtNewString(new_name);
+  return new_name;
 }
 
 /*
