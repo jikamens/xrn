@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: server.c,v 1.181 2006-01-03 16:38:46 jik Exp $";
+static char XRNrcsid[] = "$Id: server.c,v 1.38 1994-12-12 15:27:35 jik Exp $";
 #endif
 
 /*
@@ -33,10 +33,6 @@ static char XRNrcsid[] = "$Id: server.c,v 1.181 2006-01-03 16:38:46 jik Exp $";
  *
  */
 
-#include <stdio.h>
-#include <netinet/in.h>
-#include <netdb.h>
-
 #include "copyright.h"
 #include "config.h"
 #include "utils.h"
@@ -44,10 +40,8 @@ static char XRNrcsid[] = "$Id: server.c,v 1.181 2006-01-03 16:38:46 jik Exp $";
 #include <ctype.h>
 #include <assert.h>
 #include <errno.h>
-#include <time.h>
 #include "avl.h"
 #include "news.h"
-#include "artstruct.h"
 #include "mesg.h"
 #include "error_hnds.h"
 #include "resources.h"
@@ -58,275 +52,62 @@ static char XRNrcsid[] = "$Id: server.c,v 1.181 2006-01-03 16:38:46 jik Exp $";
 #include "xmisc.h"
 #include "xthelper.h"
 #include "compose.h"
-#include "buttons.h"
-#include "xrn.h"
-#include "newsrcfile.h"
-#include "varfile.h"
-#include "dialogs.h"
-#include "sort.h"
-#include "file_cache.h"
 
-#if defined(sun) && (defined(sparc) || defined(mc68000)) && !defined(SOLARIS)
+#if defined(sun) && defined(sparc) && !defined(SOLARIS)
 #include <vfork.h>
+#endif
+
+#ifdef INEWS
+#include <sys/stat.h>
 #endif
 
 extern int errno;
 
 #define BUFFER_SIZE 1024
-/* This constant must be a 2^x times BUFFER_SIZE, for some x. */
-#define MAX_BUFFER_SIZE (8*BUFFER_SIZE)
+#define MESSAGE_SIZE 1024
 
-Boolean ServerDown = False, PostingAllowed = True, FastServer = False;
-int server_page_height = 24;
+int ServerDown = 0;
+static char mybuf[MESSAGE_SIZE+100] = 
+	"The news server is not responding correctly, aborting\n";
 
 static struct newsgroup *currentNewsgroup = 0;
-#define SETNEWSGROUP(n) (((n) == currentNewsgroup) ? 0 : \
-			 getgroup((n), 0, 0, 0, True))
-
-static void get_article_headers(struct newsgroup *, art_num);
+#define SETNEWSGROUP(n) (((n) == currentNewsgroup) ? 0 : getgroup((n), 0, 0, 0))
 
 /*
-  Get a line of data from the server.
+ * get data from the server (active file, article)
+ *
+ *  on error, sets 'ServerDown'
+ *
+ *   returns: void
+ */
+static void get_data_from_server _ARGUMENTS((char *, int));
 
-  Returns a char pointer to the line of data. The caller SHOULD NOT
-  FREE THIS DATA, as it is static.
-
-  The trailing "\r\n" sequence is stripped from the returned line.
-
-  On error, sets ServerDown and returns an empty string.
-  */
-
-static char *get_data_from_server _ARGUMENTS((int));
-
-static char *get_data_from_server(discard_excess)
-     int discard_excess;
+static void get_data_from_server(str, size)
+    char *str;     /* string for message to be copied into */
+    int size;      /* size of string                       */
 {
-  static int size = 0, end, left, len;
-  static char *str = NULL;
-  Boolean continuing = False;
-
-  if (! size) {
-    size = BUFFER_SIZE;
-    str = XtMalloc(size);
-  }
-
-  ServerDown = False;
-
-  for (end = 0, left = size; ; end += len, left -= len) {
-    if (get_server(&str[end], size - end) < 0) {
-      ServerDown = True;
-      *str = '\0';
-      break;
+    if (get_server(str, size) < 0) {
+	ServerDown = 1;
+    } else {
+	ServerDown = 0;
     }
-
-    len = strlen(&str[end]);
-
-    if (left - len == 1) {
-      continuing = True;
-      /* Only one byte left at the end, which means that we didn't
-	 read a full line and the last byte is the null put there by
-	 fgets. */
-      if (size >= MAX_BUFFER_SIZE) {
-	if (discard_excess) {
-	  char garbage_buf[BUFFER_SIZE];
-	  do {
-	    if (get_server(garbage_buf, sizeof(garbage_buf)) < 0) {
-	      ServerDown = True;
-	      *str = '\0';
-	      break;
-	    }
-	  } while (strlen(garbage_buf) == sizeof(garbage_buf) - 1);
-	}
-	break;
-      }
-      left += size;
-      size *= 2;
-      str = XtRealloc(str, size);
-    }
-    else {
-      if (continuing && (len == 1)) {
-	/* It's possible that there was a "\r\n" pair split between
-	   the previous and last get_server() calls. */
-	if ((end > 1) && (str[end-1] == '\r') && (str[end] == '\n'))
-	  str[end-1] = '\0';
-      }
-      break;
-    }
-  }
-
-  return str;
-}
-
-static int wants_user_pass_authentication _ARGUMENTS((void));
-static int user_pass_authentication _ARGUMENTS((void));
-
-static int wants_user_pass_authentication()
-{
-  char *ptr = app_resources.authenticator;
-
-  if (! ptr)
-    /* Default to user/pass authentication. */
-    return 1;
-  else if (! app_resources.authenticatorCommand) {
-    /* Fall back on user/pass. */
-    app_resources.authenticator = NULL;
-    return 1;
-  }
-     
-  while (*ptr && isspace((unsigned char)*ptr))
-    ptr++;
-
-  return(! strncasecmp(ptr, "user/pass", sizeof("user/pass")-1));
-}
-
-/*
-  Cache the password so the user only has to be prompted once.
-*/
-static char *authinfo_password = NULL;
-
-/*
-  This function assumes that wants_user_pass_authentication() has
-  already been called and returned True.  I.e., don't call this
-  function if you don't already know that the authenticator resource
-  is in the correct format.
-  */
-static int user_pass_authentication()
-{
-  /*
-    The format of the authenticator resource when user/pass
-    authentication is being used is:
-
-    ws "user/pass" ws username ws "/" ws password ws
-
-    "ws" stands for whitespace, which is optional in all cases.  If
-    the username is omitted, the return value of getUser() is used.
-    If the slash is omitted, then the user is prompted for a
-    password.  Neither the username nor the password may have spaces
-    in it.
-
-    The password is allowed to be there only if
-    ALLOW_RESOURCE_PASSWORDS is defined to a non-zero value.
-    */
-  char *user = 0, *pass = 0, *ptr;
-  char *buf = 0;
-  char cmdbuf[BUFSIZ], *response;
-  int retval;
-
-  if (app_resources.authenticator) {
-    buf = XtNewString(app_resources.authenticator);
-    
-    user = buf;
-
-    while (*user && isspace((unsigned char)*user))
-      user++;
-
-    user += sizeof("user/pass") - 1;
-
-    while (*user && isspace((unsigned char)*user))
-      user++;
-
-    if (! (ptr = strchr(user, '/')))
-      ptr = strchr(user, '\0');
-
-    while ((ptr > user) && isspace((unsigned char)*(ptr - 1)))
-      ptr--;
-
-    *ptr = '\0';
-
-#if ALLOW_RESOURCE_PASSWORDS
-    pass = app_resources.authenticator;
-    if ((pass = strchr(pass, '/')) && (pass = strchr(pass + 1, '/'))) {
-      pass++;
-      while (*pass && isspace((unsigned char)*pass))
-	pass++;
-      ptr = strchr(pass, '\0');
-      while ((ptr > pass) && isspace((unsigned char)*(ptr - 1)))
-	ptr--;
-      *ptr = '\0';
-      if (! *pass)
-	pass = 0;
-    }
-#endif /* ALLOW_RESOURCE_PASSWORDS */
-  }
-  
-  if (! (user && *user)) {
-    user = getUser();
-    if (! *user) {
-      retval = -1;
-      goto done;
-    }
-  }
-  else
-    user = XtNewString(user);
-
-  if (! pass)
-    if (authinfo_password)
-      pass = XtNewString(authinfo_password);
-    else {
-      if ((pass = PasswordBox(TopLevel, NNTP_PASSWORD_MSG)))
-	authinfo_password = XtNewString(pass);
-    }
-  else
-    pass = XtNewString(pass);
-
-  if (! pass) {
-    retval = -1;
-    goto done;
-  }
-
-  (void) sprintf(cmdbuf, "AUTHINFO USER %s", user);
-  put_server(cmdbuf);
-  response = get_data_from_server(True);
-  if (*response != CHAR_CONT) {
-    retval = -1;
-    goto done;
-  }
-
-  (void) sprintf(cmdbuf, "AUTHINFO PASS %s", pass);
-  put_server(cmdbuf);
-  response = get_data_from_server(True);
-  if (*response != CHAR_OK) {
-    if (authinfo_password) {
-      XtFree(authinfo_password);
-      authinfo_password = NULL;
-      retval = 1;
-    }
-    else
-      retval = -1;
-    goto done;
-  }
-
-  retval = 0;
-  
-done:
-  XtFree(buf);
-  XtFree(user);
-  XtFree(pass);
-  return retval;
+    return;
 }
 
 
-/*
-  Returns 0 on successful authentication, <0 if authentication failed
-  and can't be retried, or >0 if authentication failed and can be
-  retried.
-*/
-  
 static int authenticate _ARGUMENTS((void));
 
 static int
 authenticate() {
     extern FILE *ser_rd_fp, *ser_wr_fp;
-    char tmpbuf[BUFSIZ], cmdbuf[BUFSIZ];
+    char tmpbuf[BUFSIZ], cmdbuf[BUFSIZ], *authval, *p;
     char *authcmd;
     static int cookiefd = -1;
+    int builtinauth = 0;
 #ifdef USE_PUTENV
     static char *old_env = 0;
     char *new_env;
 #endif
-
-    if (wants_user_pass_authentication())
-      return user_pass_authentication();
 
     /* If we have authenticated before, NNTP_AUTH_FDS already
        exists, pull out the cookiefd. Just in case we've nested. */
@@ -342,12 +123,20 @@ authenticate() {
 	    return 1;
 	}
 	(void) unlink(tempfile);
-	utTempnamFree(tempfile);
 	cookiefd = fileno(f);
     }
 
     strcpy(tmpbuf, "AUTHINFO GENERIC ");
-    strcat(tmpbuf, app_resources.authenticator);
+    if ((authval = getenv("NNTPAUTH")) ||
+	    (authval = app_resources.authenticator)) {
+	strcat(tmpbuf, authval);
+    } else {
+	strcat(tmpbuf, "any ");
+	p = getUser();
+	strcat(tmpbuf, p);
+	XtFree(p);
+	builtinauth = 1;
+    }
     put_server(tmpbuf);
 
 #ifdef USE_PUTENV
@@ -363,43 +152,37 @@ authenticate() {
     setenv("NNTP_AUTH_FDS", tmpbuf, 1);
 #endif
 
-    sprintf(cmdbuf, app_resources.authenticatorCommand,
-	    app_resources.authenticator);
-    /* We have to assume that authentication can't be retried if this
-       fails, because there's no way for the authenticator command to
-       communicate to us whether it's safe to retry. */
-    return (system(cmdbuf) ? -1 : 0);
+    authcmd = app_resources.authenticatorCommand;
+
+    if (!builtinauth) {
+	sprintf(cmdbuf, authcmd, authval);
+	return (system(cmdbuf));
+    } else {
+	get_server(tmpbuf, sizeof(tmpbuf));
+	return (strncmp(tmpbuf, "281 ", 4));
+    }
 }
 
-static int check_authentication _ARGUMENTS((char *, char **));
-
-Boolean authentication_failure = False;
+static int check_authentication _ARGUMENTS((char *, char *, int));
 
 static int
-check_authentication(command, response)
-    char *command;   /* command to resend           */
-    char **response; /* response from the command   */
+check_authentication(command, response, size)
+    char *command;  /* command to resend           */
+    char *response; /* response from the command   */
+    int size;       /* size of the response buffer */
 {
-  int ret;
 
-  authentication_failure = False;
-  if (STREQN(*response, "480 ", 4)) {
-    if (((ret = authenticate()) < 0) ||
-	((ret > 0) && ! ehErrorRetryXRN(AUTH_FAILED_RETRY_MSG, False))) {
-      if (atoi(*response) != 502)
-	*response = "502 Authentication failed";
-      authentication_failure = True;
+    if (STREQN(response, "480 ", 4)) {
+	if (authenticate()) {
+	    strncpy(response, "502 Authentication failed", size);
+	    response[size-1] = '\0';
+	} else {
+	    put_server(command);
+	    get_data_from_server(response, size);
+	}
+	return (1);
     }
-    else if (ret > 0) {
-      ServerDown = True;
-      return(0);
-    } else {
-      put_server(command);
-      *response = get_data_from_server(True);
-    }
-    return (1);
-  }
-  return(0);
+    return(0);
 }
 
 
@@ -408,11 +191,12 @@ check_authentication(command, response)
  * request.
  */
 
-static void check_server_response _ARGUMENTS((char *, char **));
+static void check_server_response _ARGUMENTS((char *, char *, int));
 
-static void check_server_response(command, response)
-    char *command;   /* command to resend           */
-    char **response; /* response from the command   */
+static void check_server_response(command, response, size)
+    char *command;  /* command to resend           */
+    char *response; /* response from the command   */
+    int size;       /* size of the response buffer */
 {
     /*
      * try to recover from a timeout
@@ -421,22 +205,38 @@ static void check_server_response(command, response)
      *   since the error number (503) is used for more than just
      *   timeout
      *
-     *   Any response with error number 503 containing the string
-     *   "imeout" is treated as a timeout message.  We search for just
-     *   "imeout" rather than "timeout" so that "Timeout" is also
-     *   valid.  We also search for "Time Out".
+     *   Message is:
+     *     503 Timeout ...
      */
 
-    if (check_authentication(command, response))
+    int old = ActiveGroupsCount;
+
+    if (check_authentication(command, response, size))
       return;
 
-    if (ServerDown ||
-	((atoi(*response) == 503) && strstr(*response, "Time Out")) ||
-	((atoi(*response) == 503) && strstr(*response, "imeout"))) {
+    if (ServerDown || STREQN(response, "503 Timeout", 11)) {
 
 	mesgPane(XRN_SERIOUS, 0, LOST_CONNECT_ATTEMPT_RE_MSG);
-	start_server();
+	start_server(NIL(char));
 	mesgPane(XRN_INFO, 0, RECONNECTED_MSG);
+
+	/*
+	 * reissue the getactive command to update internal structures 
+	 *   XXX what happens if a new group comes up???
+	 *   XXX is the system in a state where resizing the article
+	 *       arrays will be okay???
+	 */
+
+	getactive();
+	
+	if (ActiveGroupsCount > old) {
+	    /* new newsgroups were found, allocate a bigger array */
+	    Newsrc = (struct newsgroup **) XtRealloc((char *) Newsrc, (unsigned) (sizeof(struct newsgroup *) * ActiveGroupsCount));
+	}
+
+#ifndef FIXED_ACTIVE_FILE
+	badActiveFileCheck();
+#endif
 
 	/*
 	 * if it was an ARTICLE or XHDR or HEAD command, then you must get the
@@ -454,416 +254,261 @@ static void check_server_response(command, response)
 	}
 	
 	put_server(command);
-	*response = get_data_from_server(True);
-        (void) check_authentication(command, response);
+	get_data_from_server(response, size);
+        (void) check_authentication(command, response, size);
     }
-
+    
     return;
 }
 
 /*
-  Fetch an article from the server into the "base_file" field of the
-  article structure for the article, unless the "fetch" argument is
-  false, in which case it will only return success if the article has
-  already previously been fetched.
-
-  If the article was fetched successfully, returns a positive number
-  and fills in the pointer to the fetched cache file structure.
-
-  If the article was unavailable, returns 0.  If there was an error
-  (e.g., disk full) fetching the article, returns a negative number.
-  In both of these cases, the contents of the cache file structure
-  pointer are undefined.
-    
-  Does not modify the data in the fetched article in any way, except
-  undoing double '.' characters at line beginnings.
-
-  The returned cache file is locked until unlocked by the caller. */
-static int get_base_article _ARGUMENTS((struct newsgroup *, art_num,
-					file_cache_file **, Boolean));
-
-static int get_base_article(
-			    _ANSIDECL(struct newsgroup *,	newsgroup),
-			    _ANSIDECL(art_num, 			artnum),
-			    _ANSIDECL(file_cache_file **,	ret_cache_file),
-			    _ANSIDECL(Boolean,			fetch)
-			    )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artnum)
-     _KNRDECL(file_cache_file **,	ret_cache_file)
-     _KNRDECL(Boolean,			fetch)
-{
-  struct article *art;
-  long start_time, end_time;
-  char command[BUFFER_SIZE], *message, *line, *cr WALL(= NULL);
-  int byteCount = 0, len;
-  file_cache_file *cache_file;
-  FILE *fp;
-  Boolean is_partial = False, was_partial, pending_cr = False;
-
-  art = artStructGet(newsgroup, artnum, True);
-
-  if (art->base_file && *art->base_file) {
-    file_cache_file_lock(FileCache, *art->base_file);
-    *ret_cache_file = art->base_file;
-    artStructSet(newsgroup, &art);
-    return 1;
-  }
-
-  if (! fetch) {
-    artStructSet(newsgroup, &art);
-    return 0;
-  }
-
-  CLEAR_BASE_FILE(art);
-
-  if (SETNEWSGROUP(newsgroup)) {
-    artStructSet(newsgroup, &art);
-    /* Should I indicate that the article is unavailable or that there
-       was an error fetching it?  I'm going to opt for the former,
-       although I'm not 100% convinced that's the right answer.  In
-       any case, this should almost never happen. */
-    return 0;
-  }
-
-  start_time = time(0);
-
-  cache_file = (file_cache_file *) XtMalloc(sizeof(*cache_file));
-
-  if (! (fp = file_cache_file_open(FileCache, cache_file))) {
-    sprintf(error_buffer, FILE_CACHE_OPEN_MSG, file_cache_dir_get(FileCache),
-	    errmsg(errno));
-    FREE(cache_file);
-    artStructSet(newsgroup, &art);
-    if (ehErrorRetryXRN(error_buffer, True))
-      return get_base_article(newsgroup, artnum, ret_cache_file, True);
-  }
-
-  do_chmod(fp, file_cache_file_name(FileCache, *cache_file), 0600);
-
-  (void) sprintf(command, "ARTICLE %ld", artnum);
-  put_server(command);
-  message = get_data_from_server(True);
-
-  check_server_response(command, &message);
-
-  if (*message != CHAR_OK) {
-    artStructSet(newsgroup, &art);
-    file_cache_file_destroy(FileCache, *cache_file);
-    FREE(cache_file);
-    return 0;
-  }
-
-  while (1) {
-    line = get_data_from_server(False);
-
-    was_partial = is_partial;
-
-    byteCount += (len = strlen(line));
-
-    is_partial = (len >= MAX_BUFFER_SIZE - 1);
-
-    if (!line[0] && ServerDown) {
-      /* error */
-      (void) fclose(fp);
-      file_cache_file_destroy(FileCache, *cache_file);
-      FREE(cache_file);
-      artStructSet(newsgroup, &art);
-      return 0;
-    }
-
-    if (!was_partial && line[0] == '.' && !line[1])
-      /* end of the article */
-      break;
-
-    if (was_partial && pending_cr && (line[0] != '\n') &&
-	(fputc('\r', fp) == EOF))
-      goto disk_full;
-
-    if ((pending_cr = (is_partial && (cr = strrchr(line, '\r')) && !cr[1])))
-      *cr = '\0';
-
-    if (!was_partial && line[0] == '.' && line[1] == '.')
-      line++;
-
-    if ((fputs(line, fp) == EOF) || (!is_partial && (fputc('\n', fp) == EOF))) {
-      /* disk full? */
-      while ((line = get_data_from_server(False)) &&
-	     (line[0] || !ServerDown) &&
-	     (was_partial || (line[0] != '.') || line[1]))
-	/* empty */;
-    disk_full:
-      (void) fclose(fp);
-    disk_full_closed:
-      file_cache_file_destroy(FileCache, *cache_file);
-      FREE(cache_file);
-      artStructSet(newsgroup, &art);
-      if (file_cache_free_space(FileCache, 1))
-	return get_base_article(newsgroup, artnum, ret_cache_file, True);
-      return -1;
-    }
-  }
-
-  end_time = time(0);
-
-  if (byteCount) {
-    long seconds = end_time - start_time;
-    double kilobytes = (double) byteCount / 1024.0;
-    double speed;
-
-    if (! seconds)
-      seconds = 1;
-
-    speed = kilobytes / (double) seconds;
-
-    if (speed >= (double) app_resources.prefetchMinSpeed)
-      FastServer = True;
-    else if (kilobytes > app_resources.prefetchMinSpeed)
-      FastServer = False;
-  }
-
-  if (fclose(fp) == EOF)
-    goto disk_full_closed;
-
-  if (! file_cache_file_close(FileCache, *cache_file)) {
-    file_cache_file_destroy(FileCache, *cache_file);
-    FREE(cache_file);
-    artStructSet(newsgroup, &art);
-    return -1;
-  }
-
-  *ret_cache_file = art->base_file = cache_file;
-  artStructSet(newsgroup, &art);
-
-  return 1;
-}
-  
-
-/*
- * retrieve article number 'artnumber' in the current group
+ * retrieve article number 'artnumber' in the current group, update structure
  *
- *   returns:  the cache file (locked) that the article is stored in
- *             or NIL(char) if the article is not avaiable
+ *   returns:  filename that the article is stored in or NIL(char) if
+ *             the article is not avaiable
+ *
  */
-file_cache_file *getarticle(newsgroup, artnumber, retposition, flags)
-     struct newsgroup *newsgroup;
-     art_num artnumber;  /* # of article in the current group to retrieve */
-     long *retposition;     /* if non-null, return parameter for byte position of
-			       header/body seperation       */
-     int flags;
+char * getarticle(newsgroup, artnumber, position, header, rotation, xlation)
+    struct newsgroup *newsgroup;
+    art_num artnumber;  /* # of article in the current group to retrieve */
+    long *position;     /* byte position of header/body seperation       */
+    int header, rotation, xlation;
 {
-  file_cache_file *base_cache_file, *cache_file;
-  int ret;
-  FILE *basefp, *articlefp;
-  static char *buf = NULL, *buf_base;
-  static int buf_size = 0;
-  char *buf_ptr, *ptr;
-  int byteCount = 0, lineCount = 0, error = 0;
-  Boolean found_sep = False, last_stripped = False;
-  static char *field = NULL;
-  static int field_size = 0;
-  long position WALL(= 0);
+    char command[MESSAGE_SIZE], message[MESSAGE_SIZE], *msg;
+#ifdef REALLY_USE_LOCALTIME
+    char temp[MESSAGE_SIZE];
+#endif
+    FILE *articlefp;
+    char *filename, *ptr;
+#ifdef VMS
+    char dummy[MAXPATHLEN];
+#endif
+    char field[BUFFER_SIZE];
+    int byteCount = 0, lineCount = 0;
+    int error = 0;
+    int last_stripped = 0;
 
-  if (SETNEWSGROUP(newsgroup))
-    return NULL;
+    *position = 0;
 
-  if ((ret = get_base_article(newsgroup, artnumber, &base_cache_file, True)) < 0) {
-  cache_error:
-    sprintf(error_buffer, FILE_CACHE_OPEN_MSG, file_cache_dir_get(FileCache),
-	    errmsg(errno));
-    if (ehErrorRetryXRN(error_buffer, True))
-      return getarticle(newsgroup, artnumber, retposition, flags);
-  }
-  else if (ret == 0) {
-    /* article is unavailable */
-    return NULL;
-  }
-
-  if (! (basefp = fopen(file_cache_file_name(FileCache, *base_cache_file),
-			"r"))) {
-    file_cache_file_unlock(FileCache, *base_cache_file);
-    goto cache_error;
-  }
-
-  cache_file = (file_cache_file *) XtMalloc(sizeof(*cache_file));
-
-  if (! (articlefp = file_cache_file_open(FileCache, cache_file))) {
-    (void) fclose(basefp);
-    FREE(cache_file);
-    file_cache_file_unlock(FileCache, *base_cache_file);
-    goto cache_error;
-  }
-
-  do_chmod(articlefp, file_cache_file_name(FileCache, *cache_file), 0600);
-
-  if (! buf) {
-    buf_base = buf = XtMalloc(BUFFER_SIZE);
-    buf_size = BUFFER_SIZE;
-  }
-
-  buf_ptr = buf;
-
-  while (fgets(buf_ptr, buf_size - (buf_ptr - buf), basefp)) {
-    if ((strlen(buf_ptr) == buf_size - (buf_ptr - buf) - 1) &&
-	(buf_ptr[buf_size - (buf_ptr - buf) - 2] != '\n')) {
-      buf_size *= 2;
-      buf_base = buf = XtRealloc(buf, buf_size);
-      buf_ptr = &buf[strlen(buf)];
-      continue;
+    if (SETNEWSGROUP(newsgroup)) {
+	return 0;
     }
 
-    buf_ptr = buf; /* for the next time around */
+    /* send ARTICLE */
+    (void) sprintf(command, "ARTICLE %ld", artnumber);
+    put_server(command);
+    get_data_from_server(message, sizeof(message));
 
-    /* find header/body separation */
-    if (! found_sep) {
-      if (*buf == '\n') {
-	position = byteCount;
-	found_sep = True;
-      }
+    check_server_response(command, message, sizeof(message));
+
+    if (*message != CHAR_OK) {
+	/* can't get article */
+	return(NIL(char));
     }
+
+#ifndef VMS
+    if ((filename = utTempnam(app_resources.tmpDir, "xrn")) == NIL(char)) {
+	mesgPane(XRN_SERIOUS, 0, CANT_TEMP_NAME_MSG);
+	/* read till end of article */
+	do {
+	    get_data_from_server(message, sizeof(message));
+	} while ((message[0] != '.') || (message[1] != '\0'));
+	return(NIL(char));
+    }
+#else
+    (void) sprintf(dummy, "%sxrn%ld-XXXXXX", app_resources.tmpDir, artnumber);
+    if ((filename = mktemp(dummy)) == NIL(char)) {
+	mesgPane(XRN_SERIOUS, 0, CANT_TEMP_NAME_MSG);
+	/* read till end of article */
+	do {
+	    get_data_from_server(message, sizeof(message));
+	} while ((message[0] != '.') || (message[1] != '\0'));
+	return(NIL(char));
+    }
+    filename = XtNewString(filename);
+#endif
+
+    if ((articlefp = fopen(filename, "w")) == NULL) {
+	mesgPane(XRN_SERIOUS, 0, CANT_CREATE_TEMP_MSG, filename, errmsg(errno));
+	/* read till end of article */
+	do {
+	    get_data_from_server(message, sizeof(message));
+	} while ((message[0] != '.') || (message[1] != '\0'));
+	FREE(filename);
+	return(NIL(char));
+    }
+
+    for (;;) {
+	get_data_from_server(message, sizeof(message));
+
+	/* the article is ended by a '.' on a line by itself */
+	if ((message[0] == '.') && (message[1] == '\0')) {
+	    /* check for a bogus message */
+	    if (byteCount == 0) {
+		(void) fclose(articlefp);
+		(void) unlink(filename);
+		FREE(filename);
+		return(NIL(char));
+	    }
+	    break;
+	}
+
+	msg = &message[0];
+
+	/* find header/body seperation */
+	if (*position == 0) {
+	    if (*msg == '\0') {
+		*position = byteCount;
+	    }
+	}
 	      
-    /* strip the headers */
-    if (!found_sep && !(flags & FULL_HEADER)) {
-      if ((*buf == ' ') || (*buf == '\t')) { /* continuation line */
-	if (last_stripped)
-	  continue;
-      }
-      else {
-	Boolean stripping = (app_resources.headerMode == STRIP_HEADERS);
-
-	if ((ptr = index(buf, ':')) == NIL(char))
-	  continue; /* weird header line, skip */
-	if (*(ptr+1) == '\0')
-	  continue; /* empty field, skip */
-	if (ptr - buf + 1 > field_size) {
-	  field_size = ptr - buf + 1;
-	  field = XtRealloc(field, field_size);
+	if (*msg == '.') {
+	    msg++;
 	}
-	(void) strncpy(field, buf, ptr - buf);
-	field[ptr - buf] = '\0';
-	utDowncase(field);
-	last_stripped = (avl_lookup(app_resources.headerTree, field, &ptr) ?
-			 (stripping ? True : False) :
-			 (stripping ? False : True));
-	if (last_stripped)
-	  continue;
-	if (app_resources.displayLocalTime && !strcmp(field, "date"))
-	  tconvert(buf+6, buf+6);
-      }
-    }
 
-    /* handle rotation of the article body */
-    if ((flags & ROTATED) && found_sep) {
-      for (ptr = buf; *ptr != '\0'; ptr++) {
-	if (((*ptr >= 'A') && (*ptr <= 'Z')) ||
-	    ((*ptr >= 'a') && (*ptr <= 'z'))) {
-	  if ((*ptr & 31) <= 13) {
-	    *ptr = *ptr + 13;
-	  } else {
-	    *ptr = *ptr - 13;
-	  }
-	}
-      }
-    }
+	if (*msg != '\0') {
+	    /* strip leading ^H */
+	    while (*msg == '\b') {
+		msg++;
+	    }
+	    /* strip '<character>^H' */
+	    for (ptr = index(msg + 1, '\b'); ptr != NIL(char); ptr = index(ptr, '\b')) {
+		if (ptr - 1 < msg) {
+		    /* too many backspaces, kill all leading back spaces */
+		    while (*ptr == '\b') {
+		        (void) strcpy(ptr, ptr + 1);
+			ptr++;
+		    }
+		    break;
+		}
+		(void) strcpy(ptr - 1, ptr + 1);
+		ptr--;
+	    }
+
+#ifdef REALLY_USE_LOCALTIME
+  	    if (app_resources.displayLocalTime && !strncmp(msg, "Date: ", 6)) {
+		  tconvert(temp, msg+6);
+		  (void) strcpy(msg+6, temp);
+	    }
+#endif
+	    /* strip the headers */
+	    if ((*position == 0) && (header == NORMAL_HEADER)) {
+		if ((*msg == ' ') || (*msg == '\t')) { /* continuation line */
+		    if (last_stripped)
+			continue;
+		}
+		else {
+		    if ((ptr = index(msg, ':')) == NIL(char)) {
+			continue; /* weird header line, skip */
+		    }
+		    if (*(ptr+1) == '\0') {
+			continue; /* empty field, skip */
+		    }
+		    (void) strncpy(field, msg, (int) (ptr - msg));
+		    field[(int) (ptr - msg)] = '\0';
+		    utDowncase(field);
+		    if (avl_lookup(app_resources.headerTree, field, &ptr)) {
+			if (app_resources.headerMode == STRIP_HEADERS) {
+			    last_stripped = 1;
+			    continue;
+			}
+			else
+			    last_stripped = 0;
+		    } else {
+			if (app_resources.headerMode == LEAVE_HEADERS) {
+			    last_stripped = 1;
+			    continue;
+			}
+			else
+			    last_stripped = 0;
+		    }
+		}
+	    }
+
+	    /* handle rotation of the article body */
+	    if ((rotation == ROTATED) && (*position != 0)) {
+		for (ptr = msg; *ptr != '\0'; ptr++) {
+		    if (isalpha(*ptr)) {
+			if ((*ptr & 31) <= 13) {
+			    *ptr = *ptr + 13;
+			} else {
+			    *ptr = *ptr - 13;
+			}
+		    }
+		}
+	    }
 
 #ifdef XLATE
-    /* handle translation of the article body */
-    if ((flags & XLATED) && found_sep)
-      /* I'm assuming here that utXlate() won't change the
-	 length of the string.  If that changes, a "len =
-	 strlen(buf)" line needs to be added after the
-	 "utXlate(buf)" call. */
-      utXlate(buf);
+	    /* handle translation of the article body */
+	    if ((xlation == XLATED) && (*position != 0))
+		utXlate(msg);
 #endif /* XLATE */
 
-    /* handle ^L (poorly?) */
-    if (found_sep && (flags & PAGEBREAKS) && (*buf == '\f')) {
-      int i, lines;
-      lines = server_page_height;
-      lines -= lineCount % lines;
-      for (i = 0; i < lines; i++) {
+	    /* handle ^L (poorly?) */
+	    if (*msg == '\014') {
+		int i, lines;
+		lines = articleLines();
+		lines -= lineCount % lines;
+		for (i = 0; i < lines; i++) {
+		    if (putc('\n', articlefp) == EOF) {
+			error++;
+			break;
+		    }
+		}
+		if (error) {
+		    break;
+		}
+		byteCount += lines;
+		lineCount += lines;
+		msg++;
+	    }
+	    if (fputs(msg, articlefp) == EOF) {
+		error++;
+		break;
+	    }
+	}
 	if (putc('\n', articlefp) == EOF) {
-	  error++;
-	  break;
+	    error++;
+	    break;
 	}
-      }
-      if (error)
-	break;
-      lineCount += lines;
-      byteCount += lines;
-      buf++;
+	byteCount += utStrlen(msg) + 1;
+	lineCount++;
     }
 
-    if (found_sep && (flags & BACKSPACES)) {
-      char *orig, *copy;
-
-      for (orig = copy = buf; *orig; orig++)
-	if (*orig == '\b') {
-	  if (copy > buf)
-	    copy--;
+    if (!error) {
+	if (fclose(articlefp) == 0) {
+	    return(filename);
 	}
-	else
-	  *copy++ = *orig;
-
-      *copy = '\0';
+    } else {
+	(void) fclose(articlefp);
+	/* read till end of article */
+	do {
+	    get_data_from_server(message, sizeof(message));
+	} while ((message[0] != '.') || (message[1] != '\0'));
     }
-
-    if (fputs(buf, articlefp) == EOF) {
-      error++;
-      break;
-    }
-
-    byteCount += strlen(buf);
-    lineCount++;
-    buf = buf_base;
-  }
-
-  (void) fclose(basefp);
-
-  if (!error) {
-    if ((fclose(articlefp) == 0) &&
-	file_cache_file_close(FileCache, *cache_file)) {
-      if (retposition)
-	*retposition = position;
-      file_cache_file_unlock(FileCache, *base_cache_file);
-      return(cache_file);
-    }
-  } else
-    (void) fclose(articlefp);
-
-  (void) sprintf(error_buffer, ERROR_WRITING_FILE_MSG,
-		 file_cache_file_name(FileCache, *cache_file),
-		 errmsg(errno));
-  file_cache_file_destroy(FileCache, *cache_file);
-  FREE(cache_file);
-  if (file_cache_free_space(FileCache, 1) || /* free up at least one article */
-      ehErrorRetryXRN(error_buffer, True))
-    return getarticle(newsgroup, artnumber, retposition, flags);
-  return(NULL);
+    mesgPane(XRN_SERIOUS, 0, ERROR_WRITING_FILE_MSG, filename, errmsg(errno));
+    (void) unlink(filename);
+    FREE(filename);
+    return(NIL(char));
 }
 
 /*
- * enter a new group and get its statistics
+ * enter a new group and get its statistics (and update the structure)
+ *   allocate an array for the articles and process the .newsrc article
+ *   info for this group
  *
  *   returns: NO_GROUP on failure, 0 on success
  *
- * When returning NO_GROUP, sets first, last and number to 0.
- * Only displays an error if "display_error" is True.
  */
-int getgroup(
-	     _ANSIDECL(struct newsgroup *,	newsgroup),
-	     _ANSIDECL(art_num *,		first),
-	     _ANSIDECL(art_num *,		last),
-	     _ANSIDECL(int *,			number),
-	     _ANSIDECL(Boolean,			display_error)
-	     )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num *,		first)
-     _KNRDECL(art_num *,		last)
-     _KNRDECL(int *,			number)
-     _KNRDECL(Boolean,			display_error)
+int getgroup(newsgroup, first, last, number)
+    struct newsgroup *newsgroup;     /* group name                 */
+    art_num *first; /* first article in the group */
+    art_num *last;  /* last article in the group  */
+    int *number;    /* number of articles in the group, if 0, first
+		       and last are bogus */
 {
-    char command[BUFFER_SIZE], *message;
+    char command[MESSAGE_SIZE], message[MESSAGE_SIZE];
+    char group[GROUP_NAME_SIZE];
     static long code, num, count, frst, lst;
 
     if (! newsgroup) {
@@ -878,49 +523,37 @@ int getgroup(
     if (newsgroup != currentNewsgroup) {
 	(void) sprintf(command, "GROUP %s", newsgroup->name);
 	put_server(command);
-	message = get_data_from_server(True);
+	get_data_from_server(message, sizeof(message));
 
-	check_server_response(command, &message);
+	check_server_response(command, message, sizeof(message));
     
 	if (*message != CHAR_OK) {
-	  int code = atoi(message);
+	    if (atoi(message) != ERR_NOGROUP) {
 
-	  if ((code == ERR_ACCESS) && ! authentication_failure) {
-	    if (display_error)
-	      mesgPane(XRN_SERIOUS, 0, GROUP_ACCESS_DENIED_MSG,
-		       newsgroup->name);
-	  }
-	  else if (code == ERR_NOGROUP) {
-	    if (display_error)
-	      mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_DELETED_MSG,
-		       newsgroup->name);
-	  }
-	  else {
-	    char *mybuf = XtMalloc(strlen(ERROR_REQUEST_FAILED_MSG) +
-				   strlen(command) +
-				   strlen(message));
-	    (void) sprintf(mybuf, ERROR_REQUEST_FAILED_MSG,
-			   command, message);
-	    ehErrorExitXRN(mybuf);
-	  }
-
-	  /* remove the group from active use ??? */
-
-	  if (number)
-	    *number = 0;
-	  if (first)
-	    *first = 0;
-	  if (last)
-	    *last = 0;
-
-	  return(NO_GROUP);
+		(void) strcat(mybuf, "        Request was: ");
+		(void) strcat(mybuf, command);
+		(void) strcat(mybuf, "\n");
+		(void) strcat(mybuf, "        Failing response was: ");
+		(void) strcat(mybuf, message);
+		ehErrorExitXRN(mybuf);
+	    }
+	    mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_DELETED_MSG, newsgroup->name);
+	
+	    /* remove the group from active use ??? */
+	
+	    return(NO_GROUP);
 	}
 
 	currentNewsgroup = newsgroup;
 
 	/* break up the message */
-	count = sscanf(message, "%ld %ld %ld %ld", &code, &num, &frst, &lst);
-	assert(count == 4);
+#if GROUP_NAME_SIZE <= 127
+	"GROUP_NAME_SIZE is too small" /* this will produce a compilation */
+	     /* error */
+#endif
+	count = sscanf(message, "%ld %ld %ld %ld %127s",
+		       &code, &num, &frst, &lst, group);
+	assert(count == 5);
     }
     
     if (number != NIL(int)) {
@@ -936,401 +569,31 @@ int getgroup(
     return(0);
 }
 
-#define NEWGROUPS_VARIABLE "newgroups_date"
-
-char *newgroupsDate()
-{
-    static char date_buf[18], *message, *ptr;
-    struct tm *curtime;
-#if defined(__osf__) || defined(__hpux)
-    time_t clock;
-#else
-    long clock;
-#endif
-
-    /*
-      First, try the "date" command.
-      */
-    put_server("DATE");
-    message = get_data_from_server(True);
-
-    check_server_response("DATE", &message);
-
-    if (*message == CHAR_INF) {
-	ptr = strchr(message, ' ');
-	assert(ptr);
-	while (*ptr == ' ')
-	    ptr++;
-
-	/* year */
-	(void) strncpy(date_buf, ptr + 2, 6);
-	date_buf[6] = ' ';
-	(void) strncpy(date_buf + 7, ptr + 8, 6);
-	(void) strcpy(date_buf + 13, " GMT");
-    } else {
-	clock = time(0);
-	curtime = gmtime(&clock);
-	assert(curtime);
-	(void) sprintf(date_buf, "%02d%02d%02d %02d%02d%02d GMT",
-		       curtime->tm_year % 100, curtime->tm_mon + 1,
-		       curtime->tm_mday, curtime->tm_hour, curtime->tm_min,
-		       curtime->tm_sec);
-    }
-
-    return date_buf;
-}
-
-/*
-  Unparse a newsgroup structure into an active file line.
-
-  The result is returned as a pointer to a static structure.  It does
-  not include a trailing newline.
-  */
-
-char *unparse_active_line(newsgroup)
-struct newsgroup *newsgroup;
-{
-  static char *line_buf = 0;
-  static int line_size = 0;
-  int this_size;
-  
-  if (! line_buf) {
-    line_size = 80; /* arbitrary starting size */
-    line_buf = XtMalloc(line_size);
-  }
-
-  this_size =
-    utStrlen(newsgroup->name) +	/* name */
-    1 +			  	/* space after it */
-    10 +			/* last article number */
-    1 +			  	/* space after it */
-    10 +			/* first article number */
-    1 +			  	/* space after it */
-    1 +			  	/* group type */
-    1;				/* null */
-
-  if (line_size < this_size) {
-    line_size = this_size;
-    line_buf = XtRealloc(line_buf, line_size);
-  }
-
-  (void) sprintf(line_buf, "%s %ld %ld %c", newsgroup->name,
-		 newsgroup->last, newsgroup->first,
-		 IS_POSTABLE(newsgroup) ?
-		 (IS_MODERATED(newsgroup) ? 'm' : 'y') : 'n');
-
-  return line_buf;
-}
-
-/*
-  Return true if the specified newsgroup is supposed to be ignored,
-  false otherwise.
-  */
-static Boolean is_ignored_newsgroup _ARGUMENTS((char *));
-
-static Boolean is_ignored_newsgroup(group)
-     char *group;
-{
-  static int inited = 0, ign_count, val_count;
-#ifdef POSIX_REGEX
-  static regex_t *ign_list, *val_list;
-#else
-  static char **ign_list, **val_list;
-#endif
-  int i;
-
-  if (! inited) {
-    val_list = parseRegexpList(app_resources.validNewsgroups,
-			      "validNewsgroups", &val_count);
-    ign_list = parseRegexpList(app_resources.ignoreNewsgroups,
-			      "ignoreNewsgroups", &ign_count);
-    inited++;
-  }
-
-  if (val_count) {
-    Boolean is_valid = False;
-
-    for (i = 0; i < val_count; i++) {
-      if (
-#ifdef POSIX_REGEX
-	  ! regexec(&val_list[i], group, 0, 0, 0)
-#else
-# ifdef SYSV_REGEX
-	  regex(val_list[i], group)
-# else
-	  ! re_comp(val_list[i]) && re_exec(group)
-# endif
-#endif
-	  ) {
-	is_valid = True;
-#ifdef DEBUG
-	fprintf(stderr, "is_ignored_newsgroup: %s matches valid list\n", group);
-#endif
-	break;
-      }
-    }
-
-    if (! is_valid) 
-      return True;
-  }
-
-  for (i = 0; i < ign_count; i++) {
-    if (
-#ifdef POSIX_REGEX
-	! regexec(&ign_list[i], group, 0, 0, 0)
-#else
-# ifdef SYSV_REGEX
-	regex(ign_list[i], group)
-# else
-	! re_comp(ign_list[i]) && re_exec(group)
-# endif
-#endif
-	) {
-#ifdef DEBUG
-	fprintf(stderr, "is_ignored_newsgroup: %s matches ignore list\n", group);
-#endif
-      return True;
-    }
-  }
-
-  return False;
-}
-
-  
-/*
-  Parse a line from an active file (NNTP LIST command output, local
-  spool active file, or active-file cache).
-  
-  Return ACTIVE_NEW if the line is successfully parsed and caused a
-  new active entry to be added, ACTIVE_OLD if it was parsed and
-  represented an already-existing entry, ACTIVE_IGNORED if it's
-  ignored for some unexceptional reason, ACTIVE_BOGUS if it was
-  ignored because it was badly formatted, ACTIVE_NEW if a new
-  newsgroup was added to the btree, and ACTIVE_OLD if an old newsgroup
-  in the btree was updated.
-
-  The value of from_cache is placed into the from_cache field of the
-  newsgroup structure, if a new one is created or if the existing one
-  is updated.
-
-  If the return pointer is non-null, the newsgroup structure (if any)
-  is filled into it.
-  */
-  
-int parse_active_line(
-		      _ANSIDECL(char *,			line),
-		      _ANSIDECL(unsigned char,		from_cache),
-		      _ANSIDECL(struct newsgroup **,	group_ptr)
-		      )
-     _KNRDECL(char *,			line)
-     _KNRDECL(unsigned char,		from_cache)
-     _KNRDECL(struct newsgroup **,	group_ptr)
-{
-  char *ptr, *ptr2, *group, type[BUFFER_SIZE];
-  art_num first, last;
-  struct newsgroup *newsgroup;
-  int ret;
-  /* We create the scanf_format dynamically so that we can put a field
-     width into it for the "type" field. */
-  static char *scanf_format = NULL;
-
-#define SCANF_FORMAT_FORMAT " %%ld %%ld %%%ds"
-  if (! scanf_format) {
-    /* Boy, this is astoundingly paranoid. */
-    assert(BUFFER_SIZE < 1000000000);
-    scanf_format = XtMalloc(sizeof(SCANF_FORMAT_FORMAT) + 10);
-    (void) sprintf(scanf_format, SCANF_FORMAT_FORMAT, BUFFER_SIZE);
-    memset(type, 0, sizeof(type));
-  }
-#undef SCANF_FORMAT_FORMAT
-
-  /* server returns: group last first y/m/x/j/=otherGroup */
-
-  /* Is it really necessary to skip leading spaces?  JIK 2/19/95 */
-  for ( ptr = line; *ptr == ' ';++ptr);	/* skip leading spaces */
-  ptr2 = index(ptr, ' ');
-  if (! ptr2)
-    return ACTIVE_BOGUS;
-  *ptr2 = '\0';
-  group = ptr;
-  type[sizeof(type)-1] = '\0';
-  if (sscanf(ptr2 + 1, scanf_format, &last, &first, type) != 3)
-    return ACTIVE_BOGUS;
-  /* I don't know how to deal with a line that is so long that it doesn't
-     fit in the type buffer.  This really should never happen! */
-  assert(! type[sizeof(type)-1]);
-
-  switch (type[0]) {
-  case 'x':
-  case 'j':
-  case '=':
-    return ACTIVE_IGNORED;
-  }
-
-#ifndef NO_BOGUS_GROUP_HACK
-  /* determine if the group name is screwed up - check for jerks who
-   * create group names like: alt.music.enya.puke.puke.pukeSender: 
-   * - note that there is a ':' in the name of the group... */
-
-  if (strpbrk(group, ":!, \n\t"))
-    return ACTIVE_IGNORED;
-
-#endif /* NO_BOGUS_GROUP_HACK */
-
-  if (is_ignored_newsgroup(group))
-    return ACTIVE_IGNORED;
-
-  if (first == 0) {
-    first = 1;
-  }
-
-  if (!avl_lookup(NewsGroupTable, group, &ptr)) {
-
-    /* no entry, create a new group */
-    newsgroup = ALLOC(struct newsgroup);
-    newsgroup->name = XtNewString(group);
-    newsgroup->newsrc = NOT_IN_NEWSRC;
-    newsgroup->status = 0;
-    SET_NOENTRY(newsgroup);
-    SET_UNSUB(newsgroup);
-    newsgroup->first = first;
-    newsgroup->last = last;
-    newsgroup->nglist = 0;
-    newsgroup->current = 0;
-    newsgroup->from_cache = from_cache;
-    newsgroup->fetch = 0;
-    newsgroup->thread_table = 0;
-    newsgroup->kill_file = 0;
-    if (art_sort_need_dates())
-      newsgroup->fetch |= FETCH_DATES;
-    if (art_sort_need_threads())
-      newsgroup->fetch |= FETCH_IDS | FETCH_REFS | FETCH_THREADS;
-    artListInit(newsgroup);
-
-    if (avl_insert(NewsGroupTable, newsgroup->name,
-		   (char *) newsgroup) < 0) {
-      ehErrorExitXRN(ERROR_OUT_OF_MEM_MSG);
-    }
-
-    ActiveGroupsCount++;
-
-    ret = ACTIVE_NEW;
-  } else {
-	    
-    /*
-     * entry exists, use it; must be a rescanning call
-     *
-     * just update the first and last values and adjust the
-     * articles array
-     */
-	    
-    newsgroup = (struct newsgroup *) ptr;
-
-    /*
-     * Only allow last to increase or stay the same.
-     * Otherwise, we run into trouble when the NNTP server
-     * returns something different in response to LIST than it
-     * returns in response to GROUP for the same group.
-     *
-     * Note that we want to enforce the same restriction on
-     * first, but we don't have to do that here since it's
-     * enforced by articleArrayResync.
-     */
-    if (IS_SUBSCRIBED(newsgroup) && last >= newsgroup->last) {
-      articleArrayResync(newsgroup, first, last, 1);
-      newsgroup->from_cache = from_cache;
-    }
-
-    ret = ACTIVE_OLD;
-  }
-
-  switch (type[0]) {
-  case 'y':
-    SET_POSTABLE(newsgroup);
-    SET_UNMODERATED(newsgroup);
-    break;
-
-  case 'm':
-    SET_POSTABLE(newsgroup);
-    SET_MODERATED(newsgroup);
-    break;
-
-  case 'n':
-    SET_UNPOSTABLE(newsgroup);
-    SET_UNMODERATED(newsgroup);
-    break;
-
-  default:
-    return ACTIVE_BOGUS;
-  }
-
-  if (group_ptr)
-    *group_ptr = newsgroup;
-  return ret;
-}
-
-
-Boolean verifyGroup(
-		    _ANSIDECL(char *,			group),
-		    _ANSIDECL(struct newsgroup **,	struct_ptr),
-		    _ANSIDECL(Boolean,			no_cache)
-		    )
-     _KNRDECL(char *,			group)
-     _KNRDECL(struct newsgroup **,	struct_ptr)
-     _KNRDECL(Boolean,			no_cache)
-{
-  char *ptr;
-  int ret;
-
-  if (! ((ret = avl_lookup(NewsGroupTable, group, &ptr)) || active_read ||
-	 no_cache || is_ignored_newsgroup(group))) {
-    mesgPane(XRN_SERIOUS, 0, MISSING_NG_LISTING_MSG, group);
-    getactive(False);
-    ret = avl_lookup(NewsGroupTable, group, &ptr);
-  }
-  if (ret) {
-    if (struct_ptr)
-      *struct_ptr = (struct newsgroup *) ptr;
-    return True;
-  }
-  else
-    return False;
-}
-
-int active_read = False;
-
 /*
  * get a list of all active newsgroups and create a structure for each one
  *
  *   returns: void
  */
-void getactive(
-	       _ANSIDECL(Boolean,	do_newgroups)
-	       )
-     _KNRDECL(Boolean,	do_newgroups)
+void getactive()
 {
-    char command[BUFFER_SIZE], *message;
-    char *newgroups_str = 0, *new_newgroups_str = 0;
-    char *newgroups_var = NEWGROUPS_VARIABLE;
-    char buf[LABEL_SIZE];
+    char command[MESSAGE_SIZE], message[MESSAGE_SIZE], group[GROUP_NAME_SIZE];
+    char type[MESSAGE_SIZE];
     struct newsgroup *newsgroup;
-    int ret;
+    art_num first, last;
+    char *ptr;
+    static char **re_list;
+    char **re_ptr;
+    static int inited = 0;
 
-    if (do_newgroups) {
-	newgroups_str = var_get_value(cache_variables, newgroups_var);
-	new_newgroups_str = newgroupsDate();
-	if (! newgroups_str) {
-	    var_set_value(&cache_variables, newgroups_var, new_newgroups_str);
-	    return;
-	}
-	(void) strcpy(buf, GETTING_NEWGROUPS_MSG);
+    if (! inited) {
+	re_list = parseRegexpList(app_resources.ignoreNewsgroups,
+				  "ignoreNewsgroups");
+	inited++;
     }
-    else
-	(void) strcpy(buf, GETTING_LIST_MSG);
 
-    infoNow(buf);
-
+#ifdef XRN_PREFETCH
     cancelPrefetch();
+#endif
     /*
      * It *is* necessary to reset currentNewsgroup to 0 when getactive
      * is called, even though the NNTP server does not forget its idea
@@ -1362,69 +625,179 @@ void getactive(
      * currentNewsgroup to 0.
      */
     currentNewsgroup = 0;
-    if (do_newgroups) {
-	(void) sprintf(command, "NEWGROUPS %s", newgroups_str);
-	XtFree(newgroups_str);
-    } else
-	(void) strcpy(command, "LIST");
+    (void) strcpy(command, "LIST");
     put_server(command);
-    message = get_data_from_server(True);
+    get_data_from_server(message, sizeof(message));
 
-    check_server_response(command, &message);
+    check_server_response(command, message, sizeof(message));
     
     if (*message != CHAR_OK) {
-      char *mybuf = XtMalloc(strlen(ERROR_REQUEST_FAILED_MSG) +
-			     strlen(command) + strlen(message));
-      (void) sprintf(mybuf, ERROR_REQUEST_FAILED_MSG, command, message);
-      ehErrorExitXRN(mybuf);
+	(void) strcat(mybuf, "        Request was: ");
+	(void) strcat(mybuf, command);
+	(void) strcat(mybuf, "\n");
+	(void) strcat(mybuf, "        Failing response was: ");
+	(void) strcat(mybuf, message);
+	ehErrorExitXRN(mybuf);
     }
 
     for (;;) {
-        message = get_data_from_server(True);
+	get_data_from_server(message, sizeof(message));
 	
 	/* the list is ended by a '.' at the beginning of a line */
-	if (message[0] == '.' && ! message[1]) {
+	if (*message == '.') {
 	    break;
 	}
 
-	switch (ret = parse_active_line(message, FALSE, &newsgroup)) {
-	case ACTIVE_IGNORED:
-	  break;
-	case ACTIVE_BOGUS:
-	  mesgPane(XRN_SERIOUS, 0, BOGUS_ACTIVE_ENTRY_MSG, message);
-	  break;
-	case ACTIVE_NEW:
-	  if (app_resources.fullNewsrc || do_newgroups)
-	    SET_NEW(newsgroup);
-	  break;
-	case ACTIVE_OLD:
-	  if (do_newgroups && IS_NOENTRY(newsgroup))
-	    SET_NEW(newsgroup);
-	  break;
+	/* server returns: group last first y/m/x/=otherGroup */
+
+	for ( ptr = message; *ptr == ' ';++ptr);	/* skip leading spaces */
+#if GROUP_NAME_SIZE <= 127
+	"GROUP_NAME_SIZE is too small" /* this will produce a compilation */
+	     			       /* error */
+#endif
+	if (sscanf(message, "%127s %ld %ld %s", group, &last, &first, type) != 4) {
+	    mesgPane(XRN_SERIOUS, 0, BOGUS_ACTIVE_ENTRY_MSG, message);
+	    continue;
+	}
+
+	if (type[0] == 'x') {
+	    /* bogus newsgroup, pay no attention to it */
+	    continue;
+	}
+
+	if (type[0] == '=') {
+	    /* This newsgroup doesn't exist, it's just an alias */
+	    continue;
+	}
+
+#ifndef NO_BOGUS_GROUP_HACK
+	/* determine if the group name is screwed up - check for jerks who
+	 * create group names like: alt.music.enya.puke.puke.pukeSender: 
+	 * - note that there is a ':' in the name of the group... */
+
+	if (strpbrk(group, ":!, \n\t")) {
+	    continue;
+	}
+
+#endif /* NO_BOGUS_GROUP_HACK */
+
+	for (re_ptr = re_list; re_ptr && *re_ptr; re_ptr++) {
+#ifdef SYSV_REGEX
+	    if (regex(*re_ptr, group))
+#else
+	    if ((! re_comp(*re_ptr)) && re_exec(group))
+#endif
+	    {
+#ifdef DEBUG
+		fprintf(stderr, "Ignoring %s.\n", group);
+#endif
+		break;
+	    }
+	}
+	if (re_ptr && *re_ptr) {
+	    continue;
+	}
+
+	if (first == 0) {
+	    first = 1;
+	}
+
+	if (!avl_lookup(NewsGroupTable, group, &ptr)) {
+
+	    /* no entry, create a new group */
+	    newsgroup = ALLOC(struct newsgroup);
+	    newsgroup->name = XtNewString(group);
+	    newsgroup->newsrc = NOT_IN_NEWSRC;
+	    newsgroup->status = NG_NOENTRY;
+	    newsgroup->first = first;
+	    newsgroup->last = last;
+	    newsgroup->max_killed = 0;
+	    newsgroup->nglist = 0;
+#ifdef notdef
+	    if (last >= first) {
+		    (void) fprintf(stderr,"allocate %d bytes for %d articles in %s\n", (newsgroup->last - newsgroup->first + 1) * sizeof (struct article),(newsgroup->last - newsgroup->first + 1), group);
+		newsgroup->articles = ARRAYALLOC(struct article, newsgroup->last - newsgroup->first + 1);
+		for (art = newsgroup->first; art <= newsgroup->last; art++) {
+		    long indx = INDEX(art);
+	
+		    newsgroup->articles[indx].subject = NIL(char);
+		    newsgroup->articles[indx].author = NIL(char);
+		    newsgroup->articles[indx].lines = NIL(char);
+		    newsgroup->articles[indx].filename = NIL(char);
+		    newsgroup->articles[indx].status = ART_CLEAR;
+		}
+	    } else {
+		newsgroup->articles = NIL(struct article);
+	    }
+#else
+		newsgroup->articles = NIL(struct article);
+#endif
+	    
+	    if (avl_insert(NewsGroupTable, newsgroup->name,
+			   (char *) newsgroup) < 0) {
+		 ehErrorExitXRN("out of memory");
+	    }
+
+	    ActiveGroupsCount++;
+	    
+	} else {
+	    
+	    /*
+	     * entry exists, use it; must be a rescanning call
+	     *
+	     * just update the first and last values and adjust the
+	     * articles array
+	     */
+	    
+	    newsgroup = (struct newsgroup *) ptr;
+
+	    /*
+	     * Only allow last to increase or stay the same.
+	     * Otherwise, we run into trouble when the NNTP server
+	     * returns something different in response to LIST than it
+	     * returns in response to GROUP for the same group.
+	     *
+	     * Note that we want to enforce the same restriction on
+	     * first, but we don't have to do that here since it's
+	     * enforced by articleArrayResync.
+	     */
+	    if (IS_SUBSCRIBED(newsgroup) && last >= newsgroup->last)
+		articleArrayResync(newsgroup, first, last, 1);
+	}
+	switch (type[0]) {
+	case 'y':
+#ifndef INN
+	case '=':
+#endif
+	    newsgroup->status |= NG_POSTABLE;
+	    newsgroup->status &= ~(NG_MODERATED|NG_UNPOSTABLE);
+	    break;
+
+	case 'm':
+	    newsgroup->status |= NG_MODERATED;
+	    newsgroup->status &= ~(NG_POSTABLE|NG_UNPOSTABLE);
+	    break;
+
+	case 'n':
+#ifdef INN
+	case '=':
+#endif
+	    newsgroup->status |= NG_UNPOSTABLE;
+	    newsgroup->status &= ~(NG_POSTABLE|NG_MODERATED);
+	    break;
+
 	default:
-	  mesgPane(XRN_SERIOUS, 0, UNKNOWN_FUNC_RESPONSE_MSG, ret,
-		   "parse_active_line", "getactive");
-	  break;
+	    /*
+	    fprintf(stderr, "unexpected type (%s) for newsgroup %s\n",
+		    type, newsgroup->name);
+	    */
+	    break;
 	}
     }
 
-    if (do_newgroups)
-	var_set_value(&cache_variables, newgroups_var, new_newgroups_str);
-    else
-      active_read++;
-
-    CHECKNEWSRCSIZE(ActiveGroupsCount);
-#ifndef FIXED_ACTIVE_FILE
-    badActiveFileCheck();
-#endif
-
-    (void) strcat(buf, " ");
-    (void) strcat(buf, DONE_MSG);
-    INFO(buf);
     return;
 }
 
-#ifndef FIXED_ACTIVE_FILE
 /*
  * check the case where the first and last article numbers are equal
  * - unfortunately, this means two different things:
@@ -1444,7 +817,7 @@ void badActiveFileCheck()
     /* check out first == last groups */
     gen = avl_init_gen(NewsGroupTable, AVL_FORWARD);
     if (! gen) {
-	 ehErrorExitXRN(ERROR_OUT_OF_MEM_MSG);
+	 ehErrorExitXRN("out of memory");
     }
 
     while (avl_gen(gen, &key, &value)) {
@@ -1454,7 +827,7 @@ void badActiveFileCheck()
 	    (newsgroup->first == newsgroup->last) &&
 	    (newsgroup->first != 0)) {
 
-	    if (! (getgroup(newsgroup, 0, 0, &number, True) || number)) {
+	    if (! (getgroup(newsgroup, 0, 0, &number) || number)) {
 		articleArrayResync(newsgroup, newsgroup->first, newsgroup->last, number);
 	    }
 	}
@@ -1463,10 +836,11 @@ void badActiveFileCheck()
 
     return;
 }
-#endif
 
 /*
  * initiate a connection to the news server
+ *
+ * nntpserver is the name of an alternate server (use the default if NULL)
  *
  * the server eventually used is remembered, so if this function is called
  * again (for restarting after a timeout), it will use it.
@@ -1474,51 +848,55 @@ void badActiveFileCheck()
  *   returns: void
  *
  */
-void start_server()
+void start_server(nntpserver)
+    char *nntpserver;
 {
     static char *server = NIL(char);   /* for restarting */
-    int response;
-    char buf[LABEL_SIZE+HOST_NAME_SIZE];
+    int response, connected;
 
     /* Make sure to close a previous server connection, e.g., to avoid
        file descriptor leaks. */
     close_server();
 
-    if (! server) {
-      server = nntpServer();
-      nntp_port = app_resources.nntpPort;
-    }
+    if (! server)
+	server = nntpserver;
+
+    if (! server)
+	server = getenv("NNTPSERVER");
+
+#ifdef INN
+    if (! server)
+	/* INN ignores the argument */
+	server = getserverbyfile("");
+#else
+# ifdef SERVER_FILE
+    if (! server)
+	server = getserverbyfile(SERVER_FILE);
+# endif
+#endif
 
     if (! server)
 	ehErrorExitXRN(NO_SERVER_MSG);
 
-    (void) sprintf(buf, CONNECTING_MSG, server);
-    infoNow(buf);
-
-    while (1) {
-      response = server_init(server);
-
-      if (response == OK_NOPOST)
-	PostingAllowed = False;
-      else if (response >= 0)
-	response = handle_server_response(response, server);
-      if ((response >= 0) &&
-	  !(app_resources.authenticateOnConnect && authenticate()))
-	break;
-      stop_server();
-      (void) sprintf(buf, FAILED_CONNECT_MSG, server);
-      if (! ehErrorRetryXRN(buf, False)) {
-	while (! updatenewsrc())
-	  (void) ehErrorRetryXRN(ERROR_CANT_UPDATE_NEWSRC_MSG, True);
-	ehErrorExitXRN(0);
-      }
-    }
-
-    (void) sprintf(buf, CONNECTING_MSG, server);
-    (void) strcat(buf, " ");
-    (void) strcat(buf, DONE_MSG);
-    INFO(buf);
-
+    do {
+	if ((response = server_init(server)) < 0) {
+	    connected = 0;
+	    mesgPane(XRN_SERIOUS, 0, FAILED_RECONNECT_MSG, "server_init");
+ 	    xthHandleAllPendingEvents();
+	    sleep(60);
+	    continue;
+	}
+	if (handle_server_response(response, server) < 0) {
+	    connected = 0;
+	    stop_server();
+	    mesgPane(XRN_SERIOUS, 0, FAILED_RECONNECT_MSG, "handle_response");
+ 	    xthHandleAllPendingEvents();
+	    sleep(60);
+	    continue;
+	}
+	connected = 1;
+    } while (!connected);
+    
     return;
 }
 
@@ -1533,602 +911,412 @@ void stop_server()
 }
 
 
-/* Which header fields can't be fetched with XHDR? */
-#ifdef NO_XHDR_NEWSGROUPS
-static fetch_flag_t no_xhdr_fields = FETCH_NEWSGROUPS;
-#else
-static fetch_flag_t no_xhdr_fields = 0;
-#endif
+/*
+ * Calculate the number of digits in an integer.  Sure, I could use a
+ * logarithm function, but that would require relying on a sane math
+ * library on all systems.  The technique used in this function is
+ * gross, but what the heck, it works.
+ */
+static int digits _ARGUMENTS((long int));
 
-/* Which header fields *can* be fetched with XHDR? */
-static fetch_flag_t xhdr_fields = 0;
+static int digits(num)
+    long int num;
+{
+    char int_buf[20]; /* An article number longer than twenty digits?
+			 I'll be dead by then! */
+
+    (void) sprintf(int_buf, "%ld", num);
+    return(strlen(int_buf));
+}
 
 
 /*
- * Get a list of lines for a particular field for the specified group in
- * the range 'first' to 'last'.
+ * get a list of subject lines for the current group in the range
+ *  'first' to 'last'
  *
- * "fixfunction" is a function which takes a newsgroup, an article
- * number and a string and returns a new, allocated string to actually
- * assign to the field.
+ *   returns: True if it's done, False to keep going
  *
- * "field_bit", is the prefetch field bit, if any, for this field.  It
- * is used to keep track of which fields the server can't handle XHDR
- * requests for.
- * 
- * "offset" is the offset of the field's pointer in a article
- * structure.
- * 
- * Returns: True if it's done, False to keep going.
+ * Note that XHDR is not part of the rfc977 standard, but is implemented
+ * by the Berkeley NNTP server
+ *
  */
-typedef char * (*_fixfunction) _ARGUMENTS((struct newsgroup *, art_num, char *));
-
-static Boolean getlist _ARGUMENTS((struct newsgroup *, art_num, art_num,
-				   Boolean, int *, char *, fetch_flag_t, unsigned,
-				   _fixfunction, unsigned, Boolean));
-
-static Boolean getlist(
-		       _ANSIDECL(struct newsgroup *,	newsgroup),
-		       _ANSIDECL(art_num,		artfirst),
-		       _ANSIDECL(art_num,		artlast),
-		       _ANSIDECL(Boolean,		unreadonly),
-		       _ANSIDECL(int *,			max),
-		       _ANSIDECL(char *,		field),
-		       _ANSIDECL(fetch_flag_t,		field_bit),
-		       _ANSIDECL(unsigned,		offset),
-		       _ANSIDECL(_fixfunction, 		fixfunction),
-		       _ANSIDECL(unsigned,		fixed_offset),
-		       _ANSIDECL(Boolean,		required)
-		       )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artfirst)
-     _KNRDECL(art_num,			artlast)
-     _KNRDECL(Boolean,			unreadonly)
-     _KNRDECL(int *,			max)
-     _KNRDECL(char *,			field)
-     _KNRDECL(fetch_flag_t,		field_bit)
-     _KNRDECL(unsigned,			offset)
-     _KNRDECL(_fixfunction, 		fixfunction)
-     _KNRDECL(unsigned,			fixed_offset)
-     _KNRDECL(Boolean,			required)
-{
-  char command[BUFFER_SIZE], *message;
-  char *line, *ptr;
-  art_num number;
-  art_num first, last;
-  int count = 0;
-  struct article *art;
-  int pane_name = newMesgPaneName();
-  Boolean trying_again = False;
-
-  if (SETNEWSGROUP(newsgroup))
-    return True;
-  artListSet(newsgroup);
-
-  first = artfirst;
-  while ((first <= artlast) && ((! max) || (count < *max))) {
-    art_num sub_count;
-
-    art = artStructGet(newsgroup, first, False);
-    if (((offset != (unsigned)-1) && *(char **)((char *) art + offset)) ||
-	(fixfunction && *(char **)((char *) art + fixed_offset)) ||
-	(unreadonly && IS_READ(art)) ||
-	IS_UNAVAIL(art)) {
-      first++;
-      ART_STRUCT_UNLOCK;
-      continue;
-    }
-    ART_STRUCT_UNLOCK;
-
-    for (sub_count = 1, last = first + 1; last <= artlast; last++) {
-      art = artStructGet(newsgroup, last, False);
-      if (((offset != (unsigned)-1) && *(char **)((char *) art + offset)) ||
-	  (fixfunction && *(char **)((char *) art + fixed_offset)) ||
-	  (unreadonly && IS_READ(art)) ||
-	  (max && ((count + sub_count) >= *max))) {
-	ART_STRUCT_UNLOCK;
-	break;
-      }
-      if (max && IS_AVAIL(art))
-	sub_count++;
-      ART_STRUCT_UNLOCK;
-    }
-    last--;
-
-  try_again:
-    if (trying_again || (newsgroup->fetch & no_xhdr_fields)) {
-      for (number = first; number <= last; number++) {
-	art = artStructGet(newsgroup, number, False);
-	if (IS_UNAVAIL(art) || (unreadonly && IS_READ(art))) {
-	  ART_STRUCT_UNLOCK;
-	  continue;
-	}
-	ART_STRUCT_UNLOCK;
-	get_article_headers(newsgroup, number);
-	art = artStructGet(newsgroup, number, True);
-	if (art->headers && avl_lookup(art->headers, field, &line)) {
-	  if (trying_again)
-	    no_xhdr_fields |= field_bit;
-	  if (offset != (unsigned)-1)
-	    *(char **)((char *)art + offset) =
-	      XtNewString(line);
-	  if (fixfunction)
-	    *(char **)((char *) art + fixed_offset) =
-	      (*fixfunction)(newsgroup, number, line);
-	}
-	artStructSet(newsgroup, &art);
-      }
-    }
-    else {
-      (void) sprintf(command, "XHDR %s %ld-%ld", field, first, last);
-      put_server(command);
-      message = get_data_from_server(True);
-
-      check_server_response(command, &message);
-
-      /* check for errors */
-      if (*message != CHAR_OK) {
-	if (field_bit) {
-	  no_xhdr_fields |= field_bit;
-	  goto try_again;
-	}
-	mesgPane(XRN_SERIOUS, pane_name, XHDR_ERROR_MSG);
-	return True;
-      }
-
-      for(;;) {
-	message = get_data_from_server(True);
-	if (*message == '.') {
-	  break;
-	}
-
-	/*
-	  The brilliant folks at Microsoft have decided that it's OK for
-	  XHDR to return multi-line header fields as multiple lines in
-	  the XHDR response, even though that's never been done by any
-	  other NNTP server and it's different from what XOVER does.
-	  It's really annoying how they invent standards like this.  For
-	  the time being, I'm going to assume that someone is going to
-	  show them the error of their ways and get them to fix their
-	  server, so I'm going to ignore the bogus output for now
-	  instead of actually trying to handle it.  If they manage to
-	  browbeat the world into doing things their way, as they so
-	  often do, I'll consider at some point in the future adding
-	  support for multi-line XHDR field response.  Grr.
-	  - jik 12/16/97
-	*/
-	if (isspace((unsigned char)*message))
-	  continue;
-
-	count++;
-
-	/*
-	 * message is of the form:
-	 *
-	 *    Number value
-	 *
-	 * must get the number since not all articles will be returned
-	 */
-
-	number = atol(message);
-	line = index(message, ' ');
-	if (! (number && line)) {
-	  mesgPane(XRN_SERIOUS, pane_name, MALFORMED_XHDR_RESPONSE_MSG,
-		   command, message);
-	  /* Let's hope that even though the server is sending us bogus
-	     data, it'll eventually sent a correct ".\r\n" line to
-	     terminate the output of the command. */
-	  continue;
-	}
-
-	/*
-	  Strip leading and trailing spaces.
-	*/
-	while (*line && isspace((unsigned char)*line))
-	  line++;
-	for (ptr = strchr(line, '\0') - 1; (ptr >= line) &&
-	       isspace((unsigned char)*ptr);
-	     *ptr-- = '\0') /* empty */;
-	if (!required && (strcmp(line, "(none)") == 0))
-	  continue;
-
-	xhdr_fields |= field_bit;
-	art = artStructGet(newsgroup, number, True);
-	if (offset != (unsigned)-1)
-	  *(char **)((char *)art + offset) =
-	    XtNewString(line);
-	if (fixfunction)
-	  *(char **)((char *) art + fixed_offset) =
-	    (*fixfunction)(newsgroup, number, line);
-	artStructSet(newsgroup, &art);
-      }
-
-      /* This is really hideous.  The problem is that with some NNTP
-	 server implementations, if you send an XHDR request for a
-	 field for which they don't support XHDR, instead of giving
-	 you an error code indicating that they don't support XHDR,
-	 instead they just giveyou a list of article numbers with
-	 (none) for each of them.  Therefore, if we've just tried to
-	 retrieve a particular header from a set of articles and we
-	 didn't find that header in *any* of them, there's a chance
-	 that the problem is actually that the NNTP server doesn't
-	 support XHDR on that header, rather than that the header
-	 doesn't exist in the articles.  So we need to try using HEAD
-	 instead of XHDR.  If we succeed, then the bit gets added to
-	 no_xhdr_fields and we'll know to do it automatically in the
-	 future. */
-      if (field_bit && ! (xhdr_fields & field_bit)) {
-	trying_again = True;
-	goto try_again;
-      }
-    }
-
-    for (number = first; number <= last; number++) {
-      struct article copy;
-      Boolean changed = False;
-
-      art = artStructGet(newsgroup, number, False);
-      copy = *art;
-      if ((offset != (unsigned)-1) && ! *(char **)((char *) art + offset)) {
-	if (required)
-	  goto unavail;
-	else {
-	  *(char **)((char *)&copy + offset) = XtNewString("");
-	  changed = True;
-	}
-      }
-      if (fixfunction && ! *(char **)((char *)art + fixed_offset)) {
-	if (required)
-	  goto unavail;
-	else {
-	  *(char **)((char *)&copy + fixed_offset) = XtNewString("");
-	  changed = True;
-	}
-      }
-      if (changed)
-	artStructReplace(newsgroup, &art, &copy, number);
-      else
-	ART_STRUCT_UNLOCK;
-      continue;
-    unavail:
-      CLEAR_ALL_NO_FREE(&copy);
-      SET_UNAVAIL(&copy);
-      artStructReplace(newsgroup, &art, &copy, number);
-    }
-    first = last + 1;
-
-    if (max)
-      break;
-  }
-  if (first > artlast) {
-    return True;
-  }
-  else {
-    *max = count;
-    return False;
-  }
-}
-
-Boolean getsubjectlist(
-		       _ANSIDECL(struct newsgroup *,	newsgroup),
-		       _ANSIDECL(art_num,		artfirst),
-		       _ANSIDECL(art_num,		artlast),
-		       _ANSIDECL(Boolean,		unreadonly),
-		       _ANSIDECL(int *,			max)
-		       )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artfirst)
-     _KNRDECL(art_num,			artlast)
-     _KNRDECL(Boolean,			unreadonly)
-     _KNRDECL(int *,			max)
-{
-    struct article foo;
-    unsigned offset;
-
-    offset = (char *)&foo.subject - (char *)&foo;
-
-    return getlist(newsgroup, artfirst, artlast, unreadonly, max,
-		   "subject", 0, offset, 0, 0, True);
-}
-
-Boolean getnewsgroupslist(
-			  _ANSIDECL(struct newsgroup *,	newsgroup),
-			  _ANSIDECL(art_num,		artfirst),
-			  _ANSIDECL(art_num,		artlast),
-			  _ANSIDECL(Boolean,		unreadonly),
-			  _ANSIDECL(int *,		max)
-			  )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artfirst)
-     _KNRDECL(art_num,			artlast)
-     _KNRDECL(Boolean,			unreadonly)
-     _KNRDECL(int *,			max)
-{
-    struct article foo;
-    unsigned offset;
-
-    offset = (char *)&foo.newsgroups - (char *)&foo;
-
-    return getlist(newsgroup, artfirst, artlast, unreadonly, max,
-		   "newsgroups", FETCH_NEWSGROUPS, offset, 0, 0, True);
-}
-
-Boolean getxreflist(
-		    _ANSIDECL(struct newsgroup *,	newsgroup),
-		    _ANSIDECL(art_num,			artfirst),
-		    _ANSIDECL(art_num,			artlast),
-		    _ANSIDECL(Boolean,			unreadonly),
-		    _ANSIDECL(int *,			max)
-		    )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artfirst)
-     _KNRDECL(art_num,			artlast)
-     _KNRDECL(Boolean,			unreadonly)
-     _KNRDECL(int *,			max)
-{
-    struct article foo;
-    unsigned offset;
-
-    offset = (char *)&foo.xref - (char *)&foo;
-
-    return getlist(newsgroup, artfirst, artlast, unreadonly, max,
-		   "xref", FETCH_XREF, offset, 0, 0, False);
-}
-
-Boolean getapprovedlist(
-		    _ANSIDECL(struct newsgroup *,	newsgroup),
-		    _ANSIDECL(art_num,			artfirst),
-		    _ANSIDECL(art_num,			artlast),
-		    _ANSIDECL(Boolean,			unreadonly),
-		    _ANSIDECL(int *,			max)
-		    )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artfirst)
-     _KNRDECL(art_num,			artlast)
-     _KNRDECL(Boolean,			unreadonly)
-     _KNRDECL(int *,			max)
-{
-    struct article foo;
-    unsigned offset;
-
-    offset = (char *)&foo.approved - (char *)&foo;
-
-    return getlist(newsgroup, artfirst, artlast, unreadonly, max,
-		   "approved", FETCH_APPROVED, offset, 0, 0, False);
-}
-
-Boolean getdatelist(
-		    _ANSIDECL(struct newsgroup *,	newsgroup),
-		    _ANSIDECL(art_num,			artfirst),
-		    _ANSIDECL(art_num,			artlast),
-		    _ANSIDECL(Boolean,			unreadonly),
-		    _ANSIDECL(int *,			max)
-		    )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artfirst)
-     _KNRDECL(art_num,			artlast)
-     _KNRDECL(Boolean,			unreadonly)
-     _KNRDECL(int *,			max)
-{
-    struct article foo;
-    unsigned offset;
-
-    offset = (char *)&foo.date - (char *)&foo;
-
-    return getlist(newsgroup, artfirst, artlast, unreadonly, max,
-		   "date", FETCH_DATES, offset, 0, 0, True);
-}
-
-Boolean getidlist(
-		  _ANSIDECL(struct newsgroup *,	newsgroup),
-		  _ANSIDECL(art_num,		artfirst),
-		  _ANSIDECL(art_num,		artlast),
-		  _ANSIDECL(Boolean,		unreadonly),
-		  _ANSIDECL(int *,		max)
-		  )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artfirst)
-     _KNRDECL(art_num,			artlast)
-     _KNRDECL(Boolean,			unreadonly)
-     _KNRDECL(int *,			max)
-{
-    struct article foo;
-    unsigned offset;
-
-    offset = (char *)&foo.id - (char *)&foo;
-
-    return getlist(newsgroup, artfirst, artlast, unreadonly, max,
-		   "message-id", FETCH_IDS, offset, 0, 0, True);
-}
-
-Boolean getreflist(
-		   _ANSIDECL(struct newsgroup *,	newsgroup),
-		   _ANSIDECL(art_num,			artfirst),
-		   _ANSIDECL(art_num,			artlast),
-		   _ANSIDECL(Boolean,			unreadonly),
-		   _ANSIDECL(int *,			max)
-		   )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artfirst)
-     _KNRDECL(art_num,			artlast)
-     _KNRDECL(Boolean,			unreadonly)
-     _KNRDECL(int *,			max)
-{
-    struct article foo;
-    unsigned offset;
-
-    offset = (char *)&foo.references - (char *)&foo;
-
-    return getlist(newsgroup, artfirst, artlast, unreadonly, max,
-		   "references", FETCH_REFS, offset, 0, 0, False);
-}
-
-static char *authorFixFunction(newsgroup, artnum, message)
+Boolean getsubjectlist(newsgroup, artfirst, artlast, unreadonly, max)
     struct newsgroup *newsgroup;
-    art_num artnum;
-    char *message;
+    art_num artfirst;
+    art_num artlast;
+    Boolean unreadonly;
+    int max;
 {
-    char *author = message, *brackbeg, *brackend, *end;
-    char authbuf[BUFFER_SIZE];
+    char command[MESSAGE_SIZE], message[MESSAGE_SIZE], buffer[MESSAGE_SIZE];
+    char *subjectline;
+    long number;
+    long first, last;
+    int num_column;
+    int count = 0;
 
-    (void) strcpy(authbuf, author);
+    if (SETNEWSGROUP(newsgroup)) {
+	return True;
+    }
 
-    if (app_resources.authorFullName) {
-	/* Can be made fancyer at the expence of extra cpu time */
+    first = artfirst;
+    num_column = digits(newsgroup->last);
+    while ((first <= artlast) && ((! max) || (count < max))) {
+	if (newsgroup->articles[INDEX(first)].subject != NIL(char) ||
+	    (unreadonly && IS_READ(newsgroup->articles[INDEX(first)])) ||
+	    IS_UNAVAIL(newsgroup->articles[INDEX(first)])) {
+	     first++;
+	     continue;
+	}
 
-	/* First check for case 1, user@domain ("name") -> name */
+	for (last = first + 1; last <= artlast; last++) {
+	    if (newsgroup->articles[INDEX(last)].subject != NIL(char) ||
+		(unreadonly && IS_READ(newsgroup->articles[INDEX(last)])) ||
+		IS_UNAVAIL(newsgroup->articles[INDEX(last)]) ||
+		(max && ((count + (last - first)) >= max))) {
+		break;
+	    }
+	}
+	last--;
 
-	brackbeg = index(message, '(');
-	brackend = index(message, '\0') - sizeof(char);
-	/* brackend now points at the last ')' if this is case 1 */
-	if (brackbeg != NIL(char) && (brackend > brackbeg) &&
-	    (*brackend == ')')) {
-	    author = brackbeg + sizeof(char);
+	(void) sprintf(command, "XHDR subject %ld-%ld", first, last);
+	put_server(command);
+	get_data_from_server(message, sizeof(message));
 
-	    /* Remove surrounding quotes ? */
-	    if ((*author == '"') && (*(brackend - sizeof(char)) == '"')) {
-		author++;
-		brackend--;
+	check_server_response(command, message, sizeof(message));
+
+	/* check for errors */
+	if (*message != CHAR_OK) {
+	    mesgPane(XRN_SERIOUS, 0, XHDR_ERROR_MSG);
+	    return True;
+	}
+
+	for(;;) {
+
+	    get_data_from_server(message, sizeof(message));
+	    
+	    if (*message == '.') {
+		break;
 	    }
 
-	    /* Rather strip trailing spaces here */
+	    count++;
 
-	    *brackend = '\0';
-	} else {
-	    /* Check for case 2, "name" <user@domain> -> name */
-	    brackbeg = index(message, '<');
-	    if (brackbeg != NIL(char) && (index(brackbeg, '>') != NIL(char))
-		&& (brackbeg > message)) {
-		while ((brackbeg > message) && (*--brackbeg == ' '))
-		    ;
+	    /*
+	     * message is of the form:
+	     *
+	     *    Number SubjectLine
+	     *
+	     *    203 Re: Gnumacs Bindings
+	     *
+	     * must get the number since not all subjects will be returned
+	     */
 
-		/* Remove surrounding quotes ? */
-		if ((*brackbeg == '"') && (*author ==  '"')) {
-		    *brackbeg = '\0';
-		    author++;
+	    number = atol(message);
+	    subjectline = index(message, ' ');
+	    (void) sprintf(buffer, "  %*ld %s", num_column,
+			   number, ++subjectline);
+
+	    newsgroup->articles[INDEX(number)].subject = XtNewString(buffer);
+	}
+	for (number = first; number <= last; number++)
+	    if (! newsgroup->articles[INDEX(number)].subject)
+		SET_UNAVAIL(newsgroup->articles[INDEX(number)]);
+	first = last + 1;
+    }
+    return (first > artlast) ? True : False;
+}
+
+/*
+ * get a list of author lines for the current group in the range
+ *  'first' to 'last'
+ *
+ *   returns: True if it's done, False to keep going
+ *
+ * Note that XHDR is not part of the rfc977 standard, but is implemented
+ * by the Berkeley NNTP server
+ *
+ */
+Boolean getauthorlist(newsgroup, artfirst, artlast, unreadonly, max)
+    struct newsgroup *newsgroup;
+    art_num artfirst;
+    art_num artlast;
+    Boolean unreadonly;
+    int max;
+{
+    char command[MESSAGE_SIZE], message[MESSAGE_SIZE];
+    char *author, *end, *brackbeg, *brackend;
+    long number;
+    long first, last;
+    int count = 0;
+
+    if (SETNEWSGROUP(newsgroup)) {
+	return True;
+    }
+
+    first = artfirst;
+    while ((first <= artlast) && ((! max) || (count < max))) {
+	if (newsgroup->articles[INDEX(first)].author != NIL(char) ||
+	    (unreadonly && IS_READ(newsgroup->articles[INDEX(first)])) ||
+	    IS_UNAVAIL(newsgroup->articles[INDEX(first)])) {
+	     first++;
+	     continue;
+	}
+
+	for (last = first + 1; last <= artlast; last++) {
+	    if (newsgroup->articles[INDEX(last)].author != NIL(char) ||
+		(unreadonly && IS_READ(newsgroup->articles[INDEX(last)])) ||
+		IS_UNAVAIL(newsgroup->articles[INDEX(last)]) ||
+		(max && ((count + (last - first)) >= max))) {
+		break;
+	    }
+	}
+	last--;
+
+	(void) sprintf(command, "XHDR from %ld-%ld", first, last);
+	put_server(command);
+	get_data_from_server(message, sizeof(message));
+
+	check_server_response(command, message, sizeof(message));
+
+	/* check for errors */
+	if (*message != CHAR_OK) {
+	    mesgPane(XRN_SERIOUS, 0, XHDR_ERROR_MSG);
+	    return True;
+	}
+	
+	for(;;) {
+
+	    get_data_from_server(message, sizeof(message));
+	    
+	    if (*message == '.') {
+		break;
+	    }
+
+	    count++;
+
+	    /*
+	     * message is of the form:
+	     *
+	     *    Number Author
+	     *
+	     *    201 ricks@shambhala (Rick L. Spickelmier)
+	     *    202 Jens Thommasen <jens@ifi.uio.no>
+	     *    203 <oea@ifi.uio.no>
+	     *    302 "Rein Tollevik" <rein@ifi.uio.no>
+	     *
+	     * must get the number since not all authors will be returned
+	     */
+
+	    number = atol(message);
+	    if (app_resources.authorFullName) {
+		/* Can be made fancyer at the expence of extra cpu time */
+		author = index(message, ' ');
+		assert(author != NIL(char));
+		author++;
+
+		/* First check for case 1, user@domain ("name") -> name */
+
+		brackbeg = index(message, '(');
+		brackend = index(message, '\0') - sizeof(char);
+		/* brackend now points at the last ')' if this is case 1 */
+		if (brackbeg != NIL(char) && (brackend > brackbeg) &&
+		    (*brackend == ')')) {
+		    author = brackbeg + sizeof(char);
+
+		    /* Remove surrounding quotes ? */
+		    if ((*author == '"') && (*(brackend - sizeof(char)) == '"')) {
+		      author++;
+		      brackend--;
+		    }
 
 		    /* Rather strip trailing spaces here */
 
-		} else {
-		    *++brackbeg = '\0';
-		}
-	    } else {
-
-		/* 
-		 * Check for case 3, <user@domain> -> usr@domain
-		 *
-		 * Don't need to do this again:
-		 * brackbeg = index(message, '<');
-		 */
-
-		brackend = index(message, '>');
-		if ((author == brackbeg) && (brackend != NIL(char))) {
-		    author++;
 		    *brackend = '\0';
 		} else {
+		    /* Check for case 2, "name" <user@domain> -> name */
+		    brackbeg = index(message, '<');
+		    if (brackbeg != NIL(char) && (index(brackbeg, '>') != NIL(char))
+			&& (brackbeg > message)) {
+			while (*--brackbeg == ' ')
+			  ;
+
+			/* Remove surrounding quotes ? */
+			if ((*brackbeg == '"') && (*author ==  '"')) {
+			    *brackbeg = '\0';
+			    author++;
+
+			    /* Rather strip trailing spaces here */
+
+			} else {
+			    *++brackbeg = '\0';
+			}
+		    } else {
+
+			/* 
+			 * Check for case 3, <user@domain> -> usr@domain
+			 *
+			 * Don't need to do this again:
+			 * brackbeg = index(message, '<');
+			 */
+
+			brackend = index(message, '>');
+			if ((author == brackbeg) && (brackend != NIL(char))) {
+			    author++;
+			    *brackend = '\0';
+			} else {
+			    if ((end = index(author, ' ')) != NIL(char)) {
+				*end = '\0';
+			    }
+			}
+		    }
+		}
+	    } else {
+		if ((author = index(message, '<')) == NIL(char)) {
+		    /* first form */
+		    author = index(message, ' ');
+		    assert(author != NIL(char));
+		    author++;
 		    if ((end = index(author, ' ')) != NIL(char)) {
+			*end = '\0';
+		    }
+		} else {
+		    /* second form */
+		    author++;
+		    if ((end = index(author, '>')) != NIL(char)) {
 			*end = '\0';
 		    }
 		}
 	    }
-	}
-    } else {
-	if ((author = index(author, '<')) == NIL(char)) {
-	    author = message;
-	    /* first form */
-	    if ((end = index(author, ' ')) != NIL(char)) {
+	    /*
+	     * do a final trimming - just in case the authors name ends
+	     * in spaces or tabs - it does happen
+	     */
+	    end = author + utStrlen(author) - 1;
+	    while ((end > author) && ((*end == ' ') || (*end == '\t'))) {
 		*end = '\0';
+		end--;
 	    }
-	} else {
-	    /* second form */
-	    author++;
-	    if ((end = index(author, '>')) != NIL(char)) {
-		*end = '\0';
-	    }
+	    newsgroup->articles[INDEX(number)].author = XtNewString(author);
 	}
+	first = last + 1;
     }
-    /*
-     * do a final trimming - just in case the authors name ends
-     * in spaces or tabs - it does happen
-     */
-    end = author + utStrlen(author) - 1;
-    while ((end > author) && ((*end == ' ') || (*end == '\t'))) {
-	*end = '\0';
-	end--;
-    }
-    if (! *author)
-	author = authbuf;
-    return XtNewString(author);
+    return (first > artlast) ? True : False;
 }
 
-Boolean getauthorlist(
-		      _ANSIDECL(struct newsgroup *,	newsgroup),
-		      _ANSIDECL(art_num,		artfirst),
-		      _ANSIDECL(art_num,		artlast),
-		      _ANSIDECL(Boolean,		unreadonly),
-		      _ANSIDECL(int *,			max)
-		      )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artfirst)
-     _KNRDECL(art_num,			artlast)
-     _KNRDECL(Boolean,			unreadonly)
-     _KNRDECL(int *,			max)
-{
-    struct article foo;
-    unsigned offset, fixed_offset;
-
-    offset = (char *)&foo.from - (char *)&foo;
-    fixed_offset = (char *)&foo.author - (char *)&foo;
-
-    return getlist(newsgroup, artfirst, artlast, unreadonly, max,
-		   "from", 0, offset, authorFixFunction, fixed_offset, True);
-}
-
-
-static char *linesFixFunction(newsgroup, artnum, numoflines)
+/*
+ * get a list of number of lines per message for the current group in the
+ *  range 'first' to 'last'
+ *
+ *   returns: True if it's done, False to keep going
+ *
+ * Note that XHDR is not part of the rfc977 standard, but is implemented
+ * by the Berkeley NNTP server
+ *
+ */
+Boolean getlineslist(newsgroup, artfirst, artlast, unreadonly, max)
     struct newsgroup *newsgroup;
-    art_num artnum;
-    char *numoflines;
+    art_num artfirst;
+    art_num artlast;
+    Boolean unreadonly;
+    int max;
 {
-    char *buf;
+    char command[MESSAGE_SIZE], message[MESSAGE_SIZE];
+    char *numoflines, *end;
+    long number;
+    int lcv;
+    long first, last;
+    int count = 0;
 
-    if (numoflines[0] != '(') {
-      buf = XtMalloc(strlen(numoflines) + 3);
-      (void) sprintf(buf, "[%s]", numoflines);
-    } else {
-      buf = XtNewString(numoflines);
-      *buf = '[';
-      *(strchr(buf, '\0')-1) = ']';
-    }
-    if (strcmp(buf, "[none]") == 0) {
-	(void) strcpy(buf, "[?]");
-    }
-    return buf;
-}
-
-Boolean getlineslist(
-		     _ANSIDECL(struct newsgroup *,	newsgroup),
-		     _ANSIDECL(art_num,			artfirst),
-		     _ANSIDECL(art_num,			artlast),
-		     _ANSIDECL(Boolean,			unreadonly),
-		     _ANSIDECL(int *,			max)
-		     )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(art_num,			artfirst)
-     _KNRDECL(art_num,			artlast)
-     _KNRDECL(Boolean,			unreadonly)
-     _KNRDECL(int *,			max)
-{
-    struct article foo;
-    unsigned offset;
-
-    if (! app_resources.displayLineCount)
+    if (SETNEWSGROUP(newsgroup)) {
 	return True;
+    }
 
-    offset = (char *)&foo.lines - (char *)&foo;
+    if (!app_resources.displayLineCount) {
+	return True;
+    }
 
-    return getlist(newsgroup, artfirst, artlast, unreadonly, max,
-		   "lines", 0, (unsigned)-1, linesFixFunction, offset, False);
+    first = artfirst;
+    while ((first <= artlast) && ((! max) || (count < max))) {
+	if (newsgroup->articles[INDEX(first)].lines != NIL(char) ||
+	    (unreadonly && IS_READ(newsgroup->articles[INDEX(first)])) ||
+	    IS_UNAVAIL(newsgroup->articles[INDEX(first)])) {
+	     first++;
+	     continue;
+	}
+
+	for (last = first + 1; last <= artlast; last++) {
+	    if (newsgroup->articles[INDEX(last)].lines != NIL(char) ||
+		(unreadonly && IS_READ(newsgroup->articles[INDEX(last)])) ||
+		IS_UNAVAIL(newsgroup->articles[INDEX(last)]) ||
+		(max && ((count + (last - first)) >= max))) {
+		break;
+	    }
+	}
+	last--;
+
+	(void) sprintf(command, "XHDR lines %ld-%ld", first, last);
+	put_server(command);
+	get_data_from_server(message, sizeof(message));
+
+	check_server_response(command, message, sizeof(message));
+
+	/* check for errors */
+	if (*message != CHAR_OK) {
+	    mesgPane(XRN_SERIOUS, 0, XHDR_ERROR_MSG);
+	    return True;
+	}
+
+	for(;;) {
+
+	    get_data_from_server(message, sizeof(message));
+
+	    if (*message == '.') {
+		break;
+	    }
+
+	    count++;
+
+	    /*
+	     * message is of the form:
+	     *
+	     *    Number NumberOfLines
+	     *
+	     *    203 ##
+	     *
+	     * must get the number since not all subjects will be returned
+	     */
+
+	    number = atol(message);
+	    numoflines = index(message, ' ');
+	    assert(numoflines != NIL(char));
+	    numoflines++;
+
+	    /* Ignore extra whitespace at the beginning of the field */
+	    for ( ; (*numoflines == ' ') || (*numoflines == '\t'); numoflines++)
+		/* empty */;
+	    
+	    if ((end = index(numoflines, ' ')) != NIL(char)) {
+		*end = '\0';
+	    }
+
+	    if (numoflines[0] != '(') {
+		numoflines[utStrlen(numoflines)+1] = '\0';
+		numoflines[utStrlen(numoflines)] = ']';
+		for (lcv = utStrlen(numoflines); lcv >= 0; lcv--) {
+		    numoflines[lcv+1] = numoflines[lcv];
+		}
+		numoflines[0] = '[';
+	    } else {
+		numoflines[0] = '[';
+		numoflines[utStrlen(numoflines)-1] = ']';
+	    }
+	    if (strcmp(numoflines, "[none]") == 0) {
+		(void) strcpy(numoflines, "[?]");
+	    }
+	    newsgroup->articles[INDEX(number)].lines = XtNewString(numoflines);
+	}
+	first = last + 1;
+    }
+    return (first > artlast) ? True : False;
 }
 
 #ifndef INEWS
@@ -2185,7 +1373,7 @@ static char ** wrapText(ptr)
     char *ptr;
 {
      int c = 0;		/* current line length */
-     char **lines = NULL, *this_line;
+     char **lines, *this_line;
      unsigned int num_lines = 0;
      int breakAt = app_resources.breakLength;
      int maxLength;
@@ -2194,6 +1382,8 @@ static char ** wrapText(ptr)
      if (app_resources.breakLength > maxLength) {
        maxLength = app_resources.breakLength;
      }
+
+     lines = (char **) XtMalloc((Cardinal) 0);
 
      if (app_resources.breakLength && app_resources.lineLength) {
 	 /*
@@ -2356,10 +1546,7 @@ static int mailArticle(article)
 
 
 
-/*
-  The article string passed into this function *must* have both a
-  header and a body, separated by at least one blank line.
-*/
+
 int postArticle(article, mode, ErrMsg)
     char *article;
     int mode;   /* XRN_NEWS or XRN_MAIL */
@@ -2370,7 +1557,7 @@ int postArticle(article, mode, ErrMsg)
  *   returns 1 for success, 0 for failure
  */
 {
-    char command[BUFFER_SIZE], *message;
+    char command[MESSAGE_SIZE], message[MESSAGE_SIZE];
     char *ptr, *saveptr;
     char **lines, **lines_ptr;
 
@@ -2389,20 +1576,21 @@ int postArticle(article, mode, ErrMsg)
 
 #ifdef INEWS
     tempfile = utTempnam(app_resources.tmpDir, "xrn");
+    tempfile = XtNewString(tempfile);
     (void) sprintf(buffer, "%s -h > %s 2>&1",INEWS, tempfile);
     if ((inews = xrn_popen(buffer, "w")) == NULL) {
 	mesgPane(XRN_SERIOUS, 0, CANT_EXECUTE_CMD_POPEN_MSG, buffer);
 	(void) unlink(tempfile);
-	utTempnamFree(tempfile);
+	FREE(tempfile);
 	return POST_FAILED;
     }
 #else
 
     (void) strcpy(command, "POST");
     put_server(command);
-    message = get_data_from_server(True);
+    get_data_from_server(message, sizeof(message));
 
-    check_server_response(command, &message);
+    check_server_response(command, message, sizeof(message));
 
     if (*message != CHAR_CONT) {
 	mesgPane(XRN_SERIOUS, 0, NNTP_ERROR_MSG, message);
@@ -2416,7 +1604,7 @@ int postArticle(article, mode, ErrMsg)
 
     ptr = article;
 
-    while (ptr) {
+    while (1) {
 	char *line;
 
 	saveptr = ptr;
@@ -2433,10 +1621,6 @@ int postArticle(article, mode, ErrMsg)
 	}
 	break;
     }
-
-    /* If this assertion fails, then the article string passed into
-       this function didn't have a body.  Shame on you! */
-    assert(ptr);
 
 #ifdef INEWS
     fputs("\n\n", inews);
@@ -2469,7 +1653,11 @@ int postArticle(article, mode, ErrMsg)
 	struct stat buf;
 	char temp[1024];
 
+#ifndef INN	
 	(void) sprintf(temp, "\n\ninews exit value: %d\n", exitstatus);
+#else
+	temp[0] = '\0';
+#endif /* INN */	
 	if ((filefp = fopen(tempfile, "r")) != NULL) {
 	    if (fstat(fileno(filefp), &buf) != -1) {
 		p = XtMalloc(buf.st_size + utStrlen(temp) + 10);
@@ -2481,20 +1669,16 @@ int postArticle(article, mode, ErrMsg)
 	    }
 	}
 	(void) unlink(tempfile);
-	utTempnamFree(tempfile);
+	FREE(tempfile);
 	return(POST_FAILED);
     }
-
-    (void) unlink(tempfile);
-    utTempnamFree(tempfile);
 #else
     put_server(".");
 
-    message = get_data_from_server(True);
+    get_data_from_server(message, sizeof(message));
 
     if (*message != CHAR_OK) {
-	*ErrMsg = XtMalloc(strlen(SERVER_POSTING_ERROR_MSG) + strlen(message));
-	(void) sprintf(*ErrMsg, SERVER_POSTING_ERROR_MSG, message);
+	*ErrMsg = XtNewString(message);
 	return(POST_FAILED);
     }
 #endif
@@ -2502,50 +1686,112 @@ int postArticle(article, mode, ErrMsg)
     return(POST_OKAY);
 }
 
+
+#ifdef DONT_USE_XHDR_FOR_A_SINGLE_ITEM
+
 /*
- * get XHDR information for a single article
+ * get header information about 'article'
+ *
+ *   the results are stored in 'string'
  */
-static char *xhdr_single _ARGUMENTS((struct newsgroup *, char *, long *, Boolean));
-
-static char *xhdr_single(
-			 _ANSIDECL(struct newsgroup *,	newsgroup),
-			 _ANSIDECL(char *,		buffer),
-			 _ANSIDECL(long *,		error_code),
-			 _ANSIDECL(Boolean,		silent_error)
-			 )
-     _KNRDECL(struct newsgroup *,	newsgroup)
-     _KNRDECL(char *,		buffer)
-     _KNRDECL(long *,		error_code)
-     _KNRDECL(Boolean,		silent_error)
+void xhdr(newsgroup, article, field, string)
+    struct newsgroup *newsgroup;
+    art_num article;
+    char *field;
+    char **string;
 {
-    char *message, *ptr;
+    char buffer[BUFFER_SIZE], message[MESSAGE_SIZE], *ptr, *cmp, *found = 0;
 
-    *error_code = 0;
+    if (SETNEWSGROUP(newsgroup)) {
+	*string = 0;
+	return;
+    }
 
-    if (SETNEWSGROUP(newsgroup))
-      return NULL;
-
+    /*
+     * In some implementations of NNTP, the XHDR request on a
+     * single article can be *very* slow, so we do a HEAD request
+     * instead and just search for the appropriate field.
+     */
+    (void) sprintf(buffer, "HEAD %ld", article);
     put_server(buffer);
-    message = get_data_from_server(True);
+    get_data_from_server(message, sizeof(message));
+
+    check_server_response(buffer, message, sizeof(message));
+
+    if (*message != CHAR_OK) {
+	/* can't get header */
+	*string = NIL(char);
+	return;
+    }
+
+    for (;;) {
+	get_data_from_server(message, sizeof(message));
+
+	/* the header information is ended by a '.' on a line by itself */
+	if (message[0] == '.')
+	    break;
+
+	if (!found) {
+	    for (ptr = message, cmp = field; *ptr; ptr++, cmp++) {
+		/* used to be 'mklower' */
+		if (tolower(*cmp) != tolower(*ptr))
+		    break;
+	    }
+	    if (*cmp == 0 && *ptr == ':') {
+		while (*++ptr == ' ')
+		    ;
+		found = XtNewString(ptr);
+	    }
+	}
+    }
+
+    if (found)
+	*string = found;
+    else
+	*string = NIL(char);
+
+    return;
+}
+
+#else
+
+/*
+ * get header information about 'article'
+ *
+ *   the results are stored in 'string'
+ */
+void xhdr(newsgroup, article, field, string)
+    struct newsgroup *newsgroup;
+    art_num article;
+    char *field;
+    char **string;
+{
+    char buffer[BUFFER_SIZE], message[MESSAGE_SIZE], *ptr;
+
+    if (SETNEWSGROUP(newsgroup)) {
+	*string = 0;
+	return;
+    }
+    (void) sprintf(buffer, "XHDR %s %ld", field, article);
+    put_server(buffer);
+    get_data_from_server(message, sizeof(message));
     
-    check_server_response(buffer, &message);
+    check_server_response(buffer, message, sizeof(message));
     
     /* check for errors */
     if (*message != CHAR_OK) {
-      if ((*error_code = atol(message)) != ERR_NOART) {
-	if (! silent_error) {
-	  fprintf(stderr, "NNTP error: %s\n", message);
-	  mesgPane(XRN_SERIOUS, 0, XHDR_ERROR_MSG);
-	}
-      }
-      return NULL;
+	fprintf(stderr, "NNTP error: %s\n", message);
+	*string = NIL(char);
+	mesgPane(XRN_SERIOUS, 0, XHDR_ERROR_MSG);
+	return;
     }
-
-    message = get_data_from_server(True);
+    
+    get_data_from_server(message, sizeof(message));
 
     /* no information */
     if (*message == '.') {
-	return NULL;
+	*string = NIL(char);
+	return;
     }
 
     ptr = index(message, ' ');
@@ -2553,253 +1799,59 @@ static char *xhdr_single(
     /* malformed entry */
     if (ptr == NIL(char)) {
 	mesgPane(XRN_SERIOUS, 0, MALFORMED_XHDR_RESPONSE_MSG, buffer, message);
-	message = get_data_from_server(True);
-	return NULL;
+	get_data_from_server(message, sizeof(message));
+	return;
     }
 
     ptr++;
 
     /* no information */
     if (STREQ(ptr, "(none)")) {
+	*string = NIL(char);
 	/* ending '.' */
 	do {
-	  message = get_data_from_server(True);
+	    get_data_from_server(message, sizeof(message));
 	} while (*message != '.');
-	return NULL;
+	return;
     }
 
-    ptr = XtNewString(ptr);
+    *string = XtNewString(ptr);
 
     /* ending '.' */
     do {
-      message = get_data_from_server(True);
+	get_data_from_server(message, sizeof(message));
     } while (*message != '.');
 
-    return ptr;
-}
-
-/*
-  If this hasn't already been done:
-
-  Use the HEAD command to retrieve the header of the specified
-  article.  Create a new AVL tree to store the parsed headers.  The
-  keys in the tree are the header field names, turned to lower case,
-  and the values in the tree are the values of the matching header
-  lines, with newlines converted into spaces and the final newline
-  omitted.  ONLY THE FIRST HEADER FIELD WITH EACH FIELD NAME IS
-  STORED, e.g., if there are two "X-Foo:" headers in the message, only
-  the first one is stored and retrieved.
-*/
-  
-static void get_article_headers(newsgroup, article)
-     struct newsgroup *newsgroup;
-     art_num article;
-{
-  struct article *art;
-  char buffer[BUFFER_SIZE], *message, *header;
-  int header_len, header_size;
-  file_cache_file *cache_file;
-  FILE *fp;
-  avl_tree *headers;
-
-  art = artStructGet(newsgroup, article, False);
-  ART_STRUCT_UNLOCK;
-  if (art->headers)
-    return;
-
-  art = artStructGet(newsgroup, article, True);
-  art->headers = headers = avl_init_table(strcmp);
-
-  header_size = 80;
-  header = XtMalloc(header_size);
-  header_len = 0;
-
-  artStructSet(newsgroup, &art);
-
-  if (get_base_article(newsgroup, article, &cache_file, False) > 0) {
-    Boolean sawnl = False;
-
-    if (! (fp = fopen(file_cache_file_name(FileCache, *cache_file), "r"))) {
-      file_cache_file_unlock(FileCache, *cache_file);
-      return;
-    }
-
-    for (;;) {
-      int len;
-
-      if (header_size - header_len < 2) {
-	header_size *= 2;
-	header = XtRealloc(header, header_size);
-      }
-
-      if (! fgets(header + header_len, header_size - header_len, fp))
-	break;
-
-      len = strlen(header + header_len);
-      header_len += len;
-
-      if (header[header_len-1] != '\n') {
-	sawnl = False;
-	continue;
-      }
-
-      if (sawnl && (len == 1))
-	break;
-      sawnl = True;
-    }
-
-    (void) fclose(fp);
-    file_cache_file_unlock(FileCache, *cache_file);
-  }
-  else {
-    if (SETNEWSGROUP(newsgroup)) {
-      return;
-    }
-
-    (void) sprintf(buffer, "HEAD %ld", article);
-    put_server(buffer);
-    message = get_data_from_server(True);
-
-    check_server_response(buffer, &message);
-
-    if (*message != CHAR_OK) {
-      /* can't get header */
-      return;
-    }
-
-    for (;;) {
-      int len;
-      message = get_data_from_server(True);
-      if (! (*message && strcmp(message, "."))) {
-	break;
-      }
-      if (*message == '.')
-	message++;
-      len = strlen(message);
-      while (header_len + len + 2 > header_size) {
-	header_size *= 2;
-	header = XtRealloc(header, header_size);
-      }
-      (void) strcpy(header + header_len, message);
-      *(header + header_len + len) = '\n';
-      *(header + header_len + len + 1) = '\0';
-      header_len += len + 1;
-    }
-  }
-  
-  header = XtRealloc(header, header_len + 1);
-
-  avl_insert(headers, ART_HEADERS_BASE, header);
-
-  while (*header) {
-    char *ptr, *name, *value;
-
-    if (! (value = strchr(name = header, ':')))
-      break;
-
-    for (ptr = name; ptr < value; ptr++)
-      if (isupper(*ptr))
-	*ptr = tolower(*ptr);
-
-    *value++ = '\0';
-
-    for (ptr = strchr(value, '\n'); ptr; ptr = strchr(ptr, '\n')) {
-      if (ptr[1] != ' ' && ptr[1] != '\t') {
-	*ptr = '\0';
-	header = ptr + 1;
-	if (! avl_lookup(headers, name, 0)) {
-	  while (*value == ' ' || *value == '\t')
-	    value++;
-	  while (--ptr >= value && (*ptr == ' ' || *ptr == '\t'))
-	    *ptr = '\0';
-	  avl_insert(headers, name, value);
-	}
-	break;
-      }
-      *ptr = ' ';
-    }
-  }
-}
-
-/*
- * get header information about 'article'
- *
- *   the results are stored in 'string'
- */
-void xhdr(newsgroup, article, field, string)
-    struct newsgroup *newsgroup;
-    art_num article;
-    char *field;
-    char **string;
-{
-  struct article *art;
-  char *value;
-
-  get_article_headers(newsgroup, article);
-
-  art = artStructGet(newsgroup, article, False);
-  ART_STRUCT_UNLOCK;
-  if (art->headers && avl_lookup(art->headers, field, &value))
-    *string = XtNewString(value);
-  else
-    *string = 0;
-}
-
-/* We're not currently using XHDR to retrieve information about single
-   articles, for two reasons: (1) whenever we're doing that, we're
-   probably going to need multiple fields for the same article; (2) in
-   fact we've probably already retrieved the article, and parsing its
-   header fields is cheaper than a round trip to the server; (3) many
-   so-called "modern" NNTP servers don't support XHDR for all header
-   fields; they only return valid XHDR data for fields that are in the
-   overview database.  This sucks, but we have to cope with it
-   anyway.
-
-   However, we're preserving this functionality here, in case we end
-   up needing to use it later, rather than removing it completely.  If
-   we do end up using this functionality at any point in the future,
-   the function needs to be updated so that it knows how to fall back
-   on checking the header if the XHDR command fails.
-*/
-
-#if 0
-
-/*
- * get header information about 'article'
- *
- *   the results are stored in 'string'
- */
-void xhdr(newsgroup, article, field, string)
-    struct newsgroup *newsgroup;
-    art_num article;
-    char *field;
-    char **string;
-{
-    char buffer[BUFFER_SIZE];
-    long error_code;
-
-    (void) sprintf(buffer, "XHDR %s %ld", field, article);
-    *string = xhdr_single(newsgroup, buffer, &error_code, False);
     return;
 }
-
 #endif
 
-/* Get XHDR information using an article's message ID.  The returned
-   data is allocated and should be freed by the caller.  Fails
-   silently if the NNTP server doesn't support XHDR by message ID. */
-  
-char *xhdr_id(newsgroup, id, field, error_code)
-     struct newsgroup *newsgroup;
-     char *id;
-     char *field;
-     long *error_code;
+struct article * getarticles(newsgroup)
+    struct newsgroup *newsgroup;
 {
-  char buffer[BUFFER_SIZE];
+    register art_num first = newsgroup->first, last = newsgroup->last, art;
 
-  (void) sprintf(buffer, "XHDR %s %s", field, id);
-  return xhdr_single(newsgroup, buffer, error_code, True);
+    if (last >= first && last != 0) {
+	register struct article	*ap;
+	newsgroup->articles = ARRAYALLOC(struct article, last - first + 1);
+
+	ap = &newsgroup->articles[INDEX(first)];
+    
+	for (art = first; art <= last; art++) {
+	    ap->subject = NIL(char);
+	    ap->author = NIL(char);
+	    ap->lines = NIL(char);
+	    ap->filename = NIL(char);
+	    ap->status = ART_CLEAR;
+	    ap++;
+	}
+    }
+#ifdef STUPIDMMU
+    cornered(newsgroup);
+#endif
+    return(newsgroup->articles);
 }
+
 
 #ifndef POPEN_USES_INEXPENSIVE_FORK
 
@@ -2830,7 +1882,7 @@ FILE *xrn_popen(command, type)
 	    close(pipes[0]);
 	}
 	execl("/bin/sh", "/bin/sh", "-c", command, 0);
-	fprintf(stderr, ERROR_EXEC_FAILED_MSG, command);
+	fprintf(stderr, "XRN Error: failed the execlp\n");
 	_exit(-1);
 	/* NOTREACHED */
 
