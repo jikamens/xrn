@@ -29,9 +29,6 @@
 #define KILL_ID		(1<<4)
 #define KILL_REFERENCES	(1<<5)
 #define KILL_XREF	(1<<6)
-#define KILL_APPROVED	(1<<7)
-
-typedef unsigned int kill_check_flag_t;
 
 #define KILL_JUNK	(1<<0)
 #define KILL_MARK	(1<<1)
@@ -54,7 +51,7 @@ typedef union _kill_entry  {
 #else
     char *reStruct;
 #endif /* POSIX_REGEX */
-    kill_check_flag_t check_flags;
+    char check_flags;
     char action_flags;
     int timeout;
     time_t last_used;
@@ -92,8 +89,6 @@ void read_global_kill_file _ARGUMENTS((struct newsgroup *));
 void read_local_kill_file _ARGUMENTS((struct newsgroup *));
 kill_entry *kill_file_iter _ARGUMENTS((struct newsgroup *, int mode,
 				       kill_file_iter_handle *handle));
-kill_entry *kill_file_iter_refresh _ARGUMENTS((struct newsgroup *, int mode,
-					       kill_file_iter_handle *handle));
 void write_kill_file _ARGUMENTS((struct newsgroup *, int mode));
 Boolean has_kill_files _ARGUMENTS((struct newsgroup *));
 void add_kill_entry _ARGUMENTS((struct newsgroup *newsgroup, int mode,

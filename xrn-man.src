@@ -1,5 +1,5 @@
-.TH XRN 1 "$Date: 2008-11-28 17:57:52 $" "X"
-.\" $Id: xrn-man.src,v 1.246 2008-11-28 17:57:52 jik Exp $
+.TH XRN 1 "$Date: 1998-12-21 02:23:00 $" "X"
+.\" $Id: xrn-man.src,v 1.217 1998-12-21 02:23:00 jik Exp $
 .\"
 .\" xrn - an X-based NNTP news reader
 .\"
@@ -42,7 +42,7 @@ and articles on an NNTP server, thus allowing
 users to read news from personal workstations
 by accessing a central news
 repository.
-This manual page applies to version 9.03-beta-15.
+This manual page applies to version 9.02-beta-1.
 .\"
 .SH DESCRIPTION
 .PP
@@ -235,6 +235,9 @@ the \fBnntpServer\fP X resource;
 xSERVER_FILE_STARTx
 the contents of the file "xSERVER_FILEx"
 xSERVER_FILE_ENDx
+xINN_STARTx
+the NNTP server configured into INN
+xINN_ENDx
 (these are listed in the order in which they are checked).
 The name can be either a host name
 (e.g., shambhala.berkeley.edu) or an internet number (e.g.,
@@ -1293,12 +1296,12 @@ The default is to not include the header.
 .TP 10
 .B \-includePrefix "prefix text"
 Change the standard prefix for each line of included text from the
-default, ">", to the given text string.
+default, "|> ", to the given text string.
 .TP 10
 .B +/\-includeSep
-Include or do not include the prefix text (">") in front of included
+Include or do not include the prefix text ("|> ") in front of included
 articles.
-The default is to include the prefix text (">").
+The default is to include the prefix text ("|> ").
 .TP 10
 .B +/\-info
 Display all informative messages in the message pane.
@@ -1698,8 +1701,7 @@ file).
 If the first character in the options field is `h', then \*(XR will
 check to see if the regular expression starts with "^From:",
 "^Subject:", "^Newsgroups:", "^Date:", "^Message-ID:", "^References:",
-"^Xref:", or "Approved:".  If it does, then the pattern will be
-matched against the
+or "^Xref:".  If it does, then the pattern will be matched against the
 corresponding header field in the article.  The comparison will be
 "anchored", that is, the pattern must match from the beginning of the
 field value in order to be considered a match.
@@ -1716,7 +1718,7 @@ start with one of the field names mentioned above, then it will be
 compared against all of the fields mentioned above.
 
 Note that normally, \*(XR doesn't fetch the "Newsgroups", "Date",
-"Message-ID", "References", "Xref", or "Approved" fields of articles; it fetches
+"Message-ID", "References", or "Xref" fields of articles; it fetches
 them only when it notices while processing a kill file entry that they
 are needed.  Therefore, specifying kill file entries which must be
 matched against one of those fields may cause \*(XR to take longer to
@@ -1726,16 +1728,6 @@ fields, as described in the documentation below for the
 "sortedSubjects" resource, then the fields being used for sorting are
 already being fetched and no additional data need be fetched in order
 to match kill file entries against them.
-
-Note, furthermore, that some NNTP servers do not allow queries for
-some header fields, usually "Newsgroups" and "Approved" and possibly
-others as well.  When \*(XR is talking to such a server and it
-encounters such a header field while processing the kill file entries
-for a newsgroup, it must ask the NNTP server for the entire header of
-every unread message in the newsgroup.  This can cause a significant
-delay when you try to enter the newsgroup.  You should keep this in
-mind when creating kill file entries which examine these header
-fields.
 
 Any line not in one of the already mentioned formats will cause \*(XR
 to display an error.
@@ -1835,10 +1827,6 @@ messages, regardless of what you specify for this resource.
 
 This resource is overridden by the "HIDDENHOST" environment variable
 (see below).
-
-If the host name you specify here or with "HIDDENHOST" does not have a
-period in it, the domain name (either configured into the program or
-specified as described above) is appended to it.
 .TP 10
 .B killFileName
 Tells \*(XR to name each of its kill files as specified instead of
@@ -2102,7 +2090,7 @@ DOMAIN
 name of your internet domain (".Berkeley.EDU", ".orst.edu")
 .TP 11
 HIDDENHOST
-name of the host that you want your return path to
+full domain-style name of the host that you want your return path to
 be from (e.g., "decvax.dec.com", "Berkeley.EDU")
 .TP 11
 HIDDENPATH

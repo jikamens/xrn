@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.44 2006-01-03 16:38:55 jik Exp $";
+static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.42 1998-04-06 11:40:57 jik Exp $";
 #endif
 
 /*
@@ -33,7 +33,6 @@ static char XRNrcsid[] = "$Id: newsrcfile.c,v 1.44 2006-01-03 16:38:55 jik Exp $
  *
  */
 
-#include <assert.h>
 #include "copyright.h"
 #include "config.h"
 #include "utils.h"
@@ -69,7 +68,7 @@ static ng_num Newsrc_size = 0;
 
 static void freeNewsrc _ARGUMENTS((void));
 
-ng_num checkNewsrcSize(
+void checkNewsrcSize(
 		     _ANSIDECL(ng_num,	size)
 		     )
      _KNRDECL(ng_num,	size)
@@ -79,7 +78,6 @@ ng_num checkNewsrcSize(
 					     sizeof(*Newsrc) * size);
     Newsrc_size = size;
   }
-  return size;
 }
 
 #define OKAY  1
@@ -166,7 +164,7 @@ int readnewsrc()
     extern int newsrc_mesg_name;
     char *SaveNewsrcFile;
 
-    CHECKNEWSRCSIZE(ActiveGroupsCount);
+    checkNewsrcSize(ActiveGroupsCount);
 
     optionsLine = NIL(char);
 
@@ -424,9 +422,7 @@ int updatenewsrc()
 	    }
 	    continue;
 	}
-
-	ART_STRUCT_UNLOCK;
-
+	
 	if (newsgroup->last >= newsgroup->first) {
 	    struct article *art;
 	    Boolean comma = False;
@@ -466,7 +462,6 @@ int updatenewsrc()
 		else if (last_last)
 		    goto do_output;
 	    }
-	    ART_STRUCT_UNLOCK;
 	    if (last_last)
 		goto do_output;
 	} else {
