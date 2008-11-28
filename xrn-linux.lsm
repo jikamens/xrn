@@ -1,18 +1,18 @@
 Begin3
 Title:		xrn-linux
-Version:	9.02
-Entered-date:	24SEP99
-Description:	X news reader
-Keywords:	X, Usenet, News
-Author:		jik@kamens.brookline.ma.us (Jonathan Kamens),
-		Ellen Santovich, Rick Spickelmier
-Maintained-by:	jik@kamens.brookline.ma.us (Jonathan Kamens)
-Primary-site:	sipb.mit.edu /pub/xrn
-		199671	xrn-linux.tgz
+Version:        8.01
+Entered-date:   04DEC95
+Description:    X news reader
+Keywords:       X, Usenet, News
+Author:         jik@cam.ov.com (Jonathan Kamens), Ellen Santovich,
+		Rick Spickelmier
+Maintained-by:  jik@cam.ov.com (Jonathan Kamens)
+Primary-site:   ftp.cam.ov.com /pub/xrn
+		128459	xrn-linux.tgz
 		1k	xrn-linux.lsm
-Alternate-site:	ftp.x.org /contrib/applications/xrn
-Original-site:	sipb.mit.edu /pub/xrn
-		362615	xrn-9.02.tgz
-Platforms:	XFree86 3.3.1, libc 5 (ELF)
-Copying-policy:	BSD
+Alternate-site: ftp.x.org /contrib/applications/xrn
+Original-site:  ftp.cam.ov.com /pub/xrn
+		284035	8.01.tgz
+Platforms:      XFree86 3.1.2 (ELF), libc 5.0.9
+Copying-policy: BSD
 End

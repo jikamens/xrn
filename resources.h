@@ -2,7 +2,7 @@
 #define RESOURCES_H
 
 /*
- * $Id: resources.h,v 1.39 1998-07-05 15:08:33 jik Exp $
+ * $Id: resources.h,v 1.25 1995-12-12 13:06:39 jik Exp $
  */
 
 /*
@@ -65,15 +65,14 @@ typedef struct {
     char *saveNewsrcFile;
     Boolean cacheActive;
     char *cacheFile;
-    int cacheFilesMaxFiles, cacheFilesMaxSize;
     char *signatureFile;
     Boolean signatureNotify, executableSignatures, localSignatures;
-    char *nntpPort, *nntpServer, *cmdLineNntpServer;
+    char *nntpServer, *cmdLineNntpServer;
     int topLines;
     int saveMode;
     char *leaveHeaders;
     char *stripHeaders;
-    char *savePostings, *saveSentMail, *saveSentPostings;
+    char *savePostings;
     char *deadLetters;
     int minLines;
     int maxLines;
@@ -86,8 +85,6 @@ typedef struct {
     char *confirm;
     int confirmMode;
     Boolean killFiles;
-    String killFileName;
-    int killTimeout;
 #if SUPPORT_SILLY_CALVIN_ICON
     Boolean calvin;
 #endif
@@ -106,7 +103,7 @@ typedef struct {
     int breakLength;
     int rescanTime;
     Boolean pageArticles;
-    String sortedSubjects;
+    Boolean sortedSubjects;
     Boolean typeAhead;
     int prefetchMax;
     char *addButtonList;
@@ -115,12 +112,14 @@ typedef struct {
     char *artButtonList;
     char *artSpecButtonList;
     char *printCommand;
-    Boolean dumpCore, complainAboutBadDates;
+    Boolean dumpCore;
     String verboseKill;
     Boolean cc;
     Boolean ccForward;
     Boolean authorFullName;
+#ifdef REALLY_USE_LOCALTIME
     Boolean displayLocalTime;
+#endif
     Boolean displayLineCount;
     Boolean resetSave;
     char *saveString;
@@ -128,26 +127,13 @@ typedef struct {
     char *mhPath;
     int onlyShow;
     char *ignoreNewsgroups;
-    char *validNewsgroups;
     char *domainName;
-    Boolean authenticateOnConnect;
     char *authenticatorCommand;
     char *authenticator;
     Boolean rescanOnEnter, stayInArticleMode, subjectScrollBack, discardOld;
     int prefetchMinSpeed;
     Boolean fullNewsrc, buttonsOnTop;
     String hiddenHost;
-  struct {
-    struct {
-      Boolean followupTo;
-      int crossPost;
-    } followup;
-    struct {
-      int followupTo, crossPost;
-    } posting;
-  } warnings;
-  Boolean verifyFrom;
-  String courtesyCopyMessage;
 } app_resourceRec, *app_res;
 
 extern app_resourceRec app_resources;
@@ -158,7 +144,6 @@ extern Widget Initialize _ARGUMENTS((int,char **));
 
 #define MAILBOX_SAVE   0x01
 #define NORMAL_SAVE    0x02
-#define FORMFEED_SAVE  0x04
 #define HEADERS_SAVE   0x10
 #define NOHEADERS_SAVE 0x20
 
