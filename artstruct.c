@@ -54,52 +54,6 @@ void artListSet(newsgroup)
     newsgroup->ref_art = newsgroup->articles;
 }
 
-/*
-  Extend a group's article structure, if it exists, from the old last
-  article number to the new one.
-*/
-void artListExtend(newsgroup, old_last)
-     struct newsgroup *newsgroup;
-     art_num old_last;
-{
-  struct article copy, *new, *ptr;
-
-  assert(! art_struct_locked);
-
-  if (! newsgroup->articles)
-    return;
-
-  if (old_last >= newsgroup->last)
-    return;
-
-  CLEAR_ALL_NO_FREE(&copy);
-
-  for (ptr = newsgroup->articles; ptr->next; ptr = ptr->next)
-    /* empty */;
-
-  if (artsame(&copy, ptr)) {
-#ifdef DEBUG
-    fprintf(stderr,
-	    "artListExtend: extending blank article structure from %d to %d\n",
-	    old_last, newsgroup->last);
-#endif
-    return;
-  }
-
-#ifdef DEBUG
-  fprintf(stderr, "artListExtend: creating new article structure for %d to %d\n",
-	  old_last, newsgroup->last);
-#endif
-
-  new = (struct article *) XtCalloc(1, sizeof(struct article));
-  CLEAR_ALL_NO_FREE(new);
-  new->first = old_last + 1;
-  new->previous = ptr;
-  new->next = 0;
-
-  ptr->next = new;
-}
-
 
 int artStructNumChildren(art)
      struct article *art;
@@ -222,8 +176,6 @@ struct article *artStructGet(
 
     assert(! art_struct_locked);
     ART_STRUCT_LOCK;
-
-    assert(artnum <= newsgroup->last);
 
     if (! reference)
 	reference = newsgroup->articles;

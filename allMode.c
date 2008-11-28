@@ -260,8 +260,7 @@ static void doAll(status, first, last, group)
 			     ret, "enterNewsgroup", "doAll");
 		}
 		else if (status == SUBSCRIBE) {
-		  if (! subscribe())
-		    ret = BAD_GROUP;
+		    subscribe();
 		}
 		else {
 		    unsubscribe();
@@ -575,7 +574,6 @@ void allGotoFunction(widget, event, string, count)
 	mesgPane(XRN_SERIOUS, 0, NO_SUCH_NG_DELETED_MSG, newGroup);
     }
     else if (ret == XRN_NOMORE) {
-	exitNewsgroup();
 	mesgPane(XRN_SERIOUS, 0, NO_ARTICLES_MSG, newGroup);
     }
     else {
