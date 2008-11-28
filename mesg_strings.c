@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: mesg_strings.c,v 1.94 2002-05-15 14:06:06 jik Exp $";
+static char XRNrcsid[] = "$Id: mesg_strings.c,v 1.90 1998-12-28 17:57:33 jik Exp $";
 #endif
 
 /*
@@ -273,10 +273,6 @@ char *message_strings[] = {
     "XRN error: bad button name `%s'.", /* button name */
 /* < NO_SUCH_NG_DELETED > */
     "Newsgroup `%s' does not exist.\n\tIt may have been deleted.", /* newsgroup name */
-/* < GROUP_ACCESS_DENIED > */
-    "Access to newsgroup `%s' denied by server.", /* newsgroup name */
-/* < AUTH_FAILED_RETRY > */
-    "Authentication failed.  Retry?",
 /* < UNKNOWN_FUNC_RESPONSE > */
     "Internal XRN error: unknown response %d from %s in %s.", /* return value, called function, calling function */
 /* < DISPLAYING_LAST_UNREAD > */
@@ -290,7 +286,7 @@ char *message_strings[] = {
 /* < NO_NG_SPECIFIED > */
     "No newsgroup name specified.",
 /* < NO_SUCH_NG > */
-    "Newsgroup `%s' does not exist or you can't access it.", /* newsgroup name */
+    "Newsgroup `%s' does not exist.", /* newsgroup name */
 /* < NO_PREV_NG > */
     "No previous newsgroup.",
 /* < NO_GROUPS_SELECTED > */
@@ -669,13 +665,13 @@ char *message_strings[] = {
  ### may be the following messages shouldn't translate ###
  */
 /* < REPLY_YOU_WRITE > */
-    "You write:\n", /* messageid */
+    "In article %s,\n you write:\n", /* messageid */
 /* < FORWARDED_ARTIKEL > */
     "\n------ Forwarded Article %s\n------ From %s\n\n", /* messageid , author */
 /* < FORWARDED_ARTICLE_END > */
     "\n------ End of Forwarded Article\n",
 /* < FOLLOWUP_AUTHOR_WRITE > */
-    "%.0s%s writes:\n", /* messageid , author */
+    "In article %s,\n %s writes:\n", /* messageid , author */
 /* #### end may be not translate #### */
 /* < NEWSGROUPS_INDEX > */
     "%6s %7s %*s %4d article%1.1s +%6d old",
@@ -796,10 +792,6 @@ char *message_strings[] = {
     "Erreur XRN : nom de bouton incorrect `%s'.", /* button name */
 /* < NO_SUCH_NG_DELETED > */
     "Le groupe de news `%s' n'existe pas.\n\tIl peut avoir ÈtÈ supprimÈ.", /* newsgroup name */
-/* < GROUP_ACCESS_DENIED > */
-    "Access to newsgroup `%s' denied by server.", /* newsgroup name */
-/* < AUTH_FAILED_RETRY > */
-    "Authentication failed.  Retry?",
 /* < UNKNOWN_FUNC_RESPONSE > */
     "Internal XRN error: unknown response %d from %s in %s.", /* return value, called function, calling function */
 /* < DISPLAYING_LAST_UNREAD > */
@@ -813,7 +805,7 @@ char *message_strings[] = {
 /* < NO_NG_SPECIFIED > */
     "Pas de nom de groupe de news spÈcifiÈ.",
 /* < NO_SUCH_NG > */
-    "Newsgroup `%s' does not exist or you can't access it.", /* newsgroup name */
+    "Le groupe de news `%s' n'existe pas.", /* newsgroup name */
 /* < NO_PREV_NG > */
     "Pas de groupe de news prÈcÈdent",
 /* < NO_GROUPS_SELECTED > */
@@ -1192,13 +1184,13 @@ char *message_strings[] = {
  ### les messages ci-dessous ne devraient pas ÅÍtre traduits ###
  */
 /* < REPLY_YOU_WRITE > */
-    "You write:\n", /* messageid */
+    "In article %s,\n you write:\n", /* messageid */
 /* < FORWARDED_ARTIKEL > */
     "\n------ Forwarded Article %s\n------ From %s\n\n", /* messageid , author */
 /* < FORWARDED_ARTICLE_END > */
     "\n------ End of Forwarded Article\n",
 /* < FOLLOWUP_AUTHOR_WRITE > */
-    "%.0s%s writes:\n", /* messageid , author */
+    "In article %s,\n %s writes:\n", /* messageid , author */
 /* #### fin des messages Å‡ ne pas traduire #### */
 /* < NEWSGROUPS_INDEX > */
     "%9s %13s %*s %4d article%1.1s +%5d ancien%1.1s",
@@ -1338,10 +1330,6 @@ char *message_strings[] = {
     "XRN Fehler: Falscher Knopf-Name `%s'.", /* button Name */
 /* < NO_SUCH_NG_DELETED > */
     "Newsgruppe `%s' existiert nicht.\n\tM\366glicherweise wurde sie entfernt.", /* Newsgruppe Name */
-/* < GROUP_ACCESS_DENIED > */
-    "Access to newsgroup `%s' denied by server.", /* newsgroup name */
-/* < AUTH_FAILED_RETRY > */
-    "Authentication failed.  Retry?",
 /* < UNKNOWN_FUNC_RESPONSE > */
     "Interner XRN Fehler: unbekannte R\374ckmeldung %d von %s in %s.", /* return value, called function, calling function */
 /* < DISPLAYING_LAST_UNREAD > */
@@ -1355,7 +1343,7 @@ char *message_strings[] = {
 /* < NO_NG_SPECIFIED > */
     "Keine Newsgruppe angegeben.",
 /* < NO_SUCH_NG > */
-    "Newsgroup `%s' does not exist or you can't access it.", /* newsgroup name */
+    "Newsgruppe `%s' existiert nicht.", /* Newsgruppe Name */
 /* < NO_PREV_NG > */
     "Keine vorhergehende Newsgruppe.",
 /* < NO_GROUPS_SELECTED > */
@@ -1734,13 +1722,13 @@ char *message_strings[] = {
  ### Die folgenden Texte sollten evtl. nicht uebersetzt werden ###
  */
 /* < REPLY_YOU_WRITE > */
-    "You write:\n", /* messageid */
+    "In article %s,\n you write:\n", /* messageid */
 /* < FORWARDED_ARTIKEL > */
     "\n------ Forwarded Article %s\n------ From %s\n\n", /* messageid , author */
 /* < FORWARDED_ARTICLE_END > */
     "\n------ End of Forwarded Article\n",
 /* < FOLLOWUP_AUTHOR_WRITE > */
-    "%.0s%s writes:\n", /* messageid , author */
+    "In article %s,\n %s writes:\n", /* messageid , author */
 /* #### Ende des evtl. nicht uebersetzen #### */
 /* < NEWSGROUPS_INDEX > */
     "%4s %10s %*s %4d Artikel%1.1s +%6d alt",
@@ -1783,7 +1771,7 @@ char *message_strings[] = {
 /* < KILL_SAVED > */
     "gesichert - %s",      /* subject */
 /* < KILL_THREAD > */
-    "Serie ausgeblendet - %s", /* subject */
+    "killed thread - %s", /* subject */
 /* < COUNT_KILLED > */
     "%d Artikel%s in %s ausgeblendet", /* count, "" or NOT_ONE_STRING , newsgroup */
 /* < COUNT_UNREAD > */

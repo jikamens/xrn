@@ -1,6 +1,6 @@
 
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: clientlib.c,v 1.21 2006-01-03 16:17:02 jik Exp $";
+static char XRNrcsid[] = "$Id: clientlib.c,v 1.19 1998-07-10 13:38:43 jik Exp $";
 #endif
 
 /* #define DEBUG */
@@ -189,6 +189,22 @@ int server_init(machine)
 	    return (retval);
 	}
 
+	/*
+	  Make sure we're in READER mode.  Now, you may be saying to
+	  yourself, "Why is this necessary?  The only news server that
+	  supports the MODE command is INN, and if the person
+	  compiling this program is using INN, he's going to link
+	  against the INN client libraries anyway, so this function
+	  won't ever be used."  Well, first of all, other news servers
+	  are probably going to support the MODE command at some point
+	  in the future.  Second, someone may want to compile XRN
+	  without access to the INN client libraries and still talk to
+	  an INN server.
+
+	  In any case, it doesn't hurt to send the MODE command and
+	  see what happens.
+	  */
+
 	put_server("MODE READER");
 
 	if ((retval2 = get_server_init_msg(&mode_init_msg)) < 0) {
@@ -292,7 +308,7 @@ static int get_tcp_socket(machine)
 
 	(void) memset((char *) &sin, 0, sizeof(sin));
 
-	if (! port) {
+	if (! port)
 	  if (nntp_port)
 	    port = htons(atoi(nntp_port));
 	  else {
@@ -302,7 +318,6 @@ static int get_tcp_socket(machine)
 	    }
 	    port = sp->s_port;
 	  }
-	}
 	sin.sin_port = port;
 
 	if ((sin.sin_addr.s_addr = inet_addr(machine)) != -1) {
