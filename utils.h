@@ -2,7 +2,7 @@
 #define UTILS_H
 
 /*
- * $Id: utils.h,v 1.58 1998-07-10 21:56:21 jik Exp $
+ * $Id: utils.h,v 1.28 1994-12-15 15:47:15 jik Exp $
  */
 
 /*
@@ -34,6 +34,12 @@
  * utils.h: random utility functions and macros for xrn
  */
 
+#if defined(hpux) || defined(__hpux)
+#ifndef _HPUX_SOURCE
+#define _HPUX_SOURCE
+#endif
+#endif
+
 /*
   This is necessary so that when <unistd.h> is included, it will
   execute a pragma which will allow vfork to function correctly when
@@ -47,12 +53,11 @@
 
 #include <stdio.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/wait.h>
 #include <string.h>
 
 #if defined(sun) || defined(__hpux) || defined(aiws) || \
-	defined(_POSIX_SOURCE) || defined(SVR4) || defined(__uxp__)
+	defined(_POSIX_SOURCE) || defined(SVR4)
 #include <unistd.h>
 #endif
 
@@ -62,14 +67,17 @@
 
 extern int gethostname();
 
-#ifndef SOLARIS
+#ifdef SOLARIS
+
+#include <sys/stat.h>
+
+#else
 
 #include <memory.h>
 #include <strings.h>
 
 /* Stupid SunOS header files are missing buttloads of declarations */
 extern int printf(), fprintf(), fputc(), fputs(), fread(), fwrite(), sscanf();
-extern int fgetc();
 extern int fclose(), vfprintf(), vsprintf(), puts(), fscanf(), _filbuf();
 extern int _flsbuf(), rewind(), fseek();
 extern int toupper(), tolower();
@@ -78,24 +86,15 @@ extern int getdtablesize();
 extern int system();
 extern int read(), close(), fchmod(), rename();
 extern int putenv();
-extern int strcasecmp(), strncasecmp();
-extern void bzero(), bcopy();
 
 #endif /* SOLARIS */
 #endif /* sun */
 
-#ifdef linux
-extern char *tempnam();
-#endif
-
+#ifndef VMS
 #include <sys/param.h>
-#ifndef MAXPATHLEN
-#ifdef SCO
-#include <limits.h>
-#define MAXPATHLEN _POSIX_PATH_MAX
-#else /* ! SCO */
-#define MAXPATHLEN 512	/* XXX On POSIX systems, there's a call to get this */
 #endif
+#ifndef MAXPATHLEN
+#define MAXPATHLEN 512	/* XXX On POSIX systems, there's a call to get this */
 #endif
 
 /*
@@ -110,15 +109,15 @@ extern char *tempnam();
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #endif
 
-#if !defined(NeedFunctionPrototypes)
-#if  defined(FUNCPROTO) && !defined(_NO_PROTO)
-#define	NeedFunctionPrototypes	1
+#ifndef _ARGUMENTS
+#if defined(FUNCPROTO) && !defined(_NO_PROTO)
+#define _ARGUMENTS(arglist) arglist
 #else
-#define	NeedFunctionPrototypes	0
+#define _ARGUMENTS(arglist) ()
 #endif
 #endif
 
-#if !defined(NeedVarargsPrototypes)
+#ifndef _VARARGUMENTS
 /*
  * The number of symbols I'm checking here seems a bit excessive.  For
  * example, it probably isn't necessary to check both FUNCPROTO&2 and
@@ -126,26 +125,6 @@ extern char *tempnam();
  */
 #if defined(FUNCPROTO) && (FUNCPROTO&2) && !defined(_NO_PROTO) && \
 	!defined(NOSTDHDRS) && defined(__STDC__)
-#define	NeedVarargsPrototypes	1
-#else
-#define	NeedVarargsPrototypes	0
-#endif
-#endif
-
-#ifndef _ARGUMENTS
-#if NeedFunctionPrototypes
-#define _ARGUMENTS(arglist) arglist
-#define _ANSIDECL(type,arg) type arg
-#define _KNRDECL(type,arg)
-#else
-#define _ARGUMENTS(arglist) ()
-#define _ANSIDECL(type,arg) arg
-#define _KNRDECL(type,arg) type arg;
-#endif
-#endif
-
-#ifndef _VARARGUMENTS
-#if NeedVarargsPrototypes
 #define _VARARGUMENTS(arglist) arglist
 #define XRN_USE_STDARG
 #else
@@ -160,19 +139,15 @@ extern char *tempnam();
 #define SIG_RET_T int
 #endif
 
-#ifdef sgi
-typedef SIG_RET_T (*SIG_PF0) _ARGUMENTS((void));
-#else /* ! sgi */
-# if defined(_ANSI_C_SOURCE) || defined(linux) || defined(__bsdi__) || defined(SOLARIS) || defined(__hpux)
+#if defined(_ANSI_C_SOURCE) || defined(linux)
 typedef SIG_RET_T	(*SIG_PF0) _ARGUMENTS((int));
-# else /* ! _ANSI_C_SOURCE */
+#else /* ! _ANSI_C_SOURCE */
 typedef SIG_RET_T	(*SIG_PF0) _VARARGUMENTS((int, ...));
-# endif /* _ANSI_C_SOURCE */
-#endif /* sgi */
+#endif /* _ANSI_C_SOURCE */
 
 #undef SIG_RET_T
 
-#if defined(__STDC__) || defined(sgi)
+#ifdef __STDC__
 #define CONST const
 #else
 #define CONST
@@ -184,7 +159,7 @@ extern char *strtok _ARGUMENTS((char *, char CONST *));
 #endif
 extern char *getenv _ARGUMENTS((CONST char *));
 #else
-#if !defined(NOSTDHDRS) && !defined(sun) /* included above on sun */
+#ifndef NOSTDHDRS
 #include <stdlib.h>
 #endif /* NOSTDHDRS */
 #endif /* !_POSIX_SOURCE */
@@ -207,6 +182,9 @@ extern int strcmp();
 #define ARRAYALLOC(type, sz)  (type *) XtMalloc((unsigned) (sizeof(type) * (sz)))
 #define NIL(type)             (type *) 0
 #define FREE(item)            XtFree((char *) item), item = 0
+#ifdef VMS
+extern int utGroupToVmsFilename _ARGUMENTS((char *filename, char *group));
+#endif
 #define STREQ(a,b)            (strcmp(a, b) == 0)
 #define STREQN(a,b,n)         (strncmp(a, b, n) == 0)
 
@@ -224,28 +202,13 @@ extern int utSubjectCompare _ARGUMENTS((CONST char *, CONST char *));
 
 #ifdef NEED_TEMPNAM
 extern char *utTempnam _ARGUMENTS((char *, char *));
-#define utTempnamFree XtFree
-#else
-#ifdef TEMPFILE_DEBUG
-static char *tempfile_debug_ret;
-#define utTempnam(a,b) ((tempfile_debug_ret = tempnam(a,b)), fprintf(stderr, "tempnam: %s at %s:%d\n", tempfile_debug_ret, __FILE__, __LINE__), tempfile_debug_ret)
-#else
-#define utTempnam tempnam
-#endif /* TEMPFILE_DEBUG */
-#define utTempnamFree free
-#endif
-
-extern char *utTempFile _ARGUMENTS((char *));
-
-#ifdef TEMPFILE_DEBUG
-#define utTempFile(a) ((tempfile_debug_ret = utTempFile(a)), fprintf(stderr, "utTempFile: %s at %s:%d\n", tempfile_debug_ret, __FILE__, __LINE__), tempfile_debug_ret)
 #endif
 
 #ifdef SYSV_REGEX
 extern char *regcmp();
 extern char *regex();
 #else
-#ifdef POSIX_REGEX
+#ifdef linux
 #include <regex.h>
 #else
 extern char *re_comp();
@@ -271,9 +234,9 @@ extern int strcasecmp _ARGUMENTS((CONST char *, CONST char *));
 extern int strncasecmp _ARGUMENTS((CONST char *, CONST char *, size_t));
 #endif
 
-extern void tconvert _ARGUMENTS((char *, char *));
+extern int tconvert _ARGUMENTS((char *, char *));
 
-#if defined(SYSV) || defined(SOLARIS)
+#if defined(VMS) || defined(SYSV) || defined(SOLARIS)
 #ifndef index
 #define index strchr
 #endif
@@ -284,50 +247,6 @@ extern void tconvert _ARGUMENTS((char *, char *));
 
 #ifdef NEED_STRSTR
 extern char *strstr _ARGUMENTS((char CONST *, char CONST *));
-#endif
-
-extern void do_chmod _ARGUMENTS((FILE *, char *, int));
-
-#if defined(__STDC__) && !defined(UNIXCPP)
-#define CONCAT(a,b) a##b
-#define STRINGIFY(a) #a
-#else
-#define CONCAT(a,b) a/**/b
-#define STRINGIFY(a) "a"
-#endif
-
-char *nntpServer _ARGUMENTS((void));
-
-#ifdef GCC_WALL
-#define WALL(a) a
-#else
-#define WALL(a)
-#endif
-
-char *findServerFile _ARGUMENTS((char *, Boolean, Boolean *));
-
-#if defined(__osf__) || defined(_POSIX_SOURCE) || defined(SOLARIS) \
-	|| defined(sun)
-typedef CONST void * qsort_arg_type;
-#else
-typedef void * qsort_arg_type;
-#endif
-
-int utDigits _ARGUMENTS((long int));
-
-#ifdef BSD_BFUNCS
-#ifndef memset
-#define memset(_Str_, _Chr_, _Len_) bzero(_Str_, _Len_)
-#endif
-#ifndef memcpy
-#define memcpy(_To_, _From_, _Len_) bcopy(_From_, _To_, _Len_)
-#endif
-#endif
-
-#if defined(BSD_BFUNCS) || defined(NO_MEMMOVE)
-#ifndef memmove
-#define memmove(_To_, _From_, _Len_) bcopy(_From_, _To_, _Len_)
-#endif
 #endif
 
 #endif /* UTILS_H */
