@@ -2,7 +2,7 @@
 #define NEWSRCFILE_H
 
 /*
- * $Id: newsrcfile.h,v 1.10 2006-01-03 16:38:21 jik Exp $
+ * $Id$
  */
 
 /*

@@ -2,7 +2,7 @@
 #define INTERNALS_H
 
 /*
- * $Id: internals.h,v 1.54 2002-05-14 19:54:43 jik Exp $
+ * $Id$
  */
 
 /*

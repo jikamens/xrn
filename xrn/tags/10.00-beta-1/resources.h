@@ -2,7 +2,7 @@
 #define RESOURCES_H
 
 /*
- * $Id: resources.h,v 1.39 1998-07-05 15:08:33 jik Exp $
+ * $Id$
  */
 
 /*

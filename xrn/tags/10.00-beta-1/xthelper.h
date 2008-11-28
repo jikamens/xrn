@@ -2,7 +2,7 @@
 #define XTHELPER_H
 
 /*
- * $Id: xthelper.h,v 1.6 1997-01-12 03:41:22 jik Exp $
+ * $Id$
  */
 
 /*

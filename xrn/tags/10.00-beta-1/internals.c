@@ -1,5 +1,5 @@
 #if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id: internals.c,v 1.244 2005-10-06 12:35:57 jik Exp $";
+static char XRNrcsid[] = "$Id$";
 #endif
 
 /*

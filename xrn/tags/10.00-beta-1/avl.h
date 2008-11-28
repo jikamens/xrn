@@ -4,7 +4,7 @@
 #define AVL_H
 
 /*
- * $Id: avl.h,v 1.5 1994-11-23 01:44:52 jik Exp $
+ * $Id$
  */
 
 /*

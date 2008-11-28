@@ -2,7 +2,7 @@
 #define XRN_CONFIG_H
 
 /*
- * $Id: config.h,v 1.92 2006-01-03 16:16:52 jik Exp $
+ * $Id$
  */
 
 /*

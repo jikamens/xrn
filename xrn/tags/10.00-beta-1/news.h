@@ -2,7 +2,7 @@
 #define NEWS_H
 
 /*
- * $Id: news.h,v 1.35 2006-01-03 16:38:38 jik Exp $
+ * $Id$
  */
 
 /*

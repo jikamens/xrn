@@ -6,7 +6,7 @@
 #include "utils.h"
 
 /*
- * $Id: buttons.h,v 1.16 1997-06-29 17:30:14 jik Exp $
+ * $Id$
  */
 
 /*
