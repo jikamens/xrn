@@ -425,14 +425,18 @@ static void check_server_response(command, response)
      *   "imeout" is treated as a timeout message.  We search for just
      *   "imeout" rather than "timeout" so that "Timeout" is also
      *   valid.  We also search for "Time Out".
+     *
+     *   Some servers return code 205 instead of 503, so we check that
+     *   as well.
      */
+  int rcode;
 
     if (check_authentication(command, response))
       return;
 
     if (ServerDown ||
-	((atoi(*response) == 503) && strstr(*response, "Time Out")) ||
-	((atoi(*response) == 503) && strstr(*response, "imeout"))) {
+	((((rcode = atoi(*response)) == 503) || rcode == 205) &&
+	 (strstr(*response, "Time Out") || strstr(*response, "imeout")))) {
 
 	mesgPane(XRN_SERIOUS, 0, LOST_CONNECT_ATTEMPT_RE_MSG);
 	start_server();
