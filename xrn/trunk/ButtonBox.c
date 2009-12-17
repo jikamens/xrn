@@ -32,14 +32,14 @@ Widget ButtonBoxCreate(name, parent)
 			 XtNresizeToPreferred, True,
 			 XtNshowGrip, False,
                          */
-			 0);
+			 (String)0);
 #else
     w = XtVaCreateWidget(name, boxWidgetClass, parent,
 			 XtNallowResize, True,
 			 XtNresizeToPreferred, True,
 			 XtNshowGrip, False,
 			 XtNskipAdjust, True,
-			 0);
+			 (String)0);
 #endif
 
     return w;
@@ -54,10 +54,10 @@ Widget ButtonBoxAddButton(name, callbacks, parent)
 
 #ifdef MOTIF
     w = XtVaCreateManagedWidget(name, xmPushButtonWidgetClass, parent,
-				XmNactivateCallback, callbacks, 0);
+				XmNactivateCallback, callbacks, (String)0);
 #else
     w = XtVaCreateManagedWidget(name, commandWidgetClass, parent,
-				XtNcallback, callbacks, 0);
+				XtNcallback, callbacks, (String)0);
 #endif
 
     return w;
@@ -78,7 +78,7 @@ void ButtonBoxEmpty(w)
   Cardinal num_children;
   
   XtVaGetValues(w, XtNchildren, &children,
-		XtNnumChildren, &num_children, 0);
+		XtNnumChildren, &num_children, (String)0);
 
   while (num_children-- >= 1)
     XtDestroyWidget(children[num_children]);

@@ -2427,12 +2427,12 @@ static int composePane(titleString, header, point)
     XtVaGetValues(TopLevel,
 		  XtNwidth, (XtPointer) &width_val,
 		  XtNheight, (XtPointer) &height_val,
-		  (char *) 0);
+		  (char *) (String)0);
 
     pane = XtVaCreateManagedWidget("pane", panedWidgetClass, ComposeTopLevel,
 				   XtNwidth, (XtArgVal) width_val,
 				   XtNheight, (XtArgVal) height_val,
-				   (char *) 0);
+				   (char *) (String)0);
 
     (void) strcpy(titleStorage, titleString);
 
@@ -2462,7 +2462,7 @@ static int composePane(titleString, header, point)
 
 	XtVaGetValues(ComposeLabel,
 		      XtNheight, (XtPointer) &height_val,
-		      (char *) 0);
+		      (String) 0);
 
 	XawPanedSetMinMax(ComposeLabel, (int) height_val, (int) height_val);
 	XawPanedAllowResize(TEXT_PANE_CHILD(ComposeText), True);
@@ -2912,7 +2912,7 @@ static void switch_message_type(Header)
     return;
 
   title = followup_or_reply_title(Header, followup, reply);
-  XtVaSetValues(ComposeLabel, XtNlabel, title, 0);
+  XtVaSetValues(ComposeLabel, XtNlabel, title, (String)0);
 
   headers = update_headers(Header, False, followup, reply);
   addField(headers);

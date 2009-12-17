@@ -3586,8 +3586,8 @@ void displayArticleWidgets()
 	XawPanedAllowResize(TEXT_PANE_CHILD(SubjectText), True);
 	TextSetLines(SubjectText, app_resources.topLines);
 	XawPanedAllowResize(TEXT_PANE_CHILD(SubjectText), False);
-	XtVaGetValues(SubjectText, XtNheight, &height, 0);
-	XtVaSetValues(SubjectText, XtNpreferredPaneSize, height, 0);
+	XtVaGetValues(SubjectText, XtNheight, &height, (String)0);
+	XtVaSetValues(SubjectText, XtNpreferredPaneSize, height, (String)0);
 
 	TopInfoLine = SubjectInfoLine;
 	BottomInfoLine = ArticleInfoLine;
