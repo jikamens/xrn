@@ -225,7 +225,7 @@ void makeDefaultButton(widget)
     XtVaGetValues(widget,
 		  XtNborderWidth, (XtArgVal) &border_width,
 		  XtNhighlightThickness, (XtArgVal) &highlight_thickness,
-		  0);
+		  (String)0);
 
     border_width++;
     highlight_thickness++;
@@ -233,5 +233,5 @@ void makeDefaultButton(widget)
     XtVaSetValues(widget,
 		  XtNborderWidth, (XtArgVal) border_width,
 		  XtNhighlightThickness, (XtArgVal) highlight_thickness,
-		  0);
+		  (String)0);
 }

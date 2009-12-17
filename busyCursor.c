@@ -146,11 +146,11 @@ void BusyCursor(
 		  XtNcursor, &info_p->cursor,
 		  XtNchildren, &children,
 		  XtNnumChildren, &num_children,
-		  0);
+		  (String)0);
 #ifdef TEST
     printf("Busying 0x%x\n", root);
 #endif
-    XtVaSetValues(root, XtNcursor, the_cursor, 0);
+    XtVaSetValues(root, XtNcursor, the_cursor, (String)0);
 
     in_busy++;
 
@@ -190,13 +190,13 @@ void UnbusyCursor(
 #ifdef TEST
     printf("Unbusying 0x%x\n", root);
 #endif
-    XtVaSetValues(root, XtNcursor, info_p->cursor, 0);
+    XtVaSetValues(root, XtNcursor, info_p->cursor, (String)0);
     info_p->widget = 0;
 
     XtVaGetValues(root,
 		  XtNchildren, &children,
 		  XtNnumChildren, &num_children,
-		  0);
+		  (String)0);
 
     in_unbusy++;
 
@@ -251,10 +251,10 @@ int main(argc, argv)
     box = XtCreateManagedWidget("box", boxWidgetClass, pane, 0, 0);
     button = XtVaCreateManagedWidget("button", commandWidgetClass, box,
 				     XtNcallback, callbacks,
-				     0);
+				     (String)0);
     text = XtVaCreateManagedWidget("text", asciiTextWidgetClass, pane,
 				   XtNstring, "This is a test string.",
-				   0);
+				   (String)0);
 
     XtRealizeWidget(top);
     XtAppMainLoop(context);

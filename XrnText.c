@@ -169,7 +169,7 @@ void TextSetString(w, string)
 		  XtNstring, string,
 		  XtNtype, XawAsciiString,
 #endif
-		  0);
+		  (String)0);
 }
 
 /*
@@ -199,7 +199,7 @@ String TextGetString(w)
     Widget source;
     XawTextBlock b;
 
-    XtVaGetValues(w, XtNtextSource, &source, 0);
+    XtVaGetValues(w, XtNtextSource, &source, (String)0);
 
     right = XawTextSourceScan(source, (XawTextPosition) 0, XawstAll,
 			      XawsdRight, 1, True);
@@ -287,7 +287,7 @@ void TextSetFile(w, file)
     XtVaSetValues(w,
 		  XtNstring, file,
 		  XtNtype, XawAsciiFile,
-		  0);
+		  (String)0);
 #endif
 }
 
@@ -309,7 +309,7 @@ String TextGetFile(w)
 #else
     String file;
 
-    XtVaGetValues(w, XtNstring, &file, 0);
+    XtVaGetValues(w, XtNstring, &file, (String)0);
 
     return XtNewString(file);
 #endif
@@ -351,10 +351,10 @@ void TextReplace(w, string, length, left, right)
 #endif
 
     set_changed(w);
-    XtVaGetValues(w, XtNeditType, &type, 0);
-    XtVaSetValues(w, XtNeditType, XawtextEdit, 0);
+    XtVaGetValues(w, XtNeditType, &type, (String)0);
+    XtVaSetValues(w, XtNeditType, XawtextEdit, (String)0);
     XawTextReplace(w, (XawTextPosition) left, (XawTextPosition) right, &b);
-    XtVaSetValues(w, XtNeditType, type, 0);
+    XtVaSetValues(w, XtNeditType, type, (String)0);
 #endif
 }
 
@@ -413,7 +413,7 @@ Boolean TextGetCurrentLine(w, left_ptr, right_ptr)
 
     left = right = TextGetInsertionPoint(w);
 
-    XtVaGetValues(w, XtNtextSource, &source, 0);
+    XtVaGetValues(w, XtNtextSource, &source, (String)0);
 
     left = XawTextSourceScan(source, (XawTextPosition) left,
 			     XawstEOL, XawsdLeft, 1, False);
@@ -470,7 +470,7 @@ Boolean TextGetSelectedLines(w, left, right)
 	return False;
     }
 
-    XtVaGetValues(w, XtNtextSource, &source, 0);
+    XtVaGetValues(w, XtNtextSource, &source, (String)0);
     left_ret = XawTextSourceScan(source, (XawTextPosition) left_ret,
 				 XawstEOL, XawsdLeft, 1, False);
     right2 = XawTextSourceScan(source, (XawTextPosition) right_ret,
@@ -568,7 +568,7 @@ void TextSetTopPosition(w, pos)
 #ifdef MOTIF
     XmTextSetTopCharacter(w, pos);
 #else
-    XtVaSetValues(w, XtNdisplayPosition, (XawTextPosition) pos, 0);
+    XtVaSetValues(w, XtNdisplayPosition, (XawTextPosition) pos, (String)0);
 #endif
 }
 
@@ -689,7 +689,7 @@ void TextRemoveLine(w, position)
     Widget source;
     long left, right;
 
-    XtVaGetValues(w, XtNtextSource, &source, 0);
+    XtVaGetValues(w, XtNtextSource, &source, (String)0);
 
     left = XawTextSourceScan(source, (XawTextPosition) position,
 			     XawstEOL, XawsdLeft, 1, False);
@@ -769,9 +769,9 @@ void TextSetLines(w, lines)
 		  XtNtextSink, &sink,
 		  XtNbottomMargin, &bm,
 		  XtNtopMargin, &tm,
-		  0);
+		  (String)0);
     height = XawTextSinkMaxHeight(sink, lines) + tm + bm;
-    XtVaSetValues(w, XtNheight, (Dimension) height, 0);
+    XtVaSetValues(w, XtNheight, (Dimension) height, (String)0);
 #endif
 }
 
@@ -796,7 +796,7 @@ int TextGetLines(w)
 		  XtNheight, &height,
 		  XtNbottomMargin, &bm,
 		  XtNtopMargin, &tm,
-		  0);
+		  (String)0);
     return XawTextSinkMaxLines(sink, height - tm - bm);
 #endif
 }
@@ -825,7 +825,7 @@ int TextGetColumns(w)
 		  XtNwidth, &width,
 		  XtNleftMargin, &lm,
 		  XtNrightMargin, &rm,
-		  0);
+		  (String)0);
 
     return((width - lm - rm) / font->max_bounds.width);
 #endif
@@ -907,11 +907,11 @@ void TextSetLineSelections(w)
     static XmTextScanType array[] = {XmSELECT_LINE};
 
     XtVaSetValues(w, XmNselectionArrayCount, XtNumber(array),
-		  XmNselectionArray, array, 0);
+		  XmNselectionArray, array, (String)0);
 #else
     static XawTextSelectType array[] = {XawselectLine, XawselectNull};
 
-    XtVaSetValues(w, XtNselectTypes, array, 0);
+    XtVaSetValues(w, XtNselectTypes, array, (String)0);
 #endif
 }
 
@@ -927,14 +927,14 @@ void TextSetAllSelections(w)
     };
 
     XtVaSetValues(w, XmNselectionArrayCount, XtNumber(array),
-		  XmNselectionArray, array, 0);
+		  XmNselectionArray, array, (String)0);
 #else
     static XawTextSelectType array[] = {
 	XawselectPosition, XawselectChar, XawselectWord, XawselectLine,
 	XawselectParagraph, XawselectAll, XawselectNull
     };
 
-    XtVaSetValues(w, XtNselectTypes, array, 0);
+    XtVaSetValues(w, XtNselectTypes, array, (String)0);
 #endif
 }
 
@@ -991,7 +991,7 @@ long TextSearch(w, start, direction, string)
     b.ptr = string;
     b.format = XawFmt8Bit;
 
-    XtVaGetValues(w, XtNtextSource, &source, 0);
+    XtVaGetValues(w, XtNtextSource, &source, (String)0);
 
     ret = XawTextSourceSearch(source, (XawTextPosition) start,
 			      (direction == TextSearchLeft) ?
@@ -1039,9 +1039,9 @@ void TextEnableWordWrap(w)
     Widget w;
 {
 #ifdef MOTIF
-    XtVaSetValues(w, XmNwordWrap, True, 0);
+    XtVaSetValues(w, XmNwordWrap, True, (String)0);
 #else
-    XtVaSetValues(w, XtNwrap, XawtextWrapWord, 0);
+    XtVaSetValues(w, XtNwrap, XawtextWrapWord, (String)0);
 #endif
 }
 
@@ -1052,8 +1052,8 @@ void TextDisableWordWrap(w)
     Widget w;
 {
 #ifdef MOTIF
-    XtVaSetValues(w, XmNwordWrap, False, 0);
+    XtVaSetValues(w, XmNwordWrap, False, (String)0);
 #else
-    XtVaSetValues(w, XtNwrap, XawtextWrapNever, 0);
+    XtVaSetValues(w, XtNwrap, XawtextWrapNever, (String)0);
 #endif
 }

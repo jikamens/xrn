@@ -349,7 +349,7 @@ String PasswordBox(widget, prompt)
   password_result = -1;
 
   dialog = CreateDialog(TopLevel, prompt, DIALOG_TEXT, args, XtNumber(args));
-  XtVaSetValues(XtNameToWidget(dialog, "dialog.value"), XtNecho, 0, 0);
+  XtVaSetValues(XtNameToWidget(dialog, "dialog.value"), XtNecho, 0, (String)0);
   PopUpDialog(dialog);
 
   while (password_result < 0) {
