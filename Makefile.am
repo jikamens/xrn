@@ -22,6 +22,7 @@ xrn_SOURCES = avl.c compose.c cursor.c dialogs.c \
 
 xrn_SOURCES += clientlib.c
 
+EXTRA_DIST = xrn.spec
 nodist_xrn_SOURCES = mesg_strings.h
 BUILT_SOURCES = mesg_strings.h rcyacc.h
 AM_YFLAGS = -d
