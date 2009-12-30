@@ -1,0 +1,286 @@
+#!/bin/sh
+
+# $Id$
+
+[ -z "${TMP}" ] && TMP=/tmp
+
+separi="[#:|]> *"
+separo=">"
+foldcont='\\\n'
+inient=0
+catdone=false
+tmpfile=${TMP}/xmh.${$}
+trap '/bin/rm -f ${tmpfile}' 0
+b0=`basename ${0}`
+USAGE="\
+${b0} [-e] [-s c] [-] file ...
+  -e	  : puts the entire head (entete) of message.
+  -is c	  : uses character c as input separator.
+	    Default: '"${separi}"'.
+  -os c	  : uses character c as output separator.
+	    Default: '"${separo}"'.
+  -s c	  : uses character c as input/output separator.
+  -fc c	  : uses c as the separation between folds of long lines.
+	    Default: "${foldcont}"
+  -	  : takes stdin as input file.
+"
+
+case "${*}" in
+    *-[Hh?]*)
+	echo>&2 -n "${USAGE}"
+	exit 1;;
+esac
+
+while [ ${#} -gt 0 ]
+do
+
+    case "${1}" in
+	-x) set -x; shift; continue;;
+	-e) inient=1; shift; continue;;
+	-s) shift; separi="${1}"; separo="${1}"; shift; continue;;
+	-is) shift; separi="${1}"; shift; continue;;
+	-os) shift; separo="${1}"; shift; continue;;
+	-fc) shift; foldcont="${1}"; shift; continue;;
+	 -) file=${tmpfile}
+	    if [ "${catdone}" = "false" ]
+	    then
+		catdone=true
+		cat - > ${tmpfile}
+	    fi;;
+	 *) if [ -r "${1}" ]
+	    then file=${1}
+	    else echo>&2 "${b0}: ${1} ???"; exit 1
+	    fi;;
+    esac
+
+    sedtext='1 !d
+	    s/^[TFrom]*: //
+	    s/"//g
+	'
+#	    s/ <.*//
+#	    /(/ {
+#		s/^[^(]*(\(.*\))[^)]*$/\1/
+#		s/[(].*/ /
+#		s/^[^A-Za-z]*//
+#	    }
+
+    fromname=`
+	grep "^From: " "${file}" |
+	sed -e "${sedtext}"`
+    toname=`
+	grep "^To: " "${file}" |
+	sed -e "${sedtext}"`
+
+    [ -z "${fromname}" ] && fromname="${USER}"
+    [ -z "${toname}" ] && toname="${USER}"
+
+    case "${fromname}" in
+	*" "*) ;;
+	*) name=`
+		ypmatch ${fromname} passwd 2>/dev/null |
+		awk -F: '{
+		    nbf=split($5,fie,",")
+		    print fie[1]
+		}'`
+	   [ -n "${name}" ] && fromname="${name}";;
+    esac
+    case "${toname}" in
+	*" "*) ;;
+	*) name=`
+		ypmatch ${toname} passwd 2>/dev/null |
+		awk -F: '{
+		    nbf=split($5,fie,",")
+		    print fie[1]
+		}'`
+	   [ -n "${name}" ] && toname="${name}";;
+    esac
+
+#    fromname=`echo "${fromname}" |
+#	  sed -e '
+#		s/ x[0-9].*$//
+#		s/ [0-9].*$//
+#		s/,.*$//
+#		s/[^A-Za-z.]/ /g
+#		s/  */ /g
+#		s/^ //
+#		s/ *$//
+#		s/\([^ ]\)[^ ]* /\1./g
+#	'`
+#    toname=`echo "${toname}" |
+#	  sed -e '
+#		s/[^A-Za-z.]/ /g
+#		s/  */ /g
+#		s/^ //
+#		s/ *$//
+#		s/\([^ ]\)[^ ]* /\1./g
+#	'`
+
+    if [ "${separi}" = ">" ]
+    then separi='|>'
+    fi
+    sed -e '
+	s/^ *> */> /
+	s/^ *'"${separi}"' */> /
+	: loop
+	s/^\(>*\) *'"${separi}"' */\1> /
+	s/^\(>*\)  *> */\1> /
+	t loop
+	s/^>>* *\([^ >][^<]*\)> /\1> /
+	s/^>>* *\([^ >][^<]*\)'"${separi}"' /\1> /
+	s/^>>*  *$//
+	' "${file}" |
+    awk 'BEGIN{
+	    entete="'"${inient}"'"
+	    OFS=" "
+	    toname[1]="'"${toname}"'"
+	    toname[0]="'"${fromname}"'"
+	}
+	/^[^>]/ { niv=0 }
+	/^>/ { niv=length($1) }
+	/^>* *In article <.*>/ && ! /writes: *$/ {
+	     outstr=$0
+	     getline
+	     outstr=outstr FS $1
+	     $1=outstr
+	}
+	/^>* *In article <.*>[, ] *.*  *writes:$/ {
+	    toname[niv+1]=$(NF-1)
+	}
+	/^>* *In article <.*>,?  *you write:$/ {
+	    toname[niv+1]=toname[0]
+	}
+	entete==1 && \
+	( /^>* *In article <.*>,?  *[^ ]*  *(.*)  *writes:$/ || \
+	  /^>* *From: / ) {
+	    toname[niv+1]=$0
+	}
+	toname[niv] ~ / </ {
+	    str=toname[niv]
+	    indd=index(str,"<")
+	    for(c=" ";c==" ";indd--) c=substr(str,indd-1,1)
+	    len=index(str,">")
+	    for(c=" ";c==" ";len++) c=substr(str,len+1,1)
+	    if(indd>0 && len>0){
+		toname[niv]=substr(str,1,indd) " " substr(str,len)
+	    }
+	}
+	toname[niv] ~ /[(]/ {
+	    str=toname[niv]
+	    indd= index(str,"(")-1
+	    for(c="(";(c<"A")||(c>"z");indd++){
+		c=substr(str,indd+1,1)
+	    }
+	    str=substr(str,indd)
+	    indd=1
+	    len= index(str,")")+1
+	    for(c=")";(c<"A")||(c>"z");len--){
+		c=substr(str,len-2,1)
+	    }
+###	    len= match(str,/[^ .a-zA-Z]/)
+	    len=1
+	    for(c="A"; (("A"<=c)&&(c<="Z")) || \
+		       (("a"<=c)&&(c<="z")) || \
+		       (c==" ") || (c==".");len++){
+		c=substr(str,len+1,1)
+	    }
+	    len++
+	    c=" "
+	    while(c==" ") {
+		len--
+		c=substr(str,len-1,1)
+	    }
+	    len=len-indd
+	    if(len>0){
+		toname[niv]=substr(str,indd,len)
+		str=toname[niv]
+		len=index(str,"(")-1
+		if(len>0) toname[niv]=substr(str,1,len)
+		str=toname[niv]
+		len=index(str,",")-1
+		if(len>0) toname[niv]=substr(str,1,len)
+	    } else {
+		nbf= split(str,fie)
+		if(indd!=0) toname[niv]=fie[nbf-2]
+		else toname[niv]=fie[nbf-1]
+	    }
+	}
+	length(toname[niv]) > 15 {
+	    str=toname[niv]
+	    len=index(str,"@")-1
+	    if(len>0) toname[niv]=substr(str,1,len)
+	}
+	length(toname[niv]) > 15 || \
+	toname[niv] ~ / / {
+	    nbf= split(toname[niv],fie)
+	    if(nbf==1) nbf= split(toname[niv],fie,".")
+	    toname[niv]=""
+	    for(i=1;i<nbf;i++){
+		if(fie[i]=="and") {
+		    toname[niv]=toname[niv] "&"
+		} else {
+		    toname[niv]=toname[niv] substr(fie[i],1,1) "."
+		}
+	    }
+	    toname[niv]=toname[niv] fie[nbf]
+	}
+	length(toname[niv]) > 15 {
+	    toname[niv]=substr(toname[niv],1,15)
+	}
+	toname[niv] == "" { toname[niv]="Author#" niv }
+	/^From: / || /^Subject: / || \
+	/^Date: / || /^To: / { entete=0 }
+	/^$/ { entete=1 }
+	/^ *$/ { print ""; continue }
+	/^[A-Za-z][A-Za-z.]*> / { print; continue }
+	/^From: / || /^Subject: / || \
+	/^Date: / || /^To: / || \
+	entete==1 {
+	    outstr= toname[niv] "'"${separo}"'"
+	    ideb=1
+	    if(niv!=0) ideb++
+	    pref= sprintf "%-16.16s", outstr
+	    lpref= length(pref)
+	    printf "%s", pref
+	    len= lpref
+	    nbf= split($0,fie)
+	    for(i=ideb;i<=nbf;i++){
+		len2=len+1+length(fie[i])
+		if((len2>78)&&(len!=lpref)){
+		    printf "'"${foldcont}"'%s", pref
+		    len=lpref
+		}
+		len=len+1+length(fie[i])
+		printf "%s", OFS fie[i]
+	    }
+	    printf "\n"
+	}
+	'
+
+shift
+
+done
+
+exit
+
+## #!/usr/local/bin/perl
+## eval "exec /usr/local/bin/perl -S $0 $*"
+##     if $running_under_some_shell;
+## 			# this emulates #! processing on NIH machines.
+## 			# (remove #! line above if indigestible)
+##
+## eval '$'.$1.'$2;' while $ARGV[0] =~ /^([A-Za-z_]+=)(.*)/ && shift;
+## 			# process any FOO=bar switches
+##
+## $, = ' ';		# set output field separator
+## $\ = "\n";		# set output record separator
+##
+## while (<>) {
+##     chop;	# strip record separator
+##     $OK = 1;
+##     if ($. == 1 .. /^$/) {
+## 	$OK = 0;
+##     }
+##     if ($OK == 1) {
+## 	print '> ' . $_;
+##     }
+## }

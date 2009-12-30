@@ -1,0 +1,19 @@
+#!/bin/csh -f
+#
+# Command to print stdin with a Subject: line
+#
+# $Id$
+#
+# Thought you might like the script I use for printing articles.  Its only
+# interesting feature is that it puts the Subject on the cover page and
+#
+# page headers...
+# David Brooks				dbrooks@osf.org
+# Open Software Foundation		uunet!osf.org!dbrooks
+#
+set title = `tee /tmp/xrnp$$ | sed '/^Subject: /\\!d\\\
+s/Subject: //'`
+pr -h "${title}" /tmp/xrnp$$ | lpr -J"${title}"
+rm -rf /tmp/xrnp$$
+exit 0
+

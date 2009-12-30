@@ -1,0 +1,13 @@
+2009-12-30  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+
+	* Release 10.00-beta-2.
+
+	* Fixes to make XRN compile and run properly on 64-bit machines.
+
+	* Server timeouts can cause NNTP error code 205 as well as 503.
+	Therefore, accept 205 when attempting to detect and recover from
+	timeouts.
+
+2008-11-28 18:41  jik
+
+	* Release 10.00-beta-1.

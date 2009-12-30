@@ -1,0 +1,11 @@
+#! /bin/csh
+#
+# $Id$
+#
+# From: tengi@Princeton.EDU
+#
+#  xrn.mailer:     /u/tengi/bin/xrn-mh-mailer
+#
+cat > /tmp/mail.${USER}.$$
+send /tmp/mail.${USER}.$$
+exit 0

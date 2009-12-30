@@ -1,0 +1,206 @@
+
+$Id$
+
+List of Common Problems:
+
+*.  XRN is crashing because of long lines in your newsrc file.
+
+    On some UNIX platforms, the "lex" pre-compiler, which XRN uses to
+    produce the code which parses newsrc files, has limit on line
+    lengths which is too small for some lines in newsrc files.
+
+    If XRN crashes or performs unpredictably when you run it, and you
+    have long lines in your newsrc file (200 characters long is the
+    most common limit), then you may be running into this problem.  If
+    so, the easiest way to fix it is to install the GNU "flex" package
+    and use it, rather than lex, when compiling XRN.  After installing
+    flex, you can use it when compiling XRN by adding "LEX=flex" to
+    the end of the "make" command you use to compile XRN.
+
+*.  XRN compiled and installed just fine, and you can use it with the
+    mouse, but none of the key bindings work.
+
+    You are using an old version of the X11 libraries (e.g., you're
+    using SunOS 4.x).  As noted in the README file, XRN requires at
+    least X11R5 to work properly.  You need to get a newer version of
+    X11 (e.g., the X11R6.3 release from the Open Group), compile and
+    install it, and link XRN against it.
+
+*.  Part of the Subject index occasionally fails to redraw properly in
+    article mode.
+
+    This behavior is caused by a known bug in the Athena widget set
+    (Xaw).  A fix for the bug has already been submitted to the X
+    Consortium, but there's no way of knowing when they'll actually
+    release it and when sites will reinstall new Xaw libraries with
+    the fix.
+
+    In the meantime, you can get the missing lines to redraw by
+    scrolling the index, or by causing the XRN window to refresh
+    itself, e.g., by using the "xrefresh" command, by iconifying it
+    and deiconifying it, or by using your window manager's "refresh"
+    command on the XRN window.
+
+*.  When you resize the XRN window, the buttons disappear.
+
+    This behavior is caused by a known bug in the Athena widget set
+    (Xaw).  A fix for the bug has already been submitted to the X
+    Consortium, but there's no way of knowing when they'll actually
+    release it and when sites will reinstall new Xaw libraries with
+    the fix.
+
+    In the meantime, you can make the buttons come back by changing
+    the *width* of the XRN window, rather than changing just the
+    height.  Furthermore, once you change the width of the window
+    once, you won't have to do it again in that invocation of XRN,
+    i.e., the bug only manifests if you change the height of the XRN
+    window and you haven't changed its width from its original size.
+
+*.  XRN does not link on a SUN under Open Windows:
+
+    SunOS 4.1.2 includes patch number 100170-06 (ld). It then discloses other
+    bugs in OW3.0 libraries Xmu and Xt. You can order patch number
+    100512-02 and 100573-03.
+
+    If you use X11R5, check your configuration file (mit/config/sun.cf) and be
+    sure you defined SunPost411FCSLd to YES.
+
+*.  You get the following message:
+
+	XRN: serious error, your NNTP server does not have XHDR support.
+	Either you are running a pre-1.5 NNTP server or XHDR has
+	not been defined in 'nntp/common/conf.h'
+	XRN requires XHDR support to run.
+
+    Do what it says.  Actually, there is some sort of timeout bug in 
+    XRN that will sometimes excite this message... if you know your
+    NNTP server has XHDR support, ignore the message.
+
+*.  You get a message that looks something like this:
+
+	The current XRN Application Defaults file is not installed.
+	As a result, some XRN functionality may be missing.
+
+    You have not installed the correct application defaults file for
+    XRN.  If you generated the Makefile used to build XRN with
+    "xmkmf", then the application defaults file should be installed
+    properly if you run "make install" in the directory in which you
+    built XRN.  If you are using the Makefile that came with XRN, talk
+    to your system administrator to find out where application
+    defaults files are supposed to be installed at your site (i.e.,
+    where your Xt library is configured to look for them).
+
+    Please *do not* contact me, the maintainer of XRN, and ask where
+    the application defaults file should be installed at your site.  I
+    don't know, and I have no way to find out.
+
+    If you do not have write access to the directory in which the
+    application defaults file is supposed to be installed, and you
+    still want to use XRN, you may be able to install the app-defaults
+    file elsewhere and point XRN at it using the XUSERFILESEARCHPATH,
+    XAPPLRESDIR, XENVIRONMENT, or XFILESEARCHPATH environment
+    variables.  See the X documentation at your site for more
+    information.  Again, please don't contact me; I really don't have
+    time to help people learn how to use X properly.
+
+    Another alternative is to hard-code a path to a directory to which
+    you have write access into the XRN binary when you compile it, and
+    to install the application defaults file into that directory.  See
+    the documentation of XFILESEARCHPATH in the file "config.h" in the
+    XRN source directory.
+
+*.  The scroll bars do not appear.
+
+    You have not installed the correct application defaults file for
+    XRN.  See above for remedies.
+
+*.  That Stupid Information Box - how do I get rid of it.
+
+    Set the "xrn.info" X resource in your .Xresources or .Xdefaults
+    file to "false", or run XRN with the "-info" command-line option.
+
+*.  There are too many buttons.
+
+    Check out the *ButtonList X resources in the XRN man page.
+
+*.  You get the message:
+
+	"Caught signal (XX), cleaned up .newsrc and removed temp files"
+
+    If you're using XRN on a Linux system, see README.Linux for
+    information about what may be causing the crash and how to fix it.
+
+    If you're not using Linux, or if the problem described in
+    README.Linux doesn't apply, then you've found a bug.  Try to get
+    XRN to dump core (by running it with the "+dumpCore" command-line
+    option or with the "xrn.dumpCore" X resource set to "true", and
+    then duplicating the circumstances that led to the message above;
+    click on "abort" when it asks you want to do), and then use "gdb",
+    "dbx" or some other debugger to get a backtrace of the coredump,
+    and then mail it to the maintainer of XRN.  DO NOT send the
+    coredump.
+
+    Note that a backtrace will not be useful unless you compiled XRN
+    with "-g".  If you didn't, recompile it with "-g" before trying to
+    duplicate the problem as described above.
+
+    If XRN doesn't dump core even when you click on "abort" after
+    running it with "+dumpCore", you probably have coredump sizes
+    limited in your shell.  Try typing "unlimit core" or "ulimit -c
+    unlimited" and running XRN again.  If that doesn't work, get help
+    from someone at your site.
+
+    If you send a backtrace, please keep the coredump and the XRN
+    binary that generated it around until you hear back from me, in
+    case I need you to investigate information in the coredump.
+
+*.  Your spawned editor does not seem to be using any of your initialization
+    environment variables (for example, EXINIT and vi).
+
+    Make sure you are setting EXINIT in your .cshrc file, not your
+    .login file.
+
+*.  Your spawned editor does not appear on your screen.
+
+    If you are running XRN remotely, the editor is probably trying to
+    display on the remote machine.  Use the %D setting in the
+    editorCommand resource.
+
+*.  You want to change the XRN font size.
+
+    Set the "xrn*font:" X resource to the name of the font that you
+    want to use.  For more information about font resources and fonts,
+    see the X documentation at your site.
+
+*.  News System related Questions:
+
+    XRN is a news reader and poster - there are many errors or weird
+    situations that you may encounter that are do to the news system
+    itself, not XRN.  If possible, please make sure that the problem
+    you are reporting is due to XRN and not a news system problem.
+
+    If you want to create a group, find out why a group has been
+    deleted, find out how to subscribe to a group that your system
+    doesn't receive, etc. talk to your site news administrator (in
+    many cases, you site administrator is on the 'usenet' mail alias
+    on your news server machine).
+
+*.  You postings do not have 'Lines' fields in their header.
+
+    XRN does not generate the 'Lines' field in the header.  This is
+    the responsibility of INEWS.
+
+*.  XRN immediately core dumps on OpenWindows systems.
+
+    Make sure your DISPLAY environment variable is set correctly.  We
+    have had reports that XRN will core dump on OpenWindows systems if
+    the DISPLAY environment variable is not set.
+
+*.  XRN does not use my .mailrc file.
+
+    By default, XRN uses sendmail for postings mail messages.
+    Sendmail does not use mail front end alias files (such as
+    .mailrc).  To use those files, change the default mailer that XRN
+    uses - either by changing SENDMAIL in config.h or by using the
+    -mailer option (or .mailer resource) at runtime.  See the files
+    contrib/ALT-MAILER* for examples of alternate mailers.
