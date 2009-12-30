@@ -1,8 +1,8 @@
 !
 ! $Id$
 !
-MOTIFxAPP_CLASSx.version:			10.00-beta-1 (Motif)
-XAWxAPP_CLASSx.version:			10.00-beta-1
+MOTIFxAPP_CLASSx.version:			10.00-beta-2 (Motif)
+XAWxAPP_CLASSx.version:			10.00-beta-2
 xAPP_CLASSx.Geometry:			680x700
 *breakLength:			0
 *font:			8x13
