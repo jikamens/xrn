@@ -1259,6 +1259,45 @@ static unsigned long newsgroupsStatusUnion(newsgroups)
     return(status);
 }
 
+/*
+  Strip empty fields from the header.  Assumes that there is a body,
+  i.e., that the header is terminated by two consecutive blank lines.
+  Modifies the compose text if a header was returned, and returns the
+  buffer containing the text (the original buffer if nothing was
+  changed, or a new buffer after freeing the old one otherwise).  */
+
+static char * stripEmptyFields(char *buffer)
+{
+  char *start, *value, *end;
+  long offset = 0;
+
+  start = buffer;
+  while (*start != '\n') {
+    end = strstr(start, "\n");
+    while (isspace(end[1]) && (end[1] != '\n'))
+      end = strstr(end+1, "\n");
+    value = strstr(start, ":");
+    if (value > end) {
+      /* Broken field has no colon in it.  Don't try to figure it out,
+	 just ignore it. */
+      start = end+1;
+      continue;
+    }
+    for (value++; (value < end) && isspace(*value); value++) /* empty */;
+    if (value == end) {
+      /* empty field! */
+      TextReplace(ComposeText, "", 0,
+		  start-buffer-offset, end-buffer-offset+1);
+      offset += end-start+1;
+    }
+    start = end+1;
+  }
+  if (offset) {
+    XtFree(buffer);
+    buffer = TextGetString(ComposeText);
+  }
+  return buffer;
+}
 
 #define CLEANUP() { XtFree(buffer); XtFree(buffer2); XtFree(buffer3); }
 
@@ -1708,19 +1747,9 @@ void compSendFunction(widget, event, string, count)
       return;
     }
 
-    /* Strip empty Followup-To fields, since some NNTP servers choke
-       on them. */
-    buffer_size = 0;
-    returnField("Followup-To:", &buffer, &buffer_size, &buffer_total_size);
-    ptr2 = buffer + sizeof("Followup-To:") - 1;
-    while (*ptr2 && isspace(*ptr2))
-      ptr2++;
-    if (! *ptr2) {
-      stripField("Followup-To:");
-      FREE(ptr);
-      ptr = TextGetString(ComposeText);
-    }
-
+    /* Strip empty fields, since some NNTP servers choke on them. */
+    ptr = stripEmptyFields(ptr);
+    
     if ((PostingMode == FOLLOWUP_REPLY) || (PostingMode == POST_MAIL)) {
 	tries = 2;
     }
