@@ -1,3 +1,10 @@
+2010-02-03  Jonathan Kamens  <jik@kamens.brookline.ma.us>
+
+	* Release 10.00-beta-3.
+
+	* Strip empty headers from messages before posting them, because
+	some NNTP servers choke on empty headers.
+
 2009-12-30  Jonathan Kamens  <jik@kamens.brookline.ma.us>
 
 	* Release 10.00-beta-2.
