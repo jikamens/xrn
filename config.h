@@ -501,7 +501,7 @@
  */
 
 /* POSIX regex routines */
-#if defined(linux) || defined(hpux) || defined(__hpux) || defined(__osf__) || defined(__CYGWIN__)
+#ifdef HAVE_POSIX_REGCOMP
 #define POSIX_REGEX
 #endif
 

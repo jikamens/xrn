@@ -4817,6 +4817,49 @@ else
   :
 fi
 
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether POSIX compliant regcomp()/regexec()" >&5
+$as_echo_n "checking whether POSIX compliant regcomp()/regexec()... " >&6; }
+  if ${ax_cv_posix_regcomp+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+  if test "$cross_compiling" = yes; then :
+  ax_cv_posix_regcomp=no
+
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <sys/types.h>
+#include <regex.h>
+int main() {
+  int flags = REG_EXTENDED|REG_ICASE|REG_NEWLINE;
+  regex_t  re;
+  if (regcomp( &re, "^.*$", flags ) != 0)
+    return 1;
+  return regcomp( &re, "|no.*", flags ); }
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  ax_cv_posix_regcomp=yes
+else
+  ax_cv_posix_regcomp=no
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+ # end of TRY_RUN
+fi
+ # end of CACHE_VAL
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_posix_regcomp" >&5
+$as_echo "$ax_cv_posix_regcomp" >&6; }
+  if test x$ax_cv_posix_regcomp = xyes
+  then
+
+$as_echo "#define HAVE_POSIX_REGCOMP 1" >>confdefs.h
+
+  fi
+
 for ac_func in mkstemp
 do :
   ac_fn_c_check_func "$LINENO" "mkstemp" "ac_cv_func_mkstemp"
