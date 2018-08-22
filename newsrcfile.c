@@ -39,7 +39,7 @@ static char XRNrcsid[] = "$Id$";
 #include "utils.h"
 #include <X11/Xos.h>
 #include <errno.h>
-#ifdef _XOPEN_SOURCE
+#ifdef STDC_HEADERS
 #include <stdlib.h>
 #endif
 #include "news.h"

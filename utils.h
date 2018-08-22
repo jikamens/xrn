@@ -56,9 +56,11 @@
 #include <unistd.h>
 #endif
 
-#ifdef sun
-
+#ifdef STDC_HEADERS
 #include <stdlib.h>
+#endif
+
+#ifdef sun
 
 extern int gethostname();
 
@@ -183,11 +185,10 @@ typedef SIG_RET_T	(*SIG_PF0) _VARARGUMENTS((int, ...));
 extern char *strtok _ARGUMENTS((char *, char CONST *));
 #endif
 extern char *getenv _ARGUMENTS((CONST char *));
-#else
-#if !defined(NOSTDHDRS) && !defined(sun) /* included above on sun */
+#endif
+#ifdef STDC_HEADERS
 #include <stdlib.h>
-#endif /* NOSTDHDRS */
-#endif /* !_POSIX_SOURCE */
+#endif
 #if !defined(_XOPEN_SOURCE)
 extern char *mktemp _ARGUMENTS((char *));
 #else

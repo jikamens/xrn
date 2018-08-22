@@ -42,7 +42,7 @@ static char XRNrcsid[] = "$Id$";
 #else
 #include <sys/file.h>
 #endif
-#if defined(_XOPEN_SOURCE)
+#if STDC_HEADERS
 #include <stdlib.h>
 #else
     char *getenv();

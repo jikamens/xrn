@@ -9,6 +9,7 @@ AC_TYPE_SIGNAL
 if test $ac_cv_type_signal != void; then
    AC_DEFINE(SIGFUNC_RETURNS)
 fi
+AC_HEADER_STDC
 
 PKG_CHECK_MODULES([XRN], [xaw7])
 AC_DEFINE(XRN_LANG_english)
