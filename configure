@@ -4837,7 +4837,11 @@ int main() {
   regex_t  re;
   if (regcomp( &re, "^.*$", flags ) != 0)
     return 1;
-  return regcomp( &re, "|no.*", flags ); }
+  /* XRN commented out */
+  /* return regcomp( &re, "|no.*", flags ); */
+  /* XRN added */
+  return 0;
+}
 _ACEOF
 if ac_fn_c_try_run "$LINENO"; then :
   ax_cv_posix_regcomp=yes
