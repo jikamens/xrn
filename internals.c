@@ -1111,6 +1111,7 @@ char * globalKillFile()
   */
 char *stringToRegexp(input, max_length)
     char *input;
+    int max_length;
 {
     static char output[BUFFER_SIZE];
     char *inptr, *outptr;

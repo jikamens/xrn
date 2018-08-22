@@ -13,6 +13,7 @@ AC_HEADER_STDC
 AC_CHECK_SIZEOF(int)
 AC_CHECK_SIZEOF(long)
 AC_CHECK_SIZEOF(int *)
+AX_CHECK_COMPILE_FLAG(-Wno-unused-result,CFLAGS="$CFLAGS -Wno-unused-result",)
 
 PKG_CHECK_MODULES([XRN], [xaw7])
 AC_DEFINE(XRN_LANG_english)

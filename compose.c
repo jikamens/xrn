@@ -1936,8 +1936,7 @@ getIncludedArticleText()
 
      if (PostingMode == FORWARD) {
 	 int line_size;
-       (void) sprintf(input, FORWARDED_ARTICLE_END_MSG);
-	 line_size = strlen(input);
+	 line_size = strlen(FORWARDED_ARTICLE_END_MSG);
 	 if (prefix_size + line_size > size - cur_size - 1) {
 	     /* See above */
 	     size += MIN(size,REALLOC_MAX);
@@ -1945,7 +1944,7 @@ getIncludedArticleText()
 	 }
 	 (void) strcpy(&text[cur_size], prefix);
 	 cur_size += prefix_size;
-	 (void) strcpy(&text[cur_size], input);
+	 (void) strcpy(&text[cur_size], FORWARDED_ARTICLE_END_MSG);
 	 cur_size += line_size;
      }
 
@@ -2369,7 +2368,7 @@ Call_Editor(
 	    for (i = 3; i < maxdesc; i++) {
 		(void) close(i);
 	    }
-	    (void) execl("/bin/sh", "sh", "-c", buffer, 0);
+	    (void) execl("/bin/sh", "sh", "-c", buffer, NULL);
           (void) fprintf(stderr, ERROR_EXEC_FAILED_MSG, buffer);
 	    (void) _exit(127);
 	}

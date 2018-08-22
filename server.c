@@ -975,10 +975,13 @@ char *newgroupsDate()
 	clock = time(0);
 	curtime = gmtime(&clock);
 	assert(curtime);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-overflow" /* GCC is confused */
 	(void) sprintf(date_buf, "%02d%02d%02d %02d%02d%02d GMT",
 		       curtime->tm_year % 100, curtime->tm_mon + 1,
 		       curtime->tm_mday, curtime->tm_hour, curtime->tm_min,
 		       curtime->tm_sec);
+#pragma GCC diagnostic pop
     }
 
     return date_buf;

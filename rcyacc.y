@@ -46,6 +46,8 @@ static char XRNrcsid[] = "$Id$";
 #include "internals.h"
 
 extern int yylineno;
+extern int yylex();
+extern void yyerror();
 
 int newsrc_mesg_name;
 

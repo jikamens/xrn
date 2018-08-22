@@ -71,7 +71,7 @@ int yywrap()
 }
 
 /*ARGSUSED*/
-yyerror(s)
+int yyerror(s)
 char *s;
 {
     /* lint/kludge */
