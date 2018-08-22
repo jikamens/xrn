@@ -286,9 +286,9 @@ static int get_tcp_socket(machine)
 #endif /* h_addr */
 	static int port = 0;
 	struct	sockaddr_in sin;
-	struct servent *getservbyname _ARGUMENTS((CONST char *, CONST char *));
+	struct servent *getservbyname _ARGUMENTS((const char *, const char *));
         struct servent *sp;
-	struct hostent *gethostbyname _ARGUMENTS((CONST char *)), *hp;
+	struct hostent *gethostbyname _ARGUMENTS((const char *)), *hp;
 
 	(void) memset((char *) &sin, 0, sizeof(sin));
 

@@ -232,7 +232,7 @@ int saveArticle(
     char timeString[BUFFER_SIZE];
     char inputbuf[BUFSIZ];
     int error = 0;
-    extern char *ctime _ARGUMENTS((CONST time_t *));
+    extern char *ctime _ARGUMENTS((const time_t *));
     extern time_t time _ARGUMENTS((time_t *));
     time_t clock;
     long pos;

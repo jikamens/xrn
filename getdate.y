@@ -366,7 +366,7 @@ o_merid	: /* NULL */ {
 %%
 
 /* Month and day table. */
-static TABLE CONST MonthDayTable[] = {
+static TABLE const MonthDayTable[] = {
     { "january",	tMONTH,  1 },
     { "february",	tMONTH,  2 },
     { "march",		tMONTH,  3 },
@@ -395,7 +395,7 @@ static TABLE CONST MonthDayTable[] = {
 };
 
 /* Time units table. */
-static TABLE CONST UnitsTable[] = {
+static TABLE const UnitsTable[] = {
     { "year",		tMONTH_UNIT,	12 },
     { "month",		tMONTH_UNIT,	1 },
     { "fortnight",	tMINUTE_UNIT,	14 * 24 * 60 },
@@ -410,7 +410,7 @@ static TABLE CONST UnitsTable[] = {
 };
 
 /* Assorted relative-time words. */
-static TABLE CONST OtherTable[] = {
+static TABLE const OtherTable[] = {
     { "tomorrow",	tMINUTE_UNIT,	1 * 24 * 60 },
     { "yesterday",	tMINUTE_UNIT,	-1 * 24 * 60 },
     { "today",		tMINUTE_UNIT,	0 },
@@ -436,7 +436,7 @@ static TABLE CONST OtherTable[] = {
 
 /* The timezone table. */
 /* Some of these are commented out because a time_t can't store a float. */
-static TABLE CONST TimezoneTable[] = {
+static TABLE const TimezoneTable[] = {
 #ifdef XRN
   /* This is really gross.  There are some misconfigured News readers
      which put "LOCAL" or "UNDEFINED" as the timezone in their Date:
@@ -523,7 +523,7 @@ static TABLE CONST TimezoneTable[] = {
 };
 
 /* Military timezone table. */
-static TABLE CONST MilitaryTable[] = {
+static TABLE const MilitaryTable[] = {
     { "a",	tZONE,	HOUR(  1) },
     { "b",	tZONE,	HOUR(  2) },
     { "c",	tZONE,	HOUR(  3) },
@@ -698,7 +698,7 @@ LookupWord(buff)
 {
     register char	*p;
     register char	*q;
-    register CONST TABLE	*tp;
+    register const TABLE	*tp;
     int			i;
     int			abbrev;
 

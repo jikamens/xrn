@@ -220,7 +220,7 @@ void utDowncase(string)
 /* case insensitive, 24 character max, comparision for subjects */
 
 int utSubjectCompare(str1, str2)
-    register CONST char *str1, *str2;
+    register const char *str1, *str2;
 {
     int count = 0;
     char c1, c2;
@@ -313,7 +313,7 @@ static u_char charmap[] = {
 };
 
 int strcasecmp(s1, s2)
-    CONST char *s1, *s2;
+    const char *s1, *s2;
 {
 	register u_char	*cm = charmap,
 			*us1 = (u_char *)s1,
@@ -326,7 +326,7 @@ int strcasecmp(s1, s2)
 }
 
 int strncasecmp(s1, s2, n)
-    CONST char *s1, *s2;
+    const char *s1, *s2;
     size_t n;
 {
 	register u_char	*cm = charmap,

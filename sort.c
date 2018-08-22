@@ -61,7 +61,7 @@ struct sort_data {
 };
 
 
-static int (*compare_function) _ARGUMENTS((qsort_arg_type, qsort_arg_type));
+static int (*compare_function) _ARGUMENTS((const void *, const void *));
 static void (*sort_list[3]) _ARGUMENTS((void *));
 
 void art_sort_parse_sortlist(orig_sort_spec)
@@ -227,10 +227,10 @@ char *art_sort_doit(
 }
    
 
-static int key_compare _ARGUMENTS((qsort_arg_type, qsort_arg_type));
+static int key_compare _ARGUMENTS((const void *, const void *));
 
 static int key_compare(a_p, b_p)
-     qsort_arg_type a_p, b_p;
+     const void *a_p, *b_p;
 {
   struct sort_article *a = (struct sort_article *) a_p;
   struct sort_article *b = (struct sort_article *) b_p;
@@ -353,7 +353,7 @@ void generate_date_keys(data)
 }
 
 int date_compare(a, b)
-     qsort_arg_type a, b;
+     const void *a, *b;
 {
   /*
     Casting to char * because pointer arithmetic on void * causes a

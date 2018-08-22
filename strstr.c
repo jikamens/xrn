@@ -14,8 +14,8 @@ WB1GRH     - WB1GRH@W2XO.#WPA.PA.USA.NOAM   | 21 Hinds Ln, Pelham, NH 03076
 */
 
 char * strstr(s1, s2)
-    register char CONST *s1;
-    register char CONST *s2;
+    register char const *s1;
+    register char const *s2;
 {
     register int n = strlen(s2);
 

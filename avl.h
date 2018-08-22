@@ -62,7 +62,7 @@ struct avl_generator_struct {
 #define AVL_BACKWARD 	1
 
 
-extern avl_tree *avl_init_table _ARGUMENTS((int (*)(CONST char*,CONST char*)));
+extern avl_tree *avl_init_table _ARGUMENTS((int (*)(const char*,const char*)));
 extern int avl_delete _ARGUMENTS((avl_tree *,char **,char **));
 extern int avl_insert _ARGUMENTS((avl_tree *,char *,char *));
 extern int avl_lookup _ARGUMENTS((avl_tree *,char *,char **));

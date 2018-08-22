@@ -173,18 +173,12 @@ typedef SIG_RET_T	(*SIG_PF0) _VARARGUMENTS((int, ...));
 
 #undef SIG_RET_T
 
-#if defined(__STDC__) || defined(sgi)
-#define CONST const
-#else
-#define CONST
-#endif
-
 #ifndef HAVE_STRTOK
-extern char *strtok _ARGUMENTS((char *, char CONST *));
+extern char *strtok _ARGUMENTS((char *, char const *));
 #endif
 
 #if !defined(_POSIX_C_SOURCE)
-extern char *getenv _ARGUMENTS((CONST char *));
+extern char *getenv _ARGUMENTS((const char *));
 #endif
 #ifdef STDC_HEADERS
 #include <stdlib.h>
@@ -195,8 +189,8 @@ extern char *mktemp _ARGUMENTS((char *));
 #define mktemp(string)    tmpnam(name)
 #endif
 #if !defined(_OSF_SOURCE)
-extern char *index _ARGUMENTS((CONST char *, int));
-extern char *rindex _ARGUMENTS((CONST char *, int));
+extern char *index _ARGUMENTS((const char *, int));
+extern char *rindex _ARGUMENTS((const char *, int));
 #endif
 
 #ifdef macII
@@ -221,7 +215,7 @@ extern void utXlate _ARGUMENTS((char *));
 
 #define utStrlen(s)	((s) ? strlen(s) : 0)
 
-extern int utSubjectCompare _ARGUMENTS((CONST char *, CONST char *));
+extern int utSubjectCompare _ARGUMENTS((const char *, const char *));
 
 #ifdef NEED_TEMPNAM
 extern char *utTempnam _ARGUMENTS((char *, char *));
@@ -263,13 +257,13 @@ extern int re_exec();
    variable, so we need a declaration.  Sigh. */
 extern int pclose _ARGUMENTS((FILE *));
 #else
-extern FILE *xrn_popen _ARGUMENTS((CONST char *, CONST char *));
+extern FILE *xrn_popen _ARGUMENTS((const char *, const char *));
 extern int xrn_pclose _ARGUMENTS((FILE *));
 #endif /* POPEN_USES_INEXPENSIVE_FORK */
 
 #ifdef NEED_STRCASECMP
-extern int strcasecmp _ARGUMENTS((CONST char *, CONST char *));
-extern int strncasecmp _ARGUMENTS((CONST char *, CONST char *, size_t));
+extern int strcasecmp _ARGUMENTS((const char *, const char *));
+extern int strncasecmp _ARGUMENTS((const char *, const char *, size_t));
 #endif
 
 extern void tconvert _ARGUMENTS((char *, char *));
@@ -284,7 +278,7 @@ extern void tconvert _ARGUMENTS((char *, char *));
 #endif
 
 #ifdef NEED_STRSTR
-extern char *strstr _ARGUMENTS((char CONST *, char CONST *));
+extern char *strstr _ARGUMENTS((char const *, char const *));
 #endif
 
 extern void do_chmod _ARGUMENTS((FILE *, char *, int));
@@ -306,13 +300,6 @@ char *nntpServer _ARGUMENTS((void));
 #endif
 
 char *findServerFile _ARGUMENTS((char *, Boolean, Boolean *));
-
-#if defined(__osf__) || defined(_POSIX_C_SOURCE) || defined(SOLARIS) \
-	|| defined(sun)
-typedef CONST void * qsort_arg_type;
-#else
-typedef void * qsort_arg_type;
-#endif
 
 int utDigits _ARGUMENTS((long int));
 

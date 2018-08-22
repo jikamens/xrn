@@ -14,11 +14,11 @@ static char *scanpoint = NULL;
 				/* NULL if no token left */
 char * strtok(s, delim)
     char *s;
-    register char CONST *delim;
+    register char const *delim;
 {
 	register char *scan;
 	char *tok;
-	register CONST char *dscan;
+	register const char *dscan;
 
 	if (s == NULL && scanpoint == NULL)
 		return NULL;

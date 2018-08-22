@@ -2813,8 +2813,8 @@ char *xhdr_id(newsgroup, id, field, error_code)
 static int popen_pid = 0;
 
 FILE *xrn_popen(command, type)
-    CONST char *command;
-    CONST char *type;
+    const char *command;
+    const char *type;
 {
     int pipes[2];
     int itype = (strcmp(type, "w") == 0 ? 1 : 0);

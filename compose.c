@@ -133,7 +133,7 @@ static char *followup_or_reply_title _ARGUMENTS((struct header *, int, int));
 static void compose_buttons _ARGUMENTS((Widget, int));
 static int check_quoted_text _ARGUMENTS((char *));
 static char *insert_courtesy_tag _ARGUMENTS((char *));
-static Boolean IsValidAddressField _ARGUMENTS((CONST char *));
+static Boolean IsValidAddressField _ARGUMENTS((const char *));
 
 #ifdef GENERATE_EXTRA_FIELDS
 static char *gen_id _ARGUMENTS((void));
@@ -3638,11 +3638,11 @@ static char *insert_courtesy_tag(message)
   Returns true if all this is OK or false otherwise.
 */
 
-static Boolean check_address _ARGUMENTS((CONST char *));
-static Boolean check_stuff _ARGUMENTS((CONST char *, Boolean));
+static Boolean check_address _ARGUMENTS((const char *));
+static Boolean check_stuff _ARGUMENTS((const char *, Boolean));
 
 static Boolean IsValidAddressField(value_in)
-     CONST char *value_in;
+     const char *value_in;
 {
   char *value, *value_buf, *address, *stuff, *ptr, *end;
   Boolean retval = True;
@@ -3716,11 +3716,11 @@ static Boolean IsValidAddressField(value_in)
 */
 
 static Boolean check_address(address)
-     CONST char *address;
+     const char *address;
 {
   static char special_chars[] = "()<>@,;:\\\"[] ";
   Boolean in_quotes, in_quoted_pair, in_local_part, found_dot;
-  CONST char *ptr;
+  const char *ptr;
 
   in_quotes = in_quoted_pair = found_dot = False;
   in_local_part = True;
@@ -3773,16 +3773,16 @@ static Boolean check_address(address)
 */
 
 static Boolean check_stuff(
-			   _ANSIDECL(CONST char *,	stuff),
+			   _ANSIDECL(const char *,	stuff),
 			   _ANSIDECL(Boolean,		needs_quoting)
 			   )
-     _KNRDECL(CONST char *,	stuff)
+     _KNRDECL(const char *,	stuff)
      _KNRDECL(Boolean,		needs_quoting)
 {
   static char specials[] = "()<>\"";
   static char quoted_specials[] = ".,";
 
-  CONST char *ptr, *end;
+  const char *ptr, *end;
   Boolean is_quoted = False;
 
   end = strchr(stuff, '\0');
