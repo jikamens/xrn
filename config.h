@@ -558,24 +558,6 @@
 #define NEED_TEMPNAM
 #endif
      
-/* strtok function */
-/*
- * SunOS, at least 4.1.3 and above, has its own strtok and doesn't
- * need ours.  I'm not sure what the correct symbol to use for that
- * exact situation is; I've determined that on my SPARCstation LX
- * runnin 4.1.3, the compiler defines the "sparc", "sun" and "unix"
- * symbols, so I'm checking all of those three; it's possible that I'm
- * being too specific, or even that checking those three symbols isn't
- * being specific enough, but it's the best I can do.  If you know a
- * better way for me to check that I'm on a SunOS system that has
- * strtok, please let me know. - jik 10/23/94
- */
-#if defined(sequent) || (!defined(SYSV) && !defined(_ANSI_C_SOURCE) && \
-			 !(defined(sparc) && defined(sun) && defined(unix)) && \
-			 !defined(linux))
-#define NEED_STRTOK
-#endif
-
 /* strstr function */
 /*
  * Although SunOS 4.1.3 has a strstr function in its C library, it's

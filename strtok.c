@@ -1,7 +1,7 @@
 #include "utils.h"
 #include "config.h"
 
-#ifdef NEED_STRTOK
+#ifndef HAVE_STRTOK
 
 /*
  * Get next token from string s (NULL on 2nd, 3rd, etc. calls),

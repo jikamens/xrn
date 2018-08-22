@@ -16,7 +16,7 @@ AC_CHECK_SIZEOF(long)
 AC_CHECK_SIZEOF(int *)
 AX_CHECK_COMPILE_FLAG(-Wno-unused-result,CFLAGS="$CFLAGS -Wno-unused-result",)
 XRN_CHECK_POSIX_REGCOMP
-AC_CHECK_FUNCS([mkstemp])
+AC_CHECK_FUNCS([mkstemp strtok])
 AC_CHECK_HEADERS([unistd.h])
 
 PKG_CHECK_MODULES([XRN], [xaw7])
