@@ -217,7 +217,7 @@ static void cbHandler(widget, client_data, call_data)
     XtPointer client_data;
     XtPointer call_data;
 {
-    retVal = (int) client_data;
+    retVal = (POINTER_NUM_TYPE) client_data;
     return;
 }
 
@@ -279,7 +279,7 @@ int ChoiceBox(parent, message, count, va_alist)
   XEvent ev;
   Widget widget;
   XtAppContext app = XtWidgetToApplicationContext(parent);
-  int i;
+  POINTER_NUM_TYPE i;
   va_list args;
 
   dialog_args = (struct DialogArg *) XtMalloc(sizeof(*dialog_args) * count);
@@ -327,7 +327,7 @@ static void passwordHandler(widget, client_data, call_data)
 {
   Widget dialog = XtParent(XtParent(widget));
 
-  password_result = (int) client_data;
+  password_result = (POINTER_NUM_TYPE) client_data;
   if (password_result == XRN_CB_CONTINUE) {
     dialog_password = GetDialogValue(dialog);
     dialog_password = XtNewString(dialog_password);

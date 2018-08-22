@@ -2334,17 +2334,17 @@ void artListOldHandler(widget, client_data, call_data)
     art_num artNum;
     char *numberstr;
 
-    if (inCommand && ((int) client_data != XRNgotoArticle_DEFAULT))
+    if (inCommand && ((POINTER_NUM_TYPE) client_data != XRNgotoArticle_DEFAULT))
       return;
     inCommand = 1;
     xrnBusyCursor();
 
     TextUnsetSelection(SubjectText);
 
-    if ((int) client_data == XRNgotoArticle_ABORT) {
+    if ((POINTER_NUM_TYPE) client_data == XRNgotoArticle_ABORT) {
       goto finishedl;
     }
-    else if ((int) client_data == XRNgotoArticle_DEFAULT) {
+    else if ((POINTER_NUM_TYPE) client_data == XRNgotoArticle_DEFAULT) {
       artNum = CurrentGroup->first;
     }
     else {
@@ -2553,7 +2553,7 @@ static void gotoArticleHandler(widget, client_data, call_data)
     numberstr = GetDialogValue(GotoArticleBox);
     PopDownDialog(GotoArticleBox);
     GotoArticleBox = 0;
-    if ((int) client_data == XRNgotoArticle_ABORT) {
+    if ((POINTER_NUM_TYPE) client_data == XRNgotoArticle_ABORT) {
       goto finished;
     }
     abortClear();
@@ -3012,7 +3012,7 @@ static void subSearchHandler(widget, client_data, call_data)
     inCommand = 1;
     xrnBusyCursor();
 
-    if ((int) client_data == XRNsubSearch_ABORT) {
+    if ((POINTER_NUM_TYPE) client_data == XRNsubSearch_ABORT) {
 	do_search = False;
     }
     else {
@@ -3037,7 +3037,7 @@ static void subSearchHandler(widget, client_data, call_data)
     SubSearchBox = 0;
 
     if (do_search) {
-	direction = ((int) client_data == XRNsubSearch_FORWARD) ?
+	direction = ((POINTER_NUM_TYPE) client_data == XRNsubSearch_FORWARD) ?
 	    FORWARD : BACK;
 	LastSearch = direction;
 	doSubSearch(LastRegexp, direction);
@@ -3220,7 +3220,7 @@ static void saveHandler(widget, client_data, call_data)
     inCommand = 1;
     xrnBusyCursor();
 
-    if ((int) client_data != XRNsave_ABORT) {
+    if ((POINTER_NUM_TYPE) client_data != XRNsave_ABORT) {
 	template = GetDialogValue(SaveBox);
 	doSave(template, False);
 	if (SaveString && (SaveString != app_resources.saveString)) {

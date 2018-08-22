@@ -2036,7 +2036,7 @@ static void includeHandler(widget, client_data, call_data)
     struct stat sb;
     int num_read, total_read = 0;
 
-    if ((int) client_data == XRNinclude_ABORT) {
+    if ((POINTER_NUM_TYPE) client_data == XRNinclude_ABORT) {
 	/* empty */
     }
     else if (! (file = GetDialogValue(IncludeBox))) {

@@ -648,7 +648,7 @@ static kill_entry *kf_iter(
      _KNRDECL(Boolean,			refresh)
 {
   kill_entry *sub_entry = 0;
-  int handle = (int) *handle_p;
+  POINTER_NUM_TYPE handle = (POINTER_NUM_TYPE) *handle_p;
   kill_entry *this_entry;
 
   assert(kf);

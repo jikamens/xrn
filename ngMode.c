@@ -426,7 +426,7 @@ static void subscribeHandler(widget, client_data, call_data)
 
     TextDisableRedisplay(NewsgroupText);
 
-    switch ((int) client_data) {
+    switch ((POINTER_NUM_TYPE) client_data) {
     case XRNsub_LASTGROUP:
 	if (LastGroup && *LastGroup) {
 	    if ((ret = enterNewsgroup(LastGroup, ENTER_UNSUBBED))
@@ -570,7 +570,7 @@ static void gotoHandler(widget, client_data, call_data)
     inCommand = 1;
     xrnBusyCursor();
     TextUnsetSelection(NewsgroupText);
-    if ((int) client_data == XRNgoto_GOTO) {
+    if ((POINTER_NUM_TYPE) client_data == XRNgoto_GOTO) {
 	name = GetDialogValue(GotoNewsgroupBox);
 	if (name[0] == '\0') {
 	    mesgPane(XRN_INFO, 0, NO_NG_SPECIFIED_MSG);

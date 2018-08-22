@@ -669,7 +669,7 @@ static void generalHandler(widget, client_data, call_data)
     PopDownDialog(ConfirmBox);
     ConfirmBox = 0;
 
-    if ((int) client_data == XRN_YES)
+    if ((POINTER_NUM_TYPE) client_data == XRN_YES)
 	(*ConfirmAction)();
 
     xrnUnbusyCursor();

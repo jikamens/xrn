@@ -348,7 +348,7 @@ static void allHandler(widget, client_data, call_data)
     inCommand = 1;
     xrnBusyCursor();
 
-    if ((int) client_data != XRN_CB_ABORT)
+    if ((POINTER_NUM_TYPE) client_data != XRN_CB_ABORT)
 	doAll(SUBSCRIBE, False, False, GetDialogValue(AllBox));
 
     PopDownDialog(AllBox);

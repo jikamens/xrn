@@ -198,7 +198,7 @@ void *hash_table_retrieve(table_p, key, reference)
 {
   struct hash_table *table = (struct hash_table *)table_p;
   void *dummy_reference = HASH_NO_VALUE;
-  int hash;
+  POINTER_NUM_TYPE hash;
 
   if (! reference)
     reference = &dummy_reference;
@@ -206,7 +206,7 @@ void *hash_table_retrieve(table_p, key, reference)
   if (*reference == HASH_NO_VALUE)
     hash = (*table->calc)(table->size, table->size_bits, key);
   else
-    hash = NEXT_HASH((int)*reference, table->size);
+    hash = NEXT_HASH((POINTER_NUM_TYPE)*reference, table->size);
 
   for ( ; table->entries[hash].status; hash = NEXT_HASH(hash,table->size)) {
     if ((table->entries[hash].status == HASH_DELETED) ||
@@ -351,13 +351,13 @@ int hash_int_calc(size, size_bits, key)
      int size_bits;
      void *key;
 {
-  return (int)key % size;
+  return (POINTER_NUM_TYPE)key % size;
 }
 
 int hash_int_compare(key1, key2)
      void *key1, *key2;
 {
-  return (int)key1 - (int)key2;
+  return (POINTER_NUM_TYPE)key1 - (POINTER_NUM_TYPE)key2;
 }
 
 #ifdef DEBUG

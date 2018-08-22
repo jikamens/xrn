@@ -394,8 +394,8 @@ static void do_art_thread(data, table, this_art, artlist, artpos)
   int i;
   art_num *ptr;
 
-  i = (int)hash_table_retrieve(table, (void *)this_art, 0);
-  assert(i != (int)HASH_NO_VALUE);
+  i = (POINTER_NUM_TYPE)hash_table_retrieve(table, (void *)this_art, 0);
+  assert(i != (POINTER_NUM_TYPE)HASH_NO_VALUE);
 
   /* Circular article references are bogus, but unfortunately possible */
   if (! data->articles[i].sort_key)
@@ -417,7 +417,7 @@ void art_sort_by_thread(data_p)
 {
   struct sort_data *data = (struct sort_data *)data_p;
   struct article *art;
-  int i, ret;
+  POINTER_NUM_TYPE i, ret;
   hash_table_object table, done_table;
   struct sort_article *tmp_articles;
   int tmp_pos = 0;

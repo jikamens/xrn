@@ -60,9 +60,9 @@ static char XRNrcsid[] = "$Id$";
     (node)->height = XRNMAX(x,y) + 1;			\
 }
 
-#define COMPARE(key, nodekey, compare)	 		\
-    ((compare == avl_numcmp) ? 				\
-	(int) key - (int) nodekey : 			\
+#define COMPARE(key, nodekey, compare)	 			\
+    ((compare == avl_numcmp) ? 					\
+	(POINTER_NUM_TYPE) key - (POINTER_NUM_TYPE) nodekey :	\
 	(*compare)(key, nodekey))
 
 static avl_node * new_node _ARGUMENTS((char *, char *));
@@ -437,7 +437,7 @@ static avl_node * new_node(key, value)
 int avl_numcmp(x, y)
     char *x, *y; 
 {
-    return (int) x - (int) y;
+    return (POINTER_NUM_TYPE) x - (POINTER_NUM_TYPE) y;
 }
 
 int avl_check_tree(tree)
@@ -466,28 +466,35 @@ static int do_check_tree(node, compar, error)
     bal = r_height - l_height;
     
     if (comp_height != node->height) {
-	(void) printf("Bad height for 0x%08x: computed=%d stored=%d\n",
-	    (unsigned int) node, comp_height, node->height);
+	(void) printf("Bad height for " POINTER_PRINTF_FORMAT
+                      ": computed=%d stored=%d\n",
+                      (unsigned POINTER_NUM_TYPE) node, comp_height,
+                      node->height);
 	++*error;
     }
 
     if (bal > 1 || bal < -1) {
-	(void) printf("Out of balance at node 0x%08x, balance = %d\n", 
-	    (unsigned int) node, bal);
+	(void) printf("Out of balance at node " POINTER_PRINTF_FORMAT
+                      ", balance = %d\n",
+                      (unsigned POINTER_NUM_TYPE) node, bal);
 	++*error;
     }
 
     if (node->left != NIL(avl_node) && 
 		    (*compar)(node->left->key, node->key) > 0) {
-	(void) printf("Bad ordering between 0x%08x and 0x%08x", 
-	    (unsigned int) node, (unsigned int) node->left);
+	(void) printf("Bad ordering between " POINTER_PRINTF_FORMAT " and "
+                      POINTER_PRINTF_FORMAT, 
+                      (unsigned POINTER_NUM_TYPE) node,
+                      (unsigned POINTER_NUM_TYPE) node->left);
 	++*error;
     }
     
     if (node->right != NIL(avl_node) && 
 		    (*compar)(node->key, node->right->key) > 0) {
-	(void) printf("Bad ordering between 0x%08x and 0x%08x", 
-	    (unsigned int) node, (unsigned int) node->right);
+	(void) printf("Bad ordering between " POINTER_PRINTF_FORMAT " and "
+                      POINTER_PRINTF_FORMAT, 
+                      (unsigned POINTER_NUM_TYPE) node,
+                      (unsigned POINTER_NUM_TYPE) node->right);
 	++*error;
     }
 

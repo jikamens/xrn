@@ -331,4 +331,14 @@ int utDigits _ARGUMENTS((long int));
 #endif
 #endif
 
+#if SIZEOF_INT_P <= SIZEOF_INT
+#define POINTER_NUM_TYPE int
+#define POINTER_PRINTF_FORMAT "0x%08x"
+#elif SIZEOF_INT_P <= SIZEOF_LONG
+#define POINTER_NUM_TYPE long
+#define POINTER_PRINTF_FORMAT "0x%08lx"
+#else
+#error I do not know how big pointers are, fix configure.ac and utils.h
+#endif
+
 #endif /* UTILS_H */

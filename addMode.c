@@ -292,7 +292,7 @@ static void addHandler(widget, client_data, call_data)
     inCommand = 1;
     xrnBusyCursor();
 
-    if ((int) client_data != XRN_CB_ABORT)
+    if ((POINTER_NUM_TYPE) client_data != XRN_CB_ABORT)
 	addFunction(False, GetDialogValue(AddBox), SUBSCRIBE);
 
     PopDownDialog(AddBox);
