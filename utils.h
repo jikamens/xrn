@@ -183,7 +183,7 @@ typedef SIG_RET_T	(*SIG_PF0) _VARARGUMENTS((int, ...));
 extern char *strtok _ARGUMENTS((char *, char CONST *));
 #endif
 
-#if !defined(_POSIX_SOURCE)
+#if !defined(_POSIX_C_SOURCE)
 extern char *getenv _ARGUMENTS((CONST char *));
 #endif
 #ifdef STDC_HEADERS
@@ -307,7 +307,7 @@ char *nntpServer _ARGUMENTS((void));
 
 char *findServerFile _ARGUMENTS((char *, Boolean, Boolean *));
 
-#if defined(__osf__) || defined(_POSIX_SOURCE) || defined(SOLARIS) \
+#if defined(__osf__) || defined(_POSIX_C_SOURCE) || defined(SOLARIS) \
 	|| defined(sun)
 typedef CONST void * qsort_arg_type;
 #else
