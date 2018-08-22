@@ -225,7 +225,7 @@ extern int utSubjectCompare _ARGUMENTS((CONST char *, CONST char *));
 
 #ifdef NEED_TEMPNAM
 extern char *utTempnam _ARGUMENTS((char *, char *));
-#define utTempnamFree XtFree
+extern void utTempnamFree _ARGUMENTS((char *));
 #else
 #ifdef TEMPFILE_DEBUG
 static char *tempfile_debug_ret;

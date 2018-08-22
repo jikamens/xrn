@@ -12,6 +12,11 @@
 #define P_tmpdir	"/usr/tmp/"
 #endif
 
+#ifdef HAVE_MKSTEMP
+static char **open_file_list;
+static int open_file_list_size = 0;
+#endif
+
 static char check_directory _ARGUMENTS((char *));
 
 static char check_directory(dir)
@@ -35,9 +40,15 @@ static char check_directory(dir)
 char *utTempnam(dir, pfx)
     char *dir, *pfx;
 {
+#ifndef STDC_HEADERS
      extern char *getenv();
+#endif
      char *tmpdir = NULL, *env, *filename;
+#ifdef HAVE_MKSTEMP
+     int fd;
+#else
      static char unique_letters[4] = "AAA";
+#endif
      char addslash = 0;
      
      /*
@@ -63,6 +74,23 @@ char *utTempnam(dir, pfx)
       */
      if (tmpdir[strlen(tmpdir) - 1] != '/')
 	  addslash = 1;
+
+#ifdef HAVE_MKSTEMP
+
+     filename = XtMalloc(strlen(tmpdir) + addslash + utStrlen(pfx) + 7);
+     (void) sprintf(filename, "%s%s%sXXXXXX", tmpdir, addslash ? "/" : "",
+                    pfx ? pfx : "");
+     fd = mkstemp(filename);
+     if (fd >= open_file_list_size) {
+       open_file_list = (char **) XtRealloc((char *) open_file_list,
+                                            (fd + 1) * sizeof(*open_file_list));
+       for (int i = open_file_list_size; i < fd; i++)
+         open_file_list[i] = NULL;
+       open_file_list_size = fd + 1;
+     }
+     open_file_list[fd] = filename;
+     
+#else /* ! HAVE_MKSTEMP */
 
      /*
       * Now figure out the set of unique letters.
@@ -91,7 +119,25 @@ char *utTempnam(dir, pfx)
      (void) sprintf(filename, "%s%s%s%sa%05d", tmpdir, addslash ? "/" : "",
 		    pfx ? pfx : "", unique_letters, getpid());
 
+#endif /* ! HAVE_MKSTEMP */
+
      return filename;
 }
 
-#endif
+#ifdef HAVE_MKSTEMP
+
+void utTempnamFree(char *filename)
+{
+  int i;
+  for (i = 0; i < open_file_list_size; i++)
+    if (open_file_list[i] && ! strcmp(open_file_list[i], filename)) {
+      close(i);
+      open_file_list[i] = NULL;
+      XtFree(filename);
+      return;
+    }
+}
+
+#endif /* HAVE_MKSTEMP */
+
+#endif /* NEED_TEMPNAM */

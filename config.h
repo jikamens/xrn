@@ -554,7 +554,7 @@
  * in various vendors libc's.  You might want to always define NEED_TEMPNAM
  * and not use the libc one at all.
  */
-#if defined(convex) || (defined(sony) && !defined(SVR4)) || (!defined(sun) && !defined(ultrix) && !defined(SYSV) && !defined(_XOPEN_SOURCE) && !defined(linux)) || defined(ibm032) || defined(sequent) || defined(_IBMR2)
+#if defined(HAVE_MKSTEMP) || defined(convex) || (defined(sony) && !defined(SVR4)) || (!defined(sun) && !defined(ultrix) && !defined(SYSV) && !defined(_XOPEN_SOURCE) && !defined(linux)) || defined(ibm032) || defined(sequent) || defined(_IBMR2)
 #define NEED_TEMPNAM
 #endif
      
