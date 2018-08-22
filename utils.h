@@ -51,8 +51,7 @@
 #include <sys/wait.h>
 #include <string.h>
 
-#if defined(sun) || defined(__hpux) || defined(aiws) || \
-	defined(_POSIX_SOURCE) || defined(SVR4) || defined(__uxp__)
+#if HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 

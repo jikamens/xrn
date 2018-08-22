@@ -382,7 +382,9 @@ void hash_print_stats(table_p)
 #endif /* DEBUG */
 
 #ifdef TEST
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
 #ifdef STDC_HEADERS
 #include <stdlib.h>
 #endif
