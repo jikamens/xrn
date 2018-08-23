@@ -1,4 +1,4 @@
-.TH XRN 1 "$Date$" "X"
+.TH XRN 1 "xPACKAGE_VERSIONx" "X"
 .\" xrn - an X-based NNTP news reader
 .\"
 .\" Copyright (c) 1988-1993, Ellen M. Sentovich and Rick L. Spickelmier.
@@ -40,7 +40,7 @@ and articles on an NNTP server, thus allowing
 users to read news from personal workstations
 by accessing a central news
 repository.
-This manual page applies to version 10.00-beta-3.
+This manual page applies to version xPACKAGE_VERSIONx.
 .\"
 .SH DESCRIPTION
 .PP

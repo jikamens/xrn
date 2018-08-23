@@ -1,5 +1,5 @@
-MOTIFxAPP_CLASSx.version:			10.00-beta-3 (Motif)
-XAWxAPP_CLASSx.version:			10.00-beta-3
+MOTIFxAPP_CLASSx.version:			xPACKAGE_VERSIONx (Motif)
+XAWxAPP_CLASSx.version:			xPACKAGE_VERSIONx
 xAPP_CLASSx.Geometry:			680x700
 *breakLength:			0
 *font:			8x13

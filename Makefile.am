@@ -24,7 +24,7 @@ xrn_SOURCES += clientlib.c
 
 EXTRA_DIST = xrn.spec
 nodist_xrn_SOURCES = mesg_strings.h
-BUILT_SOURCES = mesg_strings.h rcyacc.h
+BUILT_SOURCES = mesg_strings.h rcyacc.h xrn.spec
 AM_YFLAGS = -d
 CLEANFILES = mesg_strings.h rclex.c rcyacc.c rcyacc.h getdate.c getdate.h \
 	XRn.ad XRn xrn-man.c xrn-man.cpp xrn-man.sed xrn.man
@@ -54,7 +54,8 @@ TKSED2=	-e 's/XawSet()/set()/' -e 's/XawNotify()/notify()/' \
 XRn.ad: XRn.src
 	-rm -f XRn.tmp XRn.ad
 	sed -e 's/LANG_english//' -e '/LANG_/d' $(TKSED) $(TKSED2) \
-		-e 's/xAPP_CLASSx/XRn/' $< > XRn.tmp
+		-e 's/xAPP_CLASSx/XRn/' \
+		-e 's/xPACKAGE_VERSIONx/$(PACKAGE_VERSION)/' $< > XRn.tmp
 	mv XRn.tmp XRn.ad
 
 xrn-man.c: xrn-man.sym config.h
@@ -87,3 +88,8 @@ xrn.man:: xrn-man.src xrn-man.sed
 	-rm -f xrn-man.tmp xrn.man
 	sed -f xrn-man.sed $(srcdir)/xrn-man.src > xrn-man.tmp
 	mv xrn-man.tmp xrn.man
+
+xrn.spec:: xrn.spec.in
+	rm -f $@.tmp $@
+	sed -e 's/xPACKAGE_VERSIONx/$(PACKAGE_VERSION)/' $< > $@.tmp
+	mv $@.tmp $@
