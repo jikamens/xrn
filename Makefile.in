@@ -372,7 +372,7 @@ xrn_SOURCES = avl.c compose.c cursor.c dialogs.c refile.c mesg.c \
 	resources.h save.h server.h snapshot.h sort.h utils.h \
 	varfile.h xmisc.h xrn-man.src xrn-man.sym xrn.h xthelper.h \
 	xrn.icon clientlib.c
-EXTRA_DIST = xrn.spec
+EXTRA_DIST = xrn.spec Imakefile acsite.m4
 nodist_xrn_SOURCES = mesg_strings.h
 BUILT_SOURCES = mesg_strings.h rcyacc.h xrn.spec
 AM_YFLAGS = -d
