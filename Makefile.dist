@@ -1,13 +1,11 @@
+SHELL =                 /bin/bash
 LAST_REL =		LAST_REL
 CURRENT_REL =		CURRENT_REL
 TAR_FILE =		xrn-$(NEW_VERSION).tgz
 PATCH_FILE =		xrn-$(OLD_VERSION)-$(NEW_VERSION).patch
 RCS_FILES = 		$(shell find . -name '*,v' -print)
-ifeq ($(shell uname),Linux)
-TAR =			tar
-else
-TAR =			gtar
-endif
+TAR =                   $(shell if type gtar &>/dev/null; then echo gtar; \
+                          else echo tar; fi)
 CHECKED_OUT_FILES =	$(shell rlog -R -L $(RCS_FILES))
 LIST_TAR =		$(TAR) --list --gzip --file $(TAR_FILE) | \
 			sed -e '/\/$$/d' -e 's,^[^/]*/,,'
