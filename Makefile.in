@@ -1655,10 +1655,6 @@ xrn.man:: xrn-man.src xrn-man.sed
 	sed -f xrn-man.sed $(srcdir)/xrn-man.src > xrn-man.tmp
 	mv xrn-man.tmp xrn.man
 
-%:: %,v
-%:: RCS/%,v
-%:: RCS/%
-
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

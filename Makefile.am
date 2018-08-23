@@ -87,7 +87,3 @@ xrn.man:: xrn-man.src xrn-man.sed
 	-rm -f xrn-man.tmp xrn.man
 	sed -f xrn-man.sed $(srcdir)/xrn-man.src > xrn-man.tmp
 	mv xrn-man.tmp xrn.man
-
-%:: %,v
-%:: RCS/%,v
-%:: RCS/%
