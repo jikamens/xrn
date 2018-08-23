@@ -466,35 +466,28 @@ static int do_check_tree(node, compar, error)
     bal = r_height - l_height;
     
     if (comp_height != node->height) {
-	(void) printf("Bad height for " POINTER_PRINTF_FORMAT
-                      ": computed=%d stored=%d\n",
-                      (unsigned POINTER_NUM_TYPE) node, comp_height,
-                      node->height);
+	(void) printf("Bad height for %p: computed=%d stored=%d\n",
+                      (void *) node, comp_height, node->height);
 	++*error;
     }
 
     if (bal > 1 || bal < -1) {
-	(void) printf("Out of balance at node " POINTER_PRINTF_FORMAT
-                      ", balance = %d\n",
-                      (unsigned POINTER_NUM_TYPE) node, bal);
+	(void) printf("Out of balance at node %p, balance = %d\n",
+                      (void *) node, bal);
 	++*error;
     }
 
     if (node->left != NIL(avl_node) && 
 		    (*compar)(node->left->key, node->key) > 0) {
-	(void) printf("Bad ordering between " POINTER_PRINTF_FORMAT " and "
-                      POINTER_PRINTF_FORMAT, 
-                      (unsigned POINTER_NUM_TYPE) node,
-                      (unsigned POINTER_NUM_TYPE) node->left);
+	(void) printf("Bad ordering between %p and %p", 
+                      (void *) node, (void *) node->left);
 	++*error;
     }
     
     if (node->right != NIL(avl_node) && 
 		    (*compar)(node->key, node->right->key) > 0) {
-	(void) printf("Bad ordering between " POINTER_PRINTF_FORMAT " and "
-                      POINTER_PRINTF_FORMAT, 
-                      (unsigned POINTER_NUM_TYPE) node,
-                      (unsigned POINTER_NUM_TYPE) node->right);
+	(void) printf("Bad ordering between %p and %p", 
+                      (void *) node, (void *) node->right);
 	++*error;
     }
 
