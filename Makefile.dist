@@ -11,10 +11,6 @@ endif
 CHECKED_OUT_FILES =	$(shell rlog -R -L $(RCS_FILES))
 LIST_TAR =		$(TAR) --list --gzip --file $(TAR_FILE) | \
 			sed -e '/\/$$/d' -e 's,^[^/]*/,,'
-LIST_SHAR_FILES =	$(TAR) --list --gzip --file $(TAR_FILE) | \
-				sed -e '/^\.\/$$/d' -e 's/\/$$//'
-SHAR_PARTS =		$(shell ls part?? | tail -1 | sed 's/part//')
-MAKEKIT =		makekit
 PATCH_H =		patchlevel.h
 VERSION_FILES =		XRn.src patchlevel.h xrn-man.src
 SED_VERS_STRING=	sed -n -e 's/.*"\([^ ]*\)"$$/\1/p'
@@ -60,7 +56,7 @@ endif
 		--exclude '*.orig' \
 		--exclude '*.rej' --exclude Makefile.dist \
 		--exclude .purify --exclude xrn-linux.lsm \
-		--exclude 'part*' --exclude shar --exclude .gdbinit \
+		--exclude 'part*' --exclude .gdbinit \
 		--exclude gnksa-logos \
 		--exclude xrn.spec \
 		--verbose . | $(TAR) --directory=$(SRCTMP) --extract
@@ -107,8 +103,3 @@ xrn-linux.tgz: xrn xrn.man
 	cd linux-dist; tar --create --gzip --file=../xrn-linux.tgz.tmp \
 		--owner=root --group=root .
 	mv xrn-linux.tgz.tmp xrn-linux.tgz
-
-shar: $(TAR_FILE)
-	-rm -f shar part??
-	$(MAKEKIT) -s90k -npart `$(LIST_SHAR_FILES)`
-	touch shar
