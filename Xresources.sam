@@ -1,6 +1,3 @@
-!
-! $Id$
-!
 xrn.newsrcFile:		~/.newsrc
 xrn.nntpServer:		news-server-machine
 xrn.editorCommand:	xterm -e vi %s

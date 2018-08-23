@@ -2,10 +2,6 @@
 #define CODES_H
 
 /*
- * $Id$
- */
-
-/*
  * Response Codes for the NNTP Server
  *
  * Copyright (c) 1988-1993, The Regents of the University of California.

@@ -1,8 +1,4 @@
-
-#if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id$";
 /* Modified 2/20/92 dbrooks@osf.org to clean up dialog layout */
-#endif
 
 /*
  * xrn - an X-based NNTP news reader

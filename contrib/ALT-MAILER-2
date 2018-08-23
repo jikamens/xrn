@@ -1,7 +1,5 @@
 #!/bin/sh
 #
-# $Id$
-#
 # This shell script is designed to read mail from either standard input or
 # from 1 or more files supplied as arguments, and send the contents to the
 # program mh/send (/usr/new/mh/send on ULTRIX). If no arguments are specified

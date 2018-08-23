@@ -2,10 +2,6 @@
 #define XMISC_H
 
 /*
- * $Id$
- */
-
-/*
  * xrn - an X-based NNTP news reader
  *
  * Copyright (c) 1988-1993, Ellen M. Sentovich and Rick L. Spickelmier.

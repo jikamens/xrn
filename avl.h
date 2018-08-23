@@ -4,10 +4,6 @@
 #define AVL_H
 
 /*
- * $Id$
- */
-
-/*
  * avl package
  *
  * Copyright (c) 1988-1993, The Regents of the University of California.

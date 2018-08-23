@@ -1,8 +1,3 @@
-
-#if !defined(lint) && !defined(SABER) && !defined(GCC_WALL)
-static char XRNrcsid[] = "$Id$";
-#endif
-
 /* #define DEBUG */
 
 /*
