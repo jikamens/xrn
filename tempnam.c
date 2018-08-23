@@ -45,7 +45,7 @@ char *utTempnam(dir, pfx)
 #endif
      char *tmpdir = NULL, *env, *filename;
 #ifdef HAVE_MKSTEMP
-     int fd;
+     int fd, i;
 #else
      static char unique_letters[4] = "AAA";
 #endif
@@ -84,7 +84,7 @@ char *utTempnam(dir, pfx)
      if (fd >= open_file_list_size) {
        open_file_list = (char **) XtRealloc((char *) open_file_list,
                                             (fd + 1) * sizeof(*open_file_list));
-       for (int i = open_file_list_size; i < fd; i++)
+       for (i = open_file_list_size; i < fd; i++)
          open_file_list[i] = NULL;
        open_file_list_size = fd + 1;
      }
