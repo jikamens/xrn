@@ -1,4 +1,4 @@
-AC_INIT([xrn],[10.00-beta-3])
+AC_INIT([xrn],[10.1])
 AM_INIT_AUTOMAKE([foreign])
 AC_USE_SYSTEM_EXTENSIONS
 AC_C_CONST
