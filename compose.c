@@ -509,7 +509,7 @@ static int getHeader(article, Header)
       return XRN_ERROR;
     }
 
-    (void) strncat(host, domain, sizeof(host) - strlen(host));
+    (void) strncat(host, domain, sizeof(host) - strlen(host) - 1);
   }
 
   Header->host = XtNewString(host);
