@@ -22,7 +22,7 @@ xrn_SOURCES = avl.c compose.c cursor.c dialogs.c \
 
 xrn_SOURCES += clientlib.c
 
-EXTRA_DIST = xrn.spec Imakefile acsite.m4
+EXTRA_DIST = xrn.spec Imakefile acsite.m4 xrn.spec.in
 nodist_xrn_SOURCES = mesg_strings.h
 BUILT_SOURCES = mesg_strings.h rcyacc.h xrn.spec
 AM_YFLAGS = -d
