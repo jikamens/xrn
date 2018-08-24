@@ -141,8 +141,6 @@ COPYRIGHT		Describes the copyright restrictions on XRN.
 			was actually written by UC employees, because
 			that's the easiest thing to do and it doesn't
 			do any harm.
-* ChangeLog		A list of changes from previous releases of
-			XRN.
 * README		This file.
 * README.*		Notes about compiling XRN in specific
 			environments.  For example, README.Linux
