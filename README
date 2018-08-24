@@ -45,9 +45,11 @@ user community, you should probably look elsewhere.
 
 			   Where to get XRN
 
-The XRN home page is <http://stuff.mit.edu/~jik/software/xrn.html>.
+The XRN home page is <https://stuff.mit.edu/~jik/software/xrn.html>.
 
-Source code for XRN can be found at <ftp://sipb.mit.edu/pub/xrn/>.
+XRN's Github repository is <https://github.com/jikamens/xrn/>.
+
+Source code tarballs for XRN can be found at <ftp://rtfm.mit.edu/pub/xrn/>.
 
 
 		     Compiling and installing XRN
