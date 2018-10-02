@@ -51,7 +51,7 @@ TKSED=	-e 's/XAW//' -e '/MOTIF/d'
 TKSED2=	-e 's/XawSet()/set()/' -e 's/XawNotify()/notify()/' \
 	-e 's/XawUnSet()/unset()/'
 
-XRn.ad: XRn.src
+XRn.ad: XRn.src configure.ac
 	-rm -f XRn.tmp XRn.ad
 	sed -e 's/LANG_english//' -e '/LANG_/d' $(TKSED) $(TKSED2) \
 		-e 's/xAPP_CLASSx/XRn/' \
