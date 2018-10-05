@@ -1620,7 +1620,7 @@ mesg_strings.h: mesg_strings.c mesg_str.awk
 % : %.ad
 	cp $< $@
 
-XRn.ad: XRn.src
+XRn.ad: XRn.src configure.ac
 	-rm -f XRn.tmp XRn.ad
 	sed -e 's/LANG_english//' -e '/LANG_/d' $(TKSED) $(TKSED2) \
 		-e 's/xAPP_CLASSx/XRn/' \
