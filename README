@@ -135,11 +135,7 @@ COPYRIGHT		Describes the copyright restrictions on XRN.
 			that's the easiest thing to do and it doesn't
 			do any harm.
 * README		This file.
-* README.*		Notes about compiling XRN in specific
-			environments.  For example, README.Linux
-			contains notes about compiling XRN on Linux
-			systems.
- * TODO			A list of pending bug fixes and improvements
+* TODO			A list of pending bug fixes and improvements
 			to XRN.  If you're interested in helping to
 			develop XRN, picking one of the items in this
 			list and digging around in the source code to
