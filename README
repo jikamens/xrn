@@ -153,10 +153,6 @@ contrib/*		Various scripts, hints, etc. contributed by
 * doc/rfc977.txt	The Internet RFC governing NNTP, the Network
 			News Transport Protocol, which XRN users to
 			talk to the server.
-* doc/vprintf.doc	Documentation for the vprintf() implementation
-			included with XRN.
-* doc/vprintf.port	The original vprintf() implementation from
-			which the one used in XRN is derived.
 still-to-do/*		Various bug fixes that have not yet been
 			examined or incorporated into the program.
 			Some of these are probably obsolete.  I

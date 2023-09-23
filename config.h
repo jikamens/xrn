@@ -540,11 +540,6 @@
 # endif /* sun && !SOLARIS */
 #endif /* sequent || !(SYSV || sun) */
 
-/* v{s,f}printf functions */
-#if defined(sequent) || defined(ibm032) || (defined(sony) && !defined(SYSV) && !defined(_ANSI_C_SOURCE))
-#define NEED_VPRINTF
-#endif
-
 /*
  * define this if your system C library doesn't have the tempnam
  * function - note that there a number of buggy tempnam implementations
