@@ -270,10 +270,6 @@ extern void tconvert _ARGUMENTS((char *, char *));
 #endif
 #endif
 
-#ifdef NEED_STRSTR
-extern char *strstr _ARGUMENTS((char const *, char const *));
-#endif
-
 extern void do_chmod _ARGUMENTS((FILE *, char *, int));
 
 #if defined(__STDC__) && !defined(UNIXCPP)

@@ -555,18 +555,6 @@
 #define NEED_TEMPNAM
 #endif
      
-/* strstr function */
-/*
- * Although SunOS 4.1.3 has a strstr function in its C library, it's
- * incredibly inefficient and slows down the performance of XRN in
- * some cases noticeably.  Our version is faster, so we use it
- * instead.
- */
-#if (!defined(_ANSI_C_SOURCE) && !defined(linux)) || \
-    (defined(sparc) && defined(sun) && defined(unix) && !defined(SOLARIS))
-#define NEED_STRSTR
-#endif
-
 #if defined(clipper) || (defined(sony) && defined(SVR4)) || (defined(i386) && defined(SYSV))
 #define NEED_STRCASECMP
 #endif
