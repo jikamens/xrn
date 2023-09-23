@@ -51,7 +51,7 @@
  * from users at your site that you are capable of answering.
  */
 #ifndef GRIPES
-#define GRIPES "bug-xrn@kamens.brookline.ma.us"
+#define GRIPES "bug-xrn@kamens.us"
 #endif
 
 /*

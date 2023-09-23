@@ -12,7 +12,7 @@ information about the GNKSA.  XRN's GNKSA review can be viewed at
 <URL:http://www.xs4all.nl/~js/gnksa/Evaluations/xrn-9.02beta4.txt>.
 
 XRN is maintained by Jonathan Kamens.  Bug reports or comments about
-it should be sent to bug-xrn@kamens.brookline.ma.us.
+it should be sent to bug-xrn@kamens.us.
 
 XRN knows how to do threading, but it doesn't do MIME, e.g., it
 properly display postings that are formatted in HTML and it doesn't
@@ -83,18 +83,16 @@ support, and it's not working for you, then I'd like to hear from you.
 
 If you have problems compiling or running XRN, you should check the
 COMMON-PROBLMS file in the XRN distribution to see if your problem is
-documented there.  If not, write to bug-xrn@kamens.brookline.ma.us for
-assistance.
+documented there.  If not, write to bug-xrn@kamens.us for assistance.
 
 
 			 The XRN mailing list
 
 If you would like to be informed of new releases of XRN and of any
 major bugs that are discovered in between releases, you can subscribe
-to the xrn-users@kamens.brookline.ma.us mailing list.  It's an
-announcement list, not a discussion list, so the traffic on it is very
-low.  Send mail to xrn-users-request@kamens.brookline.ma.us to ask to
-be added to the list.
+to the xrn-users@kamens.us mailing list. It's an announcement list,
+not a discussion list, so the traffic on it is very low. Send mail to
+xrn-users-request@kamens.us to ask to be added to the list.
 
 
 			  The future of XRN
@@ -191,4 +189,4 @@ CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 I hope you find XRN useful!
 
   Jonathan Kamens
-  jik@kamens.brookline.ma.us
+  jik@kamens.us

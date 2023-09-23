@@ -2189,16 +2189,16 @@ on problems that may exist in your version of the X11 toolkit and widgets.
 See COMMON-PROBLMS for a list of common problems and solutions to the
 problems.
 .sp
-Report bugs and requests for features to "bug\-xrn@kamens.brookline.ma.us".
+Report bugs and requests for features to "bug\-xrn@kamens.us".
 .sp
 Requests to be placed on the \*(XR users mailing list should be sent to
-"xrn\-users\-request@kamens.brookline.ma.us".  The only thing that comes
+"xrn\-users\-request@kamens.us".  The only thing that comes
 across this mailing list is announcements of new releases and
 patches for serious problems so don't expect very much traffic.
 .\"
 .SH "AUTHORS"
 .PP
-Jonathan Kamens (American Internet Corp., jik@kamens.brookline.ma.us)
+Jonathan Kamens (jik@kamens.us)
 .PP
 Ellen M Sentovich (UC Berkeley, ellen@ic.berkeley.edu)
 .PP
