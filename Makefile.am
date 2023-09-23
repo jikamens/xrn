@@ -50,7 +50,7 @@ nodist_xrn_SOURCES = mesg_strings.h
 BUILT_SOURCES = mesg_strings.h rcyacc.h xrn.spec
 AM_YFLAGS = -d
 CLEANFILES = mesg_strings.h rclex.c rcyacc.c rcyacc.h getdate.c getdate.h \
-	XRn.ad XRn xrn-man.c xrn-man.cpp xrn-man.sed xrn.man
+	XRn.ad XRn xrn-man.c xrn-man.cpp xrn-man.sed xrn.man xrn.spec
 
 mesg_strings.h: mesg_strings.c mesg_str.awk
 	-rm -f mesg_str.tmp
