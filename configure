@@ -6461,11 +6461,7 @@ int main() {
   regex_t  re;
   if (regcomp( &re, "^.*$", flags ) != 0)
     return 1;
-  /* XRN commented out */
-  /* return regcomp( &re, "|no.*", flags ); */
-  /* XRN added */
-  return 0;
-}
+  return regcomp( &re, "|no.*", flags ); }
 _ACEOF
 if ac_fn_c_try_run "$LINENO"
 then :
