@@ -28,7 +28,7 @@
 .ds NG \fBNewsgroup\fP
 .ds AR \fBArticle\fP
 .ds AL \fBAll\fP
-.ds AD \fBAdd\fP
+.ds AA \fBAdd\fP
 .ds XD "~/.Xresources"
 .\"
 .SH NAME
@@ -146,20 +146,20 @@ to be read.
 If the \*(NS file does not exist, it is created, and the
 user is subscribed to the news group "news.announce.newusers".
 .PP
-\*(XR has four modes of operation: \*(AD, \*(NG, \*(AL,
+\*(XR has four modes of operation: \*(AA, \*(NG, \*(AL,
 and \*(AR modes.
-\*(AD mode will be entered on startup if there are any groups
+\*(AA mode will be entered on startup if there are any groups
 that the news system knows about that are not in the \*(NS file
 (\fIi.e.,\fP new groups).
-In \*(AD mode, the user is given a
+In \*(AA mode, the user is given a
 list of new groups.
 Groups can then be subscribed to and placed in the \*(NS file
 at the first position, the last position, or after a group already
 in the \*(NS file.
-When \*(AD mode is exited, any remaining groups are
+When \*(AA mode is exited, any remaining groups are
 added unsubscribed, so the user is not asked about them the
 next time \*(XR is started.
-On exit from \*(AD mode, or on startup if there are no new groups,
+On exit from \*(AA mode, or on startup if there are no new groups,
 \*(NG mode is entered.
 \*(NG mode displays the subscribed to groups that have unread
 articles and the range of available articles.
@@ -248,7 +248,7 @@ a title bar, two scrollable text windows, two information bars,
 and two button boxes.
 The title bar displays the current version of the program.
 The top text window displays information based on the mode.
-In \*(AD mode, the window displays all groups that are
+In \*(AA mode, the window displays all groups that are
 not currently in the \*(NS file, one per line.
 In \*(NG mode, the
 window displays the groups containing unread articles.
@@ -362,11 +362,11 @@ listed in parentheses after their entries in the lists below.
 .\"
 .SH ADD MODE
 .PP
-\*(AD mode is entered when \*(XR detects groups that the news system 
+\*(AA mode is entered when \*(XR detects groups that the news system 
 knows about that are not in the \*(NS file (i.e., newly created
 groups).
 
-To change or add key bindings to \*(AD mode, use the X resource
+To change or add key bindings to \*(AA mode, use the X resource
 "*addFrame.list.translations".
 .IP "addQuit * (`q')"
 Add remaining groups in the list to \*(NS as unsubscribed;
@@ -1012,7 +1012,7 @@ Here are the current command line arguments
 the command line arguments).
 .TP 10
 .B \-addButtonList list
-Use the given list of buttons for \*(AD mode in the order
+Use the given list of buttons for \*(AA mode in the order
 given rather than the default button list (described above).
 
 The "list" is a comma separated list of button names, as given in
@@ -1216,7 +1216,7 @@ executed.
 If set, then the newsrc file will always contain all newsgroups
 known to the server.  Any time \*(XR discovers a newsgroup on the
 server that's not in the newsrc file, it will consider the newsgroup
-new and enter \*(AD mode to ask you what you want to do with it.
+new and enter \*(AA mode to ask you what you want to do with it.
 
 If not set, then any newsgroups not found in the newsrc file will be
 considered "ignored" (as opposed to "subscribed" or
@@ -2013,7 +2013,7 @@ xrn (Shell)
     buttons (Box)
       button names listed above, e.g., allQuit (Command)
       grip (Grip, not usually visible)
-  addFrame for \*(AD mode (Paned)
+  addFrame for \*(AA mode (Paned)
     list (Text)
     info (Label)
     buttons (Box)
