@@ -6491,12 +6491,6 @@ then :
   printf "%s\n" "#define HAVE_MKSTEMP 1" >>confdefs.h
 
 fi
-ac_fn_c_check_func "$LINENO" "strtok" "ac_cv_func_strtok"
-if test "x$ac_cv_func_strtok" = xyes
-then :
-  printf "%s\n" "#define HAVE_STRTOK 1" >>confdefs.h
-
-fi
 
 ac_fn_c_check_header_compile "$LINENO" "unistd.h" "ac_cv_header_unistd_h" "$ac_includes_default"
 if test "x$ac_cv_header_unistd_h" = xyes

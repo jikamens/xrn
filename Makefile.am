@@ -29,7 +29,7 @@ xrn_SOURCES = avl.c compose.c cursor.c dialogs.c \
        refile.c mesg.c error_hnds.c newsrcfile.c resources.c    \
        internals.c save.c server.c utils.c xrn.c \
        xthelper.c cancel.c vprintf.c tempnam.c \
-       strtok.c mesg_strings.c XrnText.c ngMode.c artMode.c allMode.c \
+       mesg_strings.c XrnText.c ngMode.c artMode.c allMode.c \
        addMode.c snapshot.c artstruct.c Buttons.c InfoLine.c ButtonBox.c \
        busyCursor.c varfile.c activecache.c sort.c hash.c getdate.y \
        killfile.c InfoDialog.c Frame.c Xmisc.c file_cache.c rcyacc.y rclex.l \

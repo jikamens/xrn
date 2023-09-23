@@ -2177,9 +2177,6 @@ Article temporary files can be removed and \*(XR will recover.
 The v{f,s}printf implementation included with \*(XR is from 
 Robert A. Larson <blarson@skat.usc.edu>.
 .sp
-The strtok implementation included with \*(XR is from
-Henry Spencer <henry@zoo.toronto.edu>.
-.sp
 PointerForeground is the resource name for the color of the 
 cursor (pointer).  Some other programs use PointerColor/CursorColor.
 .SH BUGS

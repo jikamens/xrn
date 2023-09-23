@@ -167,10 +167,6 @@ typedef SIG_RET_T	(*SIG_PF0) _VARARGUMENTS((int, ...));
 
 #undef SIG_RET_T
 
-#ifndef HAVE_STRTOK
-extern char *strtok _ARGUMENTS((char *, char const *));
-#endif
-
 #if !defined(_POSIX_C_SOURCE)
 extern char *getenv _ARGUMENTS((const char *));
 #endif
