@@ -1967,7 +1967,7 @@ xSENDMAIL_VERIFY_ENDx
 .PP
 Furthermore, \*(XR takes a number of specifications for colors, fonts,
 border widths, and other program options.
-.pp
+.PP
 The format for an \*(XR X resource is
 .sp
 .ce 100
