@@ -2,11 +2,6 @@
 #define BUTEXPL_H
 
 /*
- * $Header: /afs/gza.com/software/xrn/src/RCS/butexpl.h
- */
-
-
-/*
  * xrn - an X-based NNTP news reader
  *
  * Copyright (c) 1988-1993, Ellen M. Sentovich and Rick L. Spickelmier.
