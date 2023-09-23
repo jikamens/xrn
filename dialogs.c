@@ -30,7 +30,6 @@
  * dialogs.c: create simple moded dialog boxes
  */
 
-#include "copyright.h"
 #include "config.h"
 #include "utils.h"
 #include "mesg_strings.h"

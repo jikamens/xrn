@@ -24,7 +24,6 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "copyright.h"
 #include "config.h"
 #include "utils.h"
 #include "avl.h"

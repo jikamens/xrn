@@ -29,7 +29,6 @@
  *
  */
 
-#include "copyright.h"
 #include "config.h"
 #include "utils.h"
 #include <X11/Xos.h>

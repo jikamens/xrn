@@ -28,7 +28,6 @@
  * save.c: routines for saving articles and sending articles to processes
  */
 
-#include "copyright.h"
 #include "config.h"
 #include "utils.h"
 #include <X11/Xos.h>

@@ -29,7 +29,6 @@
  * newsrc.y - yacc parser for the newsrc file
  */
 
-#include "copyright.h"
 #include "config.h"
 #include "utils.h"
 #include <X11/Xos.h>

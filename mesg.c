@@ -28,7 +28,6 @@
  * mesg.c: message box
  */
 
-#include "copyright.h"
 #include "config.h"
 #include "utils.h"
 #include <X11/Xos.h>

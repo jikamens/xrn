@@ -37,7 +37,7 @@ xrn_SOURCES = avl.c compose.c cursor.c dialogs.c \
 	InfoLine.h Text.h XRn.src Xresources.sam activecache.h addMode.h \
 	allMode.h artMode.h artstruct.h avl.h busyCursor.h butdefs.h \
 	butexpl.h buttons.h cache.h cancel.h clientlib.h codes.h compose.h \
-	config.h copyright.h cursor.h dialogs.h error_hnds.h file_cache.h \
+	config.h cursor.h dialogs.h error_hnds.h file_cache.h \
 	hash.h internals.h killfile.h mesg.h mesg_str.awk modes.h news.h \
 	newsrcfile.h ngMode.h refile.h resources.h save.h server.h snapshot.h \
 	sort.h utils.h varfile.h xmisc.h xrn-man.src xrn-man.sym xrn.h \
