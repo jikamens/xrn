@@ -119,9 +119,9 @@ void ehInstallErrorHandlers()
 }
 
 
-static RETSIGTYPE sig_catcher _ARGUMENTS((int));
+static void sig_catcher _ARGUMENTS((int));
 
-static RETSIGTYPE sig_catcher(signo)
+static void sig_catcher(signo)
     int signo;
 {
     char buffer[80];
@@ -137,19 +137,12 @@ static RETSIGTYPE sig_catcher(signo)
     ehSignalExitXRN(buffer);
     (void) kill(getpid(), signo);
     /*NOTREACHED*/
-#ifdef SIGFUNC_RETURNS
-    return(0);
-#endif
 }
 
 void ehInstallSignalHandlers()
 {
     int i;
-#ifdef SIGFUNC_RETURNS
-    int (*oldcatcher)(int);
-#else
     void (*oldcatcher)(int);
-#endif
 
     for (i = 1; i <= SIGTERM; i++) {
 	switch (i) {

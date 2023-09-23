@@ -40,9 +40,6 @@ static char check_directory(dir)
 char *utTempnam(dir, pfx)
     char *dir, *pfx;
 {
-#ifndef STDC_HEADERS
-     extern char *getenv();
-#endif
      char *tmpdir = NULL, *env, *filename;
 #ifdef HAVE_MKSTEMP
      int fd, i;

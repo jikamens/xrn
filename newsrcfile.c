@@ -34,9 +34,7 @@
 #include "utils.h"
 #include <X11/Xos.h>
 #include <errno.h>
-#ifdef STDC_HEADERS
 #include <stdlib.h>
-#endif
 #include "news.h"
 #include "artstruct.h"
 #include "error_hnds.h"

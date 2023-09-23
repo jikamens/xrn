@@ -37,11 +37,7 @@
 #else
 #include <sys/file.h>
 #endif
-#if STDC_HEADERS
 #include <stdlib.h>
-#else
-    char *getenv();
-#endif
 #include <errno.h>
 
 #include "xrn.h"

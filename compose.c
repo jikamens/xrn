@@ -2222,30 +2222,23 @@ static int forkpid;
 
 extern int outchannel;
 
-static RETSIGTYPE catch_sigchld _ARGUMENTS((int));
+static void catch_sigchld _ARGUMENTS((int));
 
-static RETSIGTYPE catch_sigchld(signo)
+static void catch_sigchld(signo)
     int signo;
 {
 
     if (signo != SIGCHLD) {
 	/* whoops! */
-#ifdef SIGFUNC_RETURNS
-	return 1;
-#endif
+	return;
     }
     if (forkpid != wait(0)) {
 	/* whoops! */
-#ifdef SIGFUNC_RETURNS
-	return 1;
-#endif
+	return;
     }
     (void) signal(SIGCHLD, SIG_DFL);
     editing_status = Completed;
     write(outchannel,"1",1);
-#ifdef SIGFUNC_RETURNS
-    return 1;
-#endif
 }
 
 

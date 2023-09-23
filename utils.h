@@ -51,9 +51,7 @@
 #include <unistd.h>
 #endif
 
-#ifdef STDC_HEADERS
 #include <stdlib.h>
-#endif
 
 #ifdef sun
 
@@ -176,9 +174,7 @@ extern char *strtok _ARGUMENTS((char *, char const *));
 #if !defined(_POSIX_C_SOURCE)
 extern char *getenv _ARGUMENTS((const char *));
 #endif
-#ifdef STDC_HEADERS
 #include <stdlib.h>
-#endif
 #if !defined(_XOPEN_SOURCE)
 extern char *mktemp _ARGUMENTS((char *));
 #else

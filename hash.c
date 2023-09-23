@@ -385,9 +385,7 @@ void hash_print_stats(table_p)
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#ifdef STDC_HEADERS
 #include <stdlib.h>
-#endif
 
 int main(argc, argv)
      int argc;
