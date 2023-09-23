@@ -3,6 +3,7 @@
  * xrn - an X-based NNTP news reader
  *
  * Copyright (c) 1988-1993, Ellen M. Sentovich and Rick L. Spickelmier.
+ * Copyright (c) 1994-2023, Jonathan Kamens.
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted, provided
