@@ -555,10 +555,6 @@
 #define NEED_TEMPNAM
 #endif
      
-#if defined(clipper) || (defined(sony) && defined(SVR4)) || (defined(i386) && defined(SYSV))
-#define NEED_STRCASECMP
-#endif
-
 /*
  * Define NO_FCHMOD if your C library doesn't have the fchmod() system
  * call.

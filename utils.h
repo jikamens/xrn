@@ -74,7 +74,6 @@ extern int getdtablesize();
 extern int system();
 extern int read(), close(), fchmod(), rename();
 extern int putenv();
-extern int strcasecmp(), strncasecmp();
 extern void bzero(), bcopy();
 
 #endif /* SOLARIS */
@@ -253,11 +252,6 @@ extern int pclose _ARGUMENTS((FILE *));
 extern FILE *xrn_popen _ARGUMENTS((const char *, const char *));
 extern int xrn_pclose _ARGUMENTS((FILE *));
 #endif /* POPEN_USES_INEXPENSIVE_FORK */
-
-#ifdef NEED_STRCASECMP
-extern int strcasecmp _ARGUMENTS((const char *, const char *));
-extern int strncasecmp _ARGUMENTS((const char *, const char *, size_t));
-#endif
 
 extern void tconvert _ARGUMENTS((char *, char *));
 
