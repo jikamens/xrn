@@ -54,12 +54,6 @@ Source code tarballs for XRN can be found at <ftp://rtfm.mit.edu/pub/xrn/>.
 
 		     Compiling and installing XRN
 
-As of XRN 10.00, the old "Imake" method of building X applications is
-no longer supported.  The old Imakefile is still in the source
-tarball, and if you're lucky you might be able to get it to work, but
-for the most part, you'll want to use a recent version of X that
-supports the new X application build system based on GNU autoconf.
-
 There's an RPM spec file in the tarball, which means that if you're
 lucky, you can download the source code and run "rpmbuild -tb
 xrn-<version>.tar.gz", and it will "just work."  Of course, this
@@ -83,9 +77,6 @@ only UNIX system on which building XRN has been tested in quite a
 while is Linux.  If you're trying to build it on some other kind of
 UNIX, you're using a recent version of X with that uses autoconf
 support, and it's not working for you, then I'd like to hear from you.
-
-If you're trying to make Imake work, you're pretty much on your own.
-However, note that you'll have to edit config.h before you run xmkmf.
 
 
 		       If you have problems...
