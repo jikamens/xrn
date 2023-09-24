@@ -892,7 +892,7 @@ void ngMoveFunction(widget, event, string, count)
 
 /*
  * Quit xrn, leaving the newsrc in the state it was in at
- * the last invokation of rescan.
+ * the last invocation of rescan.
  */
 /*ARGSUSED*/
 void ngExitFunction(widget, event, string, count)

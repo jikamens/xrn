@@ -387,7 +387,7 @@ int updatenewsrc()
     }
 
     /*
-     * handle outputing the options line
+     * handle outputting the options line
      */
     if (optionsLine != NIL(char)) {
       FAILIF(fprintf(newsrcfp, "%s\n", optionsLine) == EOF);

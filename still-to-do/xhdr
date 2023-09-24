@@ -92,7 +92,7 @@ patche of server.c:
 < 
 <   number = i;
 <       if (app_resources.authorFullName) {
-<   /* Can be made fancyer at the expence of extra cpu time */
+<   /* Can be made fancier at the expense of extra cpu time */
 <   author = string;
 <   assert(author != NIL(char));
 < 

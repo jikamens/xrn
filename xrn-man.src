@@ -1340,7 +1340,7 @@ name is also appended to the lock file name (e.g.,
 .TP 10
 .B \-mailer mailer
 The command to use for mailing replies.
-This command must take all of it's input from stardard input
+This command must take all of its input from standard input
 (\*(XR will not build a command line).
 The default is "xSENDMAILx".
 .TP 10
@@ -2126,7 +2126,7 @@ The name (\*(XR) is a bit of a misnomer.
 program by Larry Wall), but is an X-based news reader that has
 had part of the functionality of "rn" added since a number of our
 users are (were?) "rn" users (all of the code is new).
-Much of the "rn" funcionality that \*(XR currently has was not in the original
+Much of the "rn" functionality that \*(XR currently has was not in the original
 plan (kill files, for example).
 .sp
 The user interface look and feel is modeled after that of "XMH"

@@ -227,7 +227,7 @@ char *subjectStrip _ARGUMENTS((char *));
 
 /* CAUTION!!!
 
-   Maks sure that PREFETCH_LAST_OPTIONAL_STAGE -
+   Make sure that PREFETCH_LAST_OPTIONAL_STAGE -
    PREFETCH_START_OPTIONAL_STAGE < 8, because the bits are all assumed
    to fit into a single byte.  If this needs to change, we'll need to
    grow the size of the flag field from char to int (or long).  It's a

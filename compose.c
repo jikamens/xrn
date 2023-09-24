@@ -793,7 +793,7 @@ static void freeHeader(Header)
 
 /*
  * add a subject field to the header of a message.
- * deal with supressing multiple '[rR][eE]: ' strings
+ * deal with suppressing multiple '[rR][eE]: ' strings
  */
 static void buildSubject _ARGUMENTS((struct header *, char **, int *, int *));
 

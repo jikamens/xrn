@@ -598,7 +598,7 @@ static Boolean setCurrentArticle(
 
 /*
  * convert an array of strings (of 'count' items) into one big string
- * with each substring seperated by newlines
+ * with each substring separated by newlines
  *
  * bytes is the sum of the string lengths of the strings
  *
@@ -3159,7 +3159,7 @@ void markArticleAsUnread(article)
  *        update 0
  *   2. add to the end
  *        move oldloc+1 to MaxGroupNumber-1 update 1, update newsrc fields
- *        upadte MaxGroupNumber-1
+ *        update MaxGroupNumber-1
  *   3. add after a group
  *
  */

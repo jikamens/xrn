@@ -99,7 +99,7 @@ X# calls uudecode on the file and then invokes the users preferred
 X# image display program on the decoded file.  
 X#
 X# NOTE: since uudecode/encode have special file formats, headers, 
-X# and delimeters the image being attempted for display must be in 
+X# and delimiters the image being attempted for display must be in 
 X# a single NetNews/USENET article.
 X#
 X#
@@ -232,7 +232,7 @@ X+ 	    app_resources.imageCommand, app_resources.tmpDir,
 X+ 	    CurrentArticle);
 X+ 	status = system(buffer);
 X+ 	if (status & 1) {
-X+ 	    info("Article sucessfully decoded and displayed");
+X+ 	    info("Article successfully decoded and displayed");
 X+ 	    SubjectString[ArtPosition+1] = 'I';
 X+ 	    XawTextInvalidate(Text, ArtPosition, ArtPosition + 2);
 X+ 	    SET_PRINTED(newsgroup->articles[INDEX(art)]);

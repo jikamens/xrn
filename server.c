@@ -642,13 +642,13 @@ static int get_base_article(
  * retrieve article number 'artnumber' in the current group
  *
  *   returns:  the cache file (locked) that the article is stored in
- *             or NIL(char) if the article is not avaiable
+ *             or NIL(char) if the article is not available
  */
 file_cache_file *getarticle(newsgroup, artnumber, retposition, flags)
      struct newsgroup *newsgroup;
      art_num artnumber;  /* # of article in the current group to retrieve */
      long *retposition;     /* if non-null, return parameter for byte position of
-			       header/body seperation       */
+			       header/body separation       */
      int flags;
 {
   file_cache_file *base_cache_file, *cache_file;
@@ -1976,7 +1976,7 @@ static char *authorFixFunction(newsgroup, artnum, message)
     (void) strcpy(authbuf, author);
 
     if (app_resources.authorFullName) {
-	/* Can be made fancyer at the expence of extra cpu time */
+	/* Can be made fancier at the expense of extra cpu time */
 
 	/* First check for case 1, user@domain ("name") -> name */
 

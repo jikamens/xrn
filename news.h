@@ -37,7 +37,7 @@
 #include "file_cache.h"
 #include "xrn.h"
 
-typedef long art_num;  /* easy way to pick out variables refering to articles */
+typedef long art_num; /* easy way to pick out variables referring to articles */
 typedef unsigned int ng_num;   /* easy way to pick out newsgroup variables            */
 typedef unsigned char fetch_flag_t;
 

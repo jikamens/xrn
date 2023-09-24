@@ -46,7 +46,7 @@
 #endif
 
 /*
- * Global messsages and strings like "yes", "no", "OK?", etc.  These
+ * Global messages and strings like "yes", "no", "OK?", etc.  These
  * are #define's instead of strings in the mesg_strings array because
  * they are used in static arrays that can't contain references to
  * other arrays.
@@ -766,8 +766,8 @@ char *message_strings[] = {
     "Unknown subject sort type: %s", /* type */
 /* < TOO_MANY_SORT_TYPES > */
     "Too many subject sort types specified.",
-/* < UNPARSEABLE_DATE > */
-    "Unparseable date (article %ld in %s):\n\t%s", /* number, newsgroup, string */
+/* < UNPARSABLE_DATE > */
+    "Unparsable date (article %ld in %s):\n\t%s", /* number, newsgroup, string */
 /* < THREADING_FOR > */
     "Threading newsgroup `%s'...", /* newsgroup */
 /* < FILE_CACHE_OPEN > */
@@ -1289,8 +1289,8 @@ char *message_strings[] = {
     "Unknown subject sort type: %s", /* type */
 /* < TOO_MANY_SORT_TYPES > */
     "Too many subject sort types specified.",
-/* < UNPARSEABLE_DATE > */
-    "Unparseable date (article %ld in %s):\n\t%s", /* number, newsgroup, string */
+/* < UNPARSABLE_DATE > */
+    "Unparsable date (article %ld in %s):\n\t%s", /* number, newsgroup, string */
 /* < THREADING_FOR > */
     "Threading newsgroup `%s'...", /* newsgroup */
 /* < FILE_CACHE_OPEN > */
@@ -1831,7 +1831,7 @@ char *message_strings[] = {
     "Unbekanntes Sortier-Kriterium: %s", /* type */
 /* < TOO_MANY_SORT_TYPES > */
     "Zu viele Sortier-Kriterien angegeben.",
-/* < UNPARSEABLE_DATE > */
+/* < UNPARSABLE_DATE > */
     "Unlesbares Datum (Artikel %ld in %s):\n\t%s", /* Nummer, Gruppe, String */
 /* < THREADING_FOR > */
     "Newsgruppe `%s' wird nach Serien sortiert...", /* newsgroup */

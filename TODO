@@ -85,7 +85,7 @@ be nice if they were done.... (and even worse, it's not up to date)
 - GroupLens integration.
 - Display a netiquette message directing new users to
   news.announce.newusers when they read news for the first time
-  (suppressable by an X resource).
+  (suppressible by an X resource).
 - When the user is posting, there are no postable groups in the
   Newsgroups line, and fullNewsrc is false, ask the user if he wants
   to fetch the full newsgroup list in case the group(s) he's trying to
@@ -258,7 +258,7 @@ be nice if they were done.... (and even worse, it's not up to date)
   widget-creation arguments in the program and move as many of them as
   possible to the app-defaults file.
 - Go through all the uses of XtSetValues and XtGetValues and convert
-  them to use XtVaSetValues and XtVaGetValues whereever possible, to
+  them to use XtVaSetValues and XtVaGetValues wherever possible, to
   eliminate unnecessary argument arrays.  Same thing for the
   Create*Widget functions.
 - Make sure all temporary files are being deleted properly (I think
@@ -326,7 +326,7 @@ be nice if they were done.... (and even worse, it's not up to date)
    - Including one KILL file inside another one.
    - handle '{' correctly
         The regular expression \{<m>,<n>\} is supposed to match between
-        m and n occurences of the previous character. To kill an expression
+        m and n occurrences of the previous character. To kill an expression
         of the form "{foo}", xrn requires the braces to be quoted. Rn, on
         the other hand complains if the braces are quoted.  Rn, on
         the other hand complains if the braces are quoted since the

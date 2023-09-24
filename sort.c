@@ -26,7 +26,7 @@
 /*
 
   This file contains routines for sorting a list of articles from a
-  newsgroup, and for producting a textual representation of the sorted
+  newsgroup, and for producing a textual representation of the sorted
   article list for displaying in the newsgroup index.
 
   The method for using the routines in this file is as follows:
@@ -368,7 +368,7 @@ void generate_date_keys(data)
     time_t date = get_date(data->articles[i].art->date);
     if (date == (time_t)-1) {
       if (app_resources.complainAboutBadDates)
-	mesgPane(XRN_SERIOUS, 0, UNPARSEABLE_DATE_MSG,
+	mesgPane(XRN_SERIOUS, 0, UNPARSABLE_DATE_MSG,
 		 data->articles[i].num, data->newsgroup->name,
 		 data->articles[i].art->date);
       date = (time_t) 0;

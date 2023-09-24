@@ -213,7 +213,7 @@ void utDowncase(string)
     return;
 }
 
-/* case insensitive, 24 character max, comparision for subjects */
+/* case insensitive, 24 character max, comparison for subjects */
 
 int utSubjectCompare(str1, str2)
     register const char *str1, *str2;
